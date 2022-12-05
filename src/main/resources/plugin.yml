@@ -1,0 +1,6 @@
+name: LimeCore
+version: 1.0
+main: org.lime.core
+api-version: 1.13
+authors: [Lime]
+softdepend: [ProtocolLib]

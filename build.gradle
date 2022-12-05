@@ -1,0 +1,178 @@
+import java.nio.charset.Charset
+import java.nio.file.Files
+import java.nio.file.Paths
+import java.nio.file.StandardCopyOption
+import java.util.function.Predicate
+import java.util.stream.Stream
+import java.util.stream.StreamSupport
+
+plugins {
+    id 'java'
+    id 'maven-publish'
+}
+
+
+group = pluginGroup
+version = pluginVersion
+
+String _version = "1.18.2"
+boolean _mapped = true
+
+sourceCompatibility = '16'
+targetCompatibility = '16'
+
+repositories {
+    mavenLocal()
+    mavenCentral()
+    maven {
+        name = 'papermc-repo'
+        url = 'https://papermc.io/repo/repository/maven-public/'
+    }
+    maven {
+        name = 'sonatype'
+        url = 'https://oss.sonatype.org/content/groups/public/'
+    }
+    maven { url = 'https://hub.spigotmc.org/nexus/content/repositories/snapshots/' }
+    maven { url = 'https://oss.sonatype.org/content/repositories/snapshots' }
+}
+
+static String libPath(String file) {
+    return "../.libs/" + file
+}
+
+dependencies {
+    dependencies {
+        compileOnly(
+                files(libPath((_mapped ? "paper-unmapped-" : "spigot-") + _version+".jar")),
+                files(libPath("ProtocolLib.jar")),
+                files(libPath("JSEngine-3.0.5.jar")),
+        )
+    }
+}
+
+static List<String> getText(Process process) {
+    try (BufferedReader input = new BufferedReader(new InputStreamReader(process.getInputStream()))) {
+        List<String> lines = new ArrayList<>()
+        String line
+        while ((line = input.readLine()) != null) lines.add(line)
+        return lines
+    }
+}
+static String executeJs(int line_index, String js) {
+    String exe = new File(System.getProperty("user.dir")).getParent() + "\\.utils\\js.exe " + Base64.getEncoder().encodeToString(js.getBytes());
+    return new String(Base64.getDecoder().decode(String.join("\n", getText(Runtime.runtime.exec(exe)))));
+}
+
+static Map<String, String> regedit(String... path) {
+    HashMap<String, String> map = new HashMap<>()
+    getText(Runtime.runtime.exec('reg query ' + String.join("\\", path))).forEach(line -> {
+        if (!line.startsWith("    ")) return
+        String[] args = line.substring(4).split(" {4}")
+        map.put(args[0], args.length >= 3 ? args[2] : "")
+    })
+    return map
+}
+static String yandex_disk() {
+    HashMap<String, String> list = new HashMap<>();
+    list.put("HKEY_CURRENT_USER\\SOFTWARE\\Yandex\\Yandex.Disk", "RootFodler")
+    list.put("HKEY_CURRENT_USER\\SOFTWARE\\Yandex\\Yandex.Disk.2", "RootFolder")
+    for (Map.Entry<String, String> reg : list) {
+        String folder = regedit(reg.key).getOrDefault(reg.value, null)
+        if (folder == null) continue
+        return folder
+    }
+    return null
+}
+
+task copyToLib() {}
+copyToLib.doLast {
+    println "Copy..."
+    java.nio.file.Path originalPath = jar.archiveFile.get().asFile.toPath()
+    println "> ORIGINAL " + originalPath
+    for (String path : [
+            Paths.get(yandex_disk(), "Minecraft-Paper", "plugins"),
+            Paths.get(yandex_disk(), "PLUGINS", "Minecraft", ".libs")
+    ])
+    {
+        java.nio.file.Path copied = Paths.get(path, originalPath.fileName.toString())
+        File dir = new File(path)
+        if (!dir.exists()) dir.mkdir()
+        println "> CD " + copied
+        Files.copy(originalPath, copied, StandardCopyOption.REPLACE_EXISTING)
+    }
+}
+static List<File> getFiles(File dir, Predicate<File> filter) {
+    List<File> files = new ArrayList<>();
+    for (File file : dir.listFiles()) {
+        if (file.isFile()) {
+            if (filter.test(file)) files.add(file);
+        }
+        else if (file.isDirectory()) files.addAll(getFiles(file, filter));
+    }
+    return files;
+}
+static String generateFile(File dir, String text) {
+    List<String> lines = text.replace("\r", "").split("\n");
+    List<String> output = new ArrayList<>();
+    List<String> code = null;
+    boolean  edited = false;
+    int size = lines.size();
+    for (int i = 0; i < size; i++) {
+        String line = lines.get(i);
+        String trim_line = line.trim();
+        int start = trim_line.indexOf("//");
+        if (start != 0) {
+            if (code != null) continue;
+            output.add(line);
+            continue;
+        }
+        switch (trim_line) {
+            case "//<generator>": {
+                if (code != null) throw new IllegalArgumentException("<generator> in line '"+(i+1)+"'");
+                code = new ArrayList<>();
+                output.add(line);
+                break;
+            }
+            case "//</generator>": {
+                if (code == null) throw new IllegalArgumentException("</generator> in line '"+(i+1)+"'");
+                output.add(executeJs(i+1, String.join("\n", code)));
+                output.add(line);
+
+                edited = true;
+                code = null;
+                break;
+            }
+            default: {
+                if (trim_line.startsWith("//<generator name=\"")) {
+                    if (code != null) throw new IllegalArgumentException("<generator> in line '"+(i+1)+"'");
+
+                    String file_name = trim_line.substring(19);
+                    file_name = file_name.substring(0, file_name.indexOf("\">"));
+                    code = new ArrayList<>();
+                    code.add(Paths.get(dir.absolutePath, file_name).toFile().text);
+                    output.add(line);
+                } else {
+                    output.add(line);
+                    if (code != null) code.add(trim_line.substring(2));
+                }
+                break;
+            }
+        }
+    }
+    return edited ? String.join("\n", output) : null;
+}
+
+task generator() {
+    getFiles(Paths.get(projectDir.absolutePath, "src", "main").toAbsolutePath().toFile(), file -> file.path.endsWith(".java")).forEach(file -> {
+        String text = file.text;
+        String _file = generateFile(file.parentFile, text);
+        if (_file == null) return;
+        System.out.println("EDITED: " + file.toPath().toAbsolutePath().toString());
+        file.text = _file;
+    })
+}
+
+build {dependsOn copyToLib }
+
+
+compileJava.options.encoding = 'UTF-8'
