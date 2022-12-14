@@ -1,7 +1,7 @@
 package org.lime;
 
+import com.google.common.collect.Streams;
 import com.google.gson.*;
-import com.google.gson.internal.Streams;
 import com.google.gson.stream.JsonReader;
 import com.google.gson.stream.JsonWriter;
 import org.apache.commons.lang.StringUtils;
@@ -11,7 +11,6 @@ import org.bukkit.World;
 import org.bukkit.entity.Player;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.util.Vector;
-import org.lime.json.JsonElementOptional;
 
 import java.io.IOException;
 import java.io.Reader;
@@ -90,7 +89,7 @@ public class system
     }
 
     public static <T>void parseAdd(JsonObject json, String key, Collection<T> list, Collection<T> data, system.Func1<T, String> name) {
-        parseList(json, key, AddByList(list, data, name));
+        parseList(json, key, addByList(list, data, name));
     }
     public static <T>List<T> parseGet(JsonObject json, String key, Collection<T> list, system.Func1<T, String> name) {
         List<T> data = new ArrayList<>();
@@ -101,13 +100,25 @@ public class system
         if (json.has(key)) callback.invoke(json.get(key).getAsJsonArray(), true);
         else if (json.has("!" + key)) callback.invoke(json.get("!" + key).getAsJsonArray(), false);
     }
-    public static <T>system.Action2<JsonArray, Boolean> AddByList(Collection<T> list, Collection<T> data, system.Func1<T, String> name) {
+    private static Stream<String> getStringsInArrayDeep(JsonArray array) {
+        return Streams.stream(array.iterator()).flatMap(v -> v.isJsonObject()
+                ? v.getAsJsonObject()
+                    .entrySet()
+                    .stream()
+                    .map(Map.Entry::getValue)
+                    .map(JsonElement::getAsJsonArray)
+                    .flatMap(system::getStringsInArrayDeep)
+                : v.isJsonArray()
+                    ? getStringsInArrayDeep(v.getAsJsonArray())
+                    : Stream.of(v.getAsString()));
+    }
+    public static <T>system.Action2<JsonArray, Boolean> addByList(Collection<T> list, Collection<T> data, system.Func1<T, String> name) {
         return (json, add_to_empty) -> {
             if (add_to_empty) {
                 HashMap<T, Boolean> _list = new HashMap<>();
-                json.forEach(item -> {
+                getStringsInArrayDeep(json).forEach(item -> {
                     for (T material : data) {
-                        if (compareRegex(name.invoke(material), item.getAsString())) {
+                        if (compareRegex(name.invoke(material), item)) {
                             _list.put(material, true);
                         }
                     }
@@ -116,8 +127,8 @@ public class system
             } else {
                 List<T> _list = new ArrayList<>(data);
                 _list.removeIf(material -> {
-                    for (JsonElement item : json) {
-                        if (compareRegex(name.invoke(material), item.getAsString()))
+                    for (String item : getStringsInArrayDeep(json).toList()) {
+                        if (compareRegex(name.invoke(material), item))
                             return true;
                     }
                     return false;
@@ -1485,7 +1496,7 @@ public class system
             JsonWriter jsonWriter = new JsonWriter(stringWriter);
             jsonWriter.setIndent("    ");
             jsonWriter.setLenient(true);
-            Streams.write(json, jsonWriter);
+            com.google.gson.internal.Streams.write(json, jsonWriter);
             return stringWriter.toString();
         } catch (IOException var3) {
             throw new AssertionError(var3);
