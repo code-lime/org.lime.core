@@ -1,7 +1,6 @@
 package org.lime;
 
 import com.google.common.collect.Streams;
-import com.google.gson.JsonObject;
 import org.objectweb.asm.Type;
 
 import java.lang.invoke.MethodHandles;
@@ -13,6 +12,7 @@ import java.util.*;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
+@SuppressWarnings("removal")
 public class reflection {
     private static final VarHandle MODIFIERS;
     private static final VarHandle SIGNATURE;
@@ -41,7 +41,7 @@ public class reflection {
                 .toString()
                 .replace('.', '/');
     }
-    public static <T extends Field>T nonFinal(T field) {
+    public static Field nonFinal(Field field) {
         int mods = field.getModifiers();
         if (Modifier.isFinal(mods)) MODIFIERS.set(field, mods & ~Modifier.FINAL);
         return field;
@@ -94,6 +94,7 @@ public class reflection {
         catch (NoSuchFieldException e) { return false; }
         catch (Exception e) { throw new IllegalArgumentException(e); }
     }
+    @SuppressWarnings("unchecked")
     public static <T>T getField(Class<?> tClass, String field, Object obj) {
         try { return (T)access(tClass.getDeclaredField(field)).get(obj); }
         catch (Exception e) { throw new IllegalArgumentException(e); }
@@ -102,10 +103,12 @@ public class reflection {
         try { access(tClass.getDeclaredField(field)).set(obj, value); }
         catch (Exception e) { throw new IllegalArgumentException(e); }
     }
+    @SuppressWarnings("unchecked")
     public static <T>T invokeMethod(Class<?> tClass, String method, Class<?>[] targs, Object obj, Object[] args) {
         try { return (T)access(tClass.getDeclaredMethod(method, targs)).invoke(obj, args); }
         catch (Exception e) { throw new IllegalArgumentException(e); }
     }
+    @SuppressWarnings("unchecked")
     public static <T>T invokeMethod(Class<?> tClass, Class<?> tret, Class<?>[] targs, Object obj, Object[] args) {
         try {
             int length = targs.length;
@@ -178,7 +181,7 @@ public class reflection {
 
         public constructor(Constructor<T> constructor) { this.constructor = constructor; }
 
-        public static <T>constructor<T> of(Constructor<T> method) { return new constructor(method); }
+        public static <T>constructor<T> of(Constructor<T> method) { return new constructor<>(method); }
         public static <T>constructor<T> of(Class<T> tClass, Class<?>... args) { return of(reflection.constructor(tClass, args)); }
 
         public T newInstance(Object... args) {
@@ -189,7 +192,9 @@ public class reflection {
             return newInstance(args);
         }
 
+        @SuppressWarnings("hiding")
         public <T extends system.ICallable>T build(Class<T> tClass) { return build(tClass, "invoke"); }
+        @SuppressWarnings("hiding")
         public <T extends system.ICallable>T build(Class<T> tClass, String invokable) { return createProxy(tClass, invokable); }
     }
     public static class field<T> {
@@ -212,12 +217,14 @@ public class reflection {
             try { field.set(instance, value); }
             catch (IllegalAccessException e) { throw new IllegalArgumentException(e); }
         }
+        @SuppressWarnings("unchecked")
         public T get(Object instance) {
             try { return (T)field.get(instance); }
             catch (IllegalAccessException e) { throw new IllegalArgumentException(e); }
         }
     }
 
+    @SuppressWarnings("unchecked")
     public static class dynamic<T> {
         public final T value;
         public final Class<T> tClass;
@@ -314,59 +321,6 @@ public class reflection {
                 ? Stream.empty()
                 : Streams.concat(Stream.of(clazz), superClasses(clazz.getSuperclass()), Arrays.stream(clazz.getInterfaces()).flatMap(v -> superClasses(v)));
     }
-    /*private static List<Class<?>> superClasses(Class<?> clazz) {
-        List<Class<?>> classes = new ArrayList<>();
-        if (clazz == null) return classes;
-        classes.add(clazz);
-        classes.addAll(superClasses(clazz.getSuperclass()));
-        for (Class<?> _clazz : clazz.getInterfaces()) classes.addAll(superClasses(_clazz));
-        return classes;
-    }
-    private static class minecraft_version {
-        public static final minecraft_version EMPTY = new minecraft_version();
-
-        public final String version;
-        public final String spigot_id;
-        public final HashMap<String, class_info> classes = new HashMap<>();
-
-        private static class class_info {
-            public final HashMap<String, String> fields = new HashMap<>();
-            public final HashMap<String, String> methods = new HashMap<>();
-            public class_info(JsonObject json) {
-                if (json.has("fields")) json.getAsJsonObject("fields").entrySet().forEach(kv -> fields.put(kv.getKey(), kv.getValue().getAsString()));
-                if (json.has("methods")) json.getAsJsonObject("methods").entrySet().forEach(kv -> methods.put(kv.getKey(), kv.getValue().getAsString()));
-            }
-        }
-
-        public minecraft_version(JsonObject json) {
-            version = json.get("version").getAsString();
-            spigot_id = json.get("spigot_id").getAsString();
-            json.getAsJsonObject("classes").entrySet().forEach(kv -> classes.put(kv.getKey(), new class_info(kv.getValue().getAsJsonObject())));
-        }
-        public minecraft_version() {
-            version = "none";
-            spigot_id = "none";
-        }
-    }
-    private static minecraft_version version = minecraft_version.EMPTY;
-
-    public static String name(Field field) {
-        minecraft_version.class_info _class = version.classes.getOrDefault(field.getDeclaringClass().getName().replace('.','/'), null);
-        String field_name = field.getName();
-        return _class == null ? field_name : _class.fields.getOrDefault(field_name, field_name);
-    }
-    public static String name(Method method) {
-        String method_name = method.getName();
-        String method_key = method_name + org.lime.reflection.signature(method);
-        for (Class<?> clazz : superClasses(method.getDeclaringClass())) {
-            minecraft_version.class_info _class = version.classes.getOrDefault(clazz.getName().replace('.','/'), null);
-            if (_class == null) continue;
-            String method_value = _class.methods.getOrDefault(method_key, null);
-            if (method_value == null) continue;
-            return method_value;
-        }
-        return method_name;
-    }*/
 }
 
 

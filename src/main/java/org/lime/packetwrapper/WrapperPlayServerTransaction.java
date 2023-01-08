@@ -21,6 +21,7 @@ package org.lime.packetwrapper;
 import com.comphenix.protocol.PacketType;
 import com.comphenix.protocol.events.PacketContainer;
 
+@Deprecated
 public class WrapperPlayServerTransaction extends AbstractPacket {
 	public static final PacketType TYPE = PacketType.Play.Server.TRANSACTION;
 

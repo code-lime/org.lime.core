@@ -26,6 +26,7 @@ import com.comphenix.protocol.events.PacketContainer;
 import com.comphenix.protocol.wrappers.EnumWrappers.Difficulty;
 import com.comphenix.protocol.wrappers.EnumWrappers.NativeGameMode;
 
+@Deprecated
 public class WrapperPlayServerRespawn extends AbstractPacket {
 	public static final PacketType TYPE = PacketType.Play.Server.RESPAWN;
 

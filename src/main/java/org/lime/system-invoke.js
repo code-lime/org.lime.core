@@ -26,7 +26,7 @@ function createAF(index) {
     var tt = "T0";
     for (var i = 1; i < index; i++) tt = "system.Toast2<"+tt+","+"T"+i+">";
 
-    lines.push("    public interface Action"+index+"<"+type+"> extends Action"+"1<"+tt+">, ICallable {");
+    lines.push("    public interface Action"+index+"<"+type+"> extends Action"+"1<"+tt+"> {");
     lines.push("        void invoke("+targs+");");
     lines.push("        @Override default void invoke("+tt+" arg0) { invoke("+of(index-1)+"); }");
     lines.push("        @Override default Object call(Object[] args) { invoke("+invoke+"); return null; }");

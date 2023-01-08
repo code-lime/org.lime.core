@@ -24,7 +24,6 @@ import com.comphenix.protocol.events.PacketContainer;
 import com.comphenix.protocol.utility.MinecraftReflection;
 import com.comphenix.protocol.wrappers.AutoWrapper;
 import com.comphenix.protocol.wrappers.BlockPosition;
-import com.comphenix.protocol.wrappers.BukkitConverters;
 import com.comphenix.protocol.wrappers.EnumWrappers;
 import com.comphenix.protocol.wrappers.EnumWrappers.Direction;
 import com.comphenix.protocol.wrappers.EnumWrappers.Hand;

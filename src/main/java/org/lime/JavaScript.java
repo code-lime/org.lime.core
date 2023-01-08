@@ -1,22 +1,15 @@
 package org.lime;
 
 import com.vk2gpz.jsengine.JSEngine;
-import org.bukkit.Bukkit;
-import org.bukkit.entity.Player;
 import org.bukkit.scheduler.BukkitTask;
 import org.openjdk.nashorn.api.scripting.JSObject;
 import org.openjdk.nashorn.api.scripting.NashornScriptEngine;
 import org.openjdk.nashorn.api.scripting.ScriptObjectMirror;
-import org.openjdk.nashorn.internal.objects.Global;
-import org.openjdk.nashorn.internal.runtime.ScriptObject;
-
 import javax.annotation.Nullable;
 import javax.script.*;
-import java.sql.ResultSet;
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentLinkedQueue;
-import java.util.stream.Collectors;
 
 public class JavaScript implements core.ICore {
     private NashornScriptEngine engine;

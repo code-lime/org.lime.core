@@ -1,13 +1,6 @@
 package org.lime.json;
 
 import com.google.gson.*;
-import com.google.gson.internal.Streams;
-import com.google.gson.stream.JsonWriter;
-import org.lime.system;
-
-import java.io.IOException;
-import java.io.StringWriter;
-import java.lang.instrument.IllegalClassFormatException;
 import java.math.BigDecimal;
 import java.math.BigInteger;
 import java.util.Optional;

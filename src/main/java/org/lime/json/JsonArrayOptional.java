@@ -1,15 +1,12 @@
 package org.lime.json;
 
 import com.google.gson.JsonArray;
-import com.google.gson.JsonElement;
-import com.google.gson.JsonObject;
-
 import java.math.BigDecimal;
 import java.math.BigInteger;
 import java.util.*;
 
 public class JsonArrayOptional extends JsonElementOptional implements Collection<JsonElementOptional> {
-    private final List<JsonElementOptional> elements = new ArrayList();
+    private final List<JsonElementOptional> elements = new ArrayList<>();
 
     @Override public JsonArrayOptional deepCopy() {
         JsonArrayOptional result = new JsonArrayOptional();

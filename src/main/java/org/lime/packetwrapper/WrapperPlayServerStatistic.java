@@ -32,6 +32,4 @@ public class WrapperPlayServerStatistic extends AbstractPacket {
 	public WrapperPlayServerStatistic(PacketContainer packet) {
 		super(packet, TYPE);
 	}
-
-	// TODO fix upon request
 }

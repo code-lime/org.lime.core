@@ -4,7 +4,6 @@ import co.aikar.timings.Timing;
 import org.bukkit.craftbukkit.v1_18_R2.scheduler.CraftTask;
 import org.bukkit.scheduler.BukkitTask;
 import org.lime.core;
-import org.lime.reflection;
 import org.lime.system;
 
 import javax.annotation.Nonnull;
@@ -15,8 +14,6 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.stream.Stream;
 
 public class TimerTimings {
-    private static final Class proxyClass = Proxy.getProxyClass(Timing.class.getClassLoader(), new Class[] { Timing.class });
-    private static final reflection.constructor<Timing> proxyConstructor = reflection.constructor.of(proxyClass, InvocationHandler.class);
     private static final ConcurrentHashMap<system.Toast2<Boolean, StackTraceElement>, system.Toast2<Integer, Long>> timings = new ConcurrentHashMap<>();
     private static class TimingsInvocationHandler implements InvocationHandler {
         @Override public Object invoke(Object proxy, Method method, Object[] args) throws Throwable {
@@ -68,7 +65,7 @@ public class TimerTimings {
             case TimerBuilder -> 7;
         };
         if (index >= stackTrace.length) return Optional.empty();
-        return Optional.of(proxyConstructor.newInstance(new TimingsInvocationHandler(async, stackTrace[index])));
+        return Optional.of((Timing)Proxy.newProxyInstance(Timing.class.getClassLoader(), new Class[] { Timing.class }, new TimingsInvocationHandler(async, stackTrace[index])));
         /*StackTraceElement[] stackTrace = Thread.currentThread().getStackTrace();
         int index = 1;
         int length = stackTrace.length;

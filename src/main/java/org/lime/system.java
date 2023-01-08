@@ -30,6 +30,7 @@ import java.util.stream.Collectors;
 import java.util.stream.Stream;
 import java.util.stream.StreamSupport;
 
+@SuppressWarnings("unchecked")
 public class system
 {
     private final static Random rnd = new Random();
@@ -138,6 +139,7 @@ public class system
         };
     }
 
+    @SuppressWarnings("deprecation")
     public static class json {
         private static final JsonParser parser = new JsonParser();
         public static JsonElement parse(String json) { return parser.parse(json); }
@@ -409,6 +411,7 @@ public class system
         public static class builder<T> {
             private final List<T> list = new ArrayList<>();
 
+            @SuppressWarnings("all")
             public builder<T> add(T... items) { Collections.addAll(list, items); return this; }
             public builder<T> add(Iterable<T> items) { items.forEach(list::add); return this; }
             public <In>builder<T> add(Iterable<In> items, system.Func1<In, T> func) { items.forEach(v -> list.add(func.invoke(v))); return this; }
@@ -497,6 +500,7 @@ public class system
         }
     }
 
+    @SuppressWarnings("all")
     public interface cancel extends Action0 { default void cancel() { invoke(); } }
 
     private static <T>T invoke(Method method, Object instance, Object[] args) {
@@ -602,7 +606,7 @@ public class system
 
     //<editor-fold desc="Actions & Funcs">
     //<generator name="system-invoke.js">
-    public interface Action2<T0, T1> extends Action1<system.Toast2<T0,T1>>, ICallable {
+    public interface Action2<T0, T1> extends Action1<system.Toast2<T0,T1>> {
         void invoke(T0 arg0, T1 arg1);
         @Override default void invoke(system.Toast2<T0,T1> arg0) { invoke(arg0.val0, arg0.val1); }
         @Override default Object call(Object[] args) { invoke((T0)args[0], (T1)args[1]); return null; }
@@ -644,7 +648,7 @@ public class system
     }
     public static <T0, T1, TResult>FuncEx2<T0, T1, TResult> funcEx(FuncEx2<T0, T1, TResult> func) { return func; }
     
-    public interface Action3<T0, T1, T2> extends Action1<system.Toast2<system.Toast2<T0,T1>,T2>>, ICallable {
+    public interface Action3<T0, T1, T2> extends Action1<system.Toast2<system.Toast2<T0,T1>,T2>> {
         void invoke(T0 arg0, T1 arg1, T2 arg2);
         @Override default void invoke(system.Toast2<system.Toast2<T0,T1>,T2> arg0) { invoke(arg0.val0.val0, arg0.val0.val1, arg0.val1); }
         @Override default Object call(Object[] args) { invoke((T0)args[0], (T1)args[1], (T2)args[2]); return null; }
@@ -686,7 +690,7 @@ public class system
     }
     public static <T0, T1, T2, TResult>FuncEx3<T0, T1, T2, TResult> funcEx(FuncEx3<T0, T1, T2, TResult> func) { return func; }
     
-    public interface Action4<T0, T1, T2, T3> extends Action1<system.Toast2<system.Toast2<system.Toast2<T0,T1>,T2>,T3>>, ICallable {
+    public interface Action4<T0, T1, T2, T3> extends Action1<system.Toast2<system.Toast2<system.Toast2<T0,T1>,T2>,T3>> {
         void invoke(T0 arg0, T1 arg1, T2 arg2, T3 arg3);
         @Override default void invoke(system.Toast2<system.Toast2<system.Toast2<T0,T1>,T2>,T3> arg0) { invoke(arg0.val0.val0.val0, arg0.val0.val0.val1, arg0.val0.val1, arg0.val1); }
         @Override default Object call(Object[] args) { invoke((T0)args[0], (T1)args[1], (T2)args[2], (T3)args[3]); return null; }
@@ -728,7 +732,7 @@ public class system
     }
     public static <T0, T1, T2, T3, TResult>FuncEx4<T0, T1, T2, T3, TResult> funcEx(FuncEx4<T0, T1, T2, T3, TResult> func) { return func; }
     
-    public interface Action5<T0, T1, T2, T3, T4> extends Action1<system.Toast2<system.Toast2<system.Toast2<system.Toast2<T0,T1>,T2>,T3>,T4>>, ICallable {
+    public interface Action5<T0, T1, T2, T3, T4> extends Action1<system.Toast2<system.Toast2<system.Toast2<system.Toast2<T0,T1>,T2>,T3>,T4>> {
         void invoke(T0 arg0, T1 arg1, T2 arg2, T3 arg3, T4 arg4);
         @Override default void invoke(system.Toast2<system.Toast2<system.Toast2<system.Toast2<T0,T1>,T2>,T3>,T4> arg0) { invoke(arg0.val0.val0.val0.val0, arg0.val0.val0.val0.val1, arg0.val0.val0.val1, arg0.val0.val1, arg0.val1); }
         @Override default Object call(Object[] args) { invoke((T0)args[0], (T1)args[1], (T2)args[2], (T3)args[3], (T4)args[4]); return null; }
@@ -770,7 +774,7 @@ public class system
     }
     public static <T0, T1, T2, T3, T4, TResult>FuncEx5<T0, T1, T2, T3, T4, TResult> funcEx(FuncEx5<T0, T1, T2, T3, T4, TResult> func) { return func; }
     
-    public interface Action6<T0, T1, T2, T3, T4, T5> extends Action1<system.Toast2<system.Toast2<system.Toast2<system.Toast2<system.Toast2<T0,T1>,T2>,T3>,T4>,T5>>, ICallable {
+    public interface Action6<T0, T1, T2, T3, T4, T5> extends Action1<system.Toast2<system.Toast2<system.Toast2<system.Toast2<system.Toast2<T0,T1>,T2>,T3>,T4>,T5>> {
         void invoke(T0 arg0, T1 arg1, T2 arg2, T3 arg3, T4 arg4, T5 arg5);
         @Override default void invoke(system.Toast2<system.Toast2<system.Toast2<system.Toast2<system.Toast2<T0,T1>,T2>,T3>,T4>,T5> arg0) { invoke(arg0.val0.val0.val0.val0.val0, arg0.val0.val0.val0.val0.val1, arg0.val0.val0.val0.val1, arg0.val0.val0.val1, arg0.val0.val1, arg0.val1); }
         @Override default Object call(Object[] args) { invoke((T0)args[0], (T1)args[1], (T2)args[2], (T3)args[3], (T4)args[4], (T5)args[5]); return null; }
@@ -812,7 +816,7 @@ public class system
     }
     public static <T0, T1, T2, T3, T4, T5, TResult>FuncEx6<T0, T1, T2, T3, T4, T5, TResult> funcEx(FuncEx6<T0, T1, T2, T3, T4, T5, TResult> func) { return func; }
     
-    public interface Action7<T0, T1, T2, T3, T4, T5, T6> extends Action1<system.Toast2<system.Toast2<system.Toast2<system.Toast2<system.Toast2<system.Toast2<T0,T1>,T2>,T3>,T4>,T5>,T6>>, ICallable {
+    public interface Action7<T0, T1, T2, T3, T4, T5, T6> extends Action1<system.Toast2<system.Toast2<system.Toast2<system.Toast2<system.Toast2<system.Toast2<T0,T1>,T2>,T3>,T4>,T5>,T6>> {
         void invoke(T0 arg0, T1 arg1, T2 arg2, T3 arg3, T4 arg4, T5 arg5, T6 arg6);
         @Override default void invoke(system.Toast2<system.Toast2<system.Toast2<system.Toast2<system.Toast2<system.Toast2<T0,T1>,T2>,T3>,T4>,T5>,T6> arg0) { invoke(arg0.val0.val0.val0.val0.val0.val0, arg0.val0.val0.val0.val0.val0.val1, arg0.val0.val0.val0.val0.val1, arg0.val0.val0.val0.val1, arg0.val0.val0.val1, arg0.val0.val1, arg0.val1); }
         @Override default Object call(Object[] args) { invoke((T0)args[0], (T1)args[1], (T2)args[2], (T3)args[3], (T4)args[4], (T5)args[5], (T6)args[6]); return null; }
@@ -854,7 +858,7 @@ public class system
     }
     public static <T0, T1, T2, T3, T4, T5, T6, TResult>FuncEx7<T0, T1, T2, T3, T4, T5, T6, TResult> funcEx(FuncEx7<T0, T1, T2, T3, T4, T5, T6, TResult> func) { return func; }
     
-    public interface Action8<T0, T1, T2, T3, T4, T5, T6, T7> extends Action1<system.Toast2<system.Toast2<system.Toast2<system.Toast2<system.Toast2<system.Toast2<system.Toast2<T0,T1>,T2>,T3>,T4>,T5>,T6>,T7>>, ICallable {
+    public interface Action8<T0, T1, T2, T3, T4, T5, T6, T7> extends Action1<system.Toast2<system.Toast2<system.Toast2<system.Toast2<system.Toast2<system.Toast2<system.Toast2<T0,T1>,T2>,T3>,T4>,T5>,T6>,T7>> {
         void invoke(T0 arg0, T1 arg1, T2 arg2, T3 arg3, T4 arg4, T5 arg5, T6 arg6, T7 arg7);
         @Override default void invoke(system.Toast2<system.Toast2<system.Toast2<system.Toast2<system.Toast2<system.Toast2<system.Toast2<T0,T1>,T2>,T3>,T4>,T5>,T6>,T7> arg0) { invoke(arg0.val0.val0.val0.val0.val0.val0.val0, arg0.val0.val0.val0.val0.val0.val0.val1, arg0.val0.val0.val0.val0.val0.val1, arg0.val0.val0.val0.val0.val1, arg0.val0.val0.val0.val1, arg0.val0.val0.val1, arg0.val0.val1, arg0.val1); }
         @Override default Object call(Object[] args) { invoke((T0)args[0], (T1)args[1], (T2)args[2], (T3)args[3], (T4)args[4], (T5)args[5], (T6)args[6], (T7)args[7]); return null; }
@@ -896,7 +900,7 @@ public class system
     }
     public static <T0, T1, T2, T3, T4, T5, T6, T7, TResult>FuncEx8<T0, T1, T2, T3, T4, T5, T6, T7, TResult> funcEx(FuncEx8<T0, T1, T2, T3, T4, T5, T6, T7, TResult> func) { return func; }
     
-    public interface Action9<T0, T1, T2, T3, T4, T5, T6, T7, T8> extends Action1<system.Toast2<system.Toast2<system.Toast2<system.Toast2<system.Toast2<system.Toast2<system.Toast2<system.Toast2<T0,T1>,T2>,T3>,T4>,T5>,T6>,T7>,T8>>, ICallable {
+    public interface Action9<T0, T1, T2, T3, T4, T5, T6, T7, T8> extends Action1<system.Toast2<system.Toast2<system.Toast2<system.Toast2<system.Toast2<system.Toast2<system.Toast2<system.Toast2<T0,T1>,T2>,T3>,T4>,T5>,T6>,T7>,T8>> {
         void invoke(T0 arg0, T1 arg1, T2 arg2, T3 arg3, T4 arg4, T5 arg5, T6 arg6, T7 arg7, T8 arg8);
         @Override default void invoke(system.Toast2<system.Toast2<system.Toast2<system.Toast2<system.Toast2<system.Toast2<system.Toast2<system.Toast2<T0,T1>,T2>,T3>,T4>,T5>,T6>,T7>,T8> arg0) { invoke(arg0.val0.val0.val0.val0.val0.val0.val0.val0, arg0.val0.val0.val0.val0.val0.val0.val0.val1, arg0.val0.val0.val0.val0.val0.val0.val1, arg0.val0.val0.val0.val0.val0.val1, arg0.val0.val0.val0.val0.val1, arg0.val0.val0.val0.val1, arg0.val0.val0.val1, arg0.val0.val1, arg0.val1); }
         @Override default Object call(Object[] args) { invoke((T0)args[0], (T1)args[1], (T2)args[2], (T3)args[3], (T4)args[4], (T5)args[5], (T6)args[6], (T7)args[7], (T8)args[8]); return null; }

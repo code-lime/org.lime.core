@@ -84,7 +84,7 @@ public class WrapperPlayServerEntityEquipment extends AbstractPacket {
 	}
 
 	public List<Pair<ItemSlot, ItemStack>> getItems() {
-		return (List)this.handle.getSlotStackPairLists().read(0);
+		return (List<Pair<ItemSlot, ItemStack>>)this.handle.getSlotStackPairLists().read(0);
 	}
 
 	public void setItems(List<Pair<ItemSlot, ItemStack>> value) {

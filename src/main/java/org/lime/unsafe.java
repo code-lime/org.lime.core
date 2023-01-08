@@ -20,9 +20,10 @@ import java.util.*;
 import java.util.stream.Collectors;
 
 public class unsafe {
+    @SuppressWarnings("unchecked")
     public static <T>T createInstance(Class<T> tClass) {
         try {
-            return  (T)unsafe.allocateInstance(tClass);
+            return (T)unsafe.allocateInstance(tClass);
         } catch (Exception e) {
             throw new IllegalArgumentException(e);
         }
@@ -37,7 +38,7 @@ public class unsafe {
             throw new IllegalArgumentException(ex);
         }
     }
-    public static <T extends Field>T nonFinal(T field) {
+    public static Field nonFinal(Field field) {
         int mods = field.getModifiers();
         if (Modifier.isFinal(mods)) MODIFIERS.set(field, mods & ~Modifier.FINAL);
         return field;
@@ -78,7 +79,6 @@ public class unsafe {
             dat.add(tClass);
         }
         String src_name = mapping.get(new MemberInfo(name, desc, isMethod));
-        boolean isFound = src_name != null;
         if (src_name == null) src_name = name;
         return src_name;
     }

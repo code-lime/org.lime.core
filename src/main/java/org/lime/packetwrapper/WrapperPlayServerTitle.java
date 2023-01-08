@@ -23,6 +23,7 @@ import com.comphenix.protocol.events.PacketContainer;
 import com.comphenix.protocol.wrappers.EnumWrappers.TitleAction;
 import com.comphenix.protocol.wrappers.WrappedChatComponent;
 
+@Deprecated
 public class WrapperPlayServerTitle extends AbstractPacket {
 	public static final PacketType TYPE = PacketType.Play.Server.TITLE;
 

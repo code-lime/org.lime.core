@@ -1,14 +1,12 @@
 package org.lime;
 
 import java.io.*;
-import java.nio.channels.SeekableByteChannel;
 import java.util.Enumeration;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.UUID;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipFile;
-import java.util.zip.ZipInputStream;
 import java.util.zip.ZipOutputStream;
 
 public class zip {
@@ -38,6 +36,7 @@ public class zip {
             file.delete();
         }
     }
+    @SuppressWarnings("all")
     public static byte[] zip(HashMap<String, byte[]> entries) {
         try (ByteArrayOutputStream stream = new ByteArrayOutputStream()) {
             try (ZipOutputStream zip = new ZipOutputStream(stream)) {

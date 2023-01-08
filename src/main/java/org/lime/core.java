@@ -1,8 +1,8 @@
 package org.lime;
 
 import com.google.common.collect.ImmutableList;
+
 import com.google.common.collect.Streams;
-import com.google.common.reflect.ClassPath;
 import com.google.gson.*;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.format.NamedTextColor;
@@ -27,8 +27,6 @@ import org.lime.timings.lib.TimerTimings;
 import org.lime.timings.lib.TimingManager;
 
 import java.io.*;
-import java.lang.annotation.Retention;
-import java.lang.annotation.RetentionPolicy;
 import java.lang.reflect.AccessibleObject;
 import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;
@@ -38,6 +36,7 @@ import java.text.DateFormat;
 import java.text.SimpleDateFormat;
 import java.util.*;
 import java.util.concurrent.ConcurrentLinkedQueue;
+import java.util.jar.JarEntry;
 import java.util.jar.JarFile;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -45,6 +44,7 @@ import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 public class core extends JavaPlugin {
+    @SuppressWarnings("all")
     public final static class element {
         public enum SortType {
             First(Double.NEGATIVE_INFINITY),
@@ -100,7 +100,8 @@ public class core extends JavaPlugin {
             private static <T>data<T> create(Type type, system.Func1<String, T> read, system.Func1<T, String> write) {
                 return new data<>(type, null, null, null, null, null, read, write, null);
             }
-            public static <T extends JsonElement>data<T> json() { return create(Type.Json, text -> (T)new JsonParser().parse(text), system::toFormat); }
+            @SuppressWarnings("unchecked")
+            public static <T extends JsonElement>data<T> json() { return create(Type.Json, text -> (T)system.json.parse(text), system::toFormat); }
             public static data<String> text() { return create(Type.Text, v -> v, v -> v); }
             private static data<Object> none() { return create(Type.None, null, null); }
             private static data<Object> init() { return create(Type.Init, null, null); }
@@ -210,7 +211,7 @@ public class core extends JavaPlugin {
             return new element(tClass, tClass.getSimpleName(), null, null, null, ImmutableList.of(), ImmutableList.of(), ImmutableList.of(), SortType.Default, false);
         }
         public element withInstance() {
-            try { return withInstance(tClass.newInstance()); } catch (Exception e) { throw new IllegalArgumentException(e); }
+            try { return withInstance(tClass.getDeclaredConstructor().newInstance()); } catch (Exception e) { throw new IllegalArgumentException(e); }
         }
         public element withInstance(Object instance) {
             return new element(tClass, name, instance, init, uninit, config, commands, permissions, sortType, disable);
@@ -446,6 +447,22 @@ public class core extends JavaPlugin {
             @Override public String name() { return element.name; }
             @Override public Class<?> type() { return element.tClass; }
         };
+    }
+
+    public Collection<String> getJarClassesNames() {
+        if (this.getClassLoader() instanceof PluginClassLoader loader) {
+            try (JarFile jar = new JarFile(this.getFile())) {
+                return Streams.stream(jar.entries().asIterator())
+                        .map(JarEntry::getName)
+                        .filter(v -> v.endsWith(".class"))
+                        .map(v -> v.substring(0, v.length() - 6).replace('/', '.'))
+                        .toList();
+            }
+            catch (Exception e) {
+                throw new IllegalArgumentException(e);
+            }
+        }
+        return Collections.emptyList();
     }
     public List<loadedElement> addOther() {
         List<loadedElement> other = new ArrayList<>();
@@ -1161,6 +1178,7 @@ public class core extends JavaPlugin {
             _logOP(stackTraceElement.toString());
     }
 
+    @SuppressWarnings("unused")
     private static class _example extends core {
         public static _example _plugin;
 

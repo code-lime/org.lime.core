@@ -39,7 +39,7 @@ public class TimingManager {
         return of(name, null);
     }
 
-    @SuppressWarnings("WeakerAccess")
+    @SuppressWarnings({"WeakerAccess","deprecation"})
     public MCTiming of(String name, MCTiming parent) {
         if (timingProvider == null) {
             synchronized (LOCK) {

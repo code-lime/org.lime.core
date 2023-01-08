@@ -5,8 +5,6 @@ import org.bukkit.World;
 import org.bukkit.block.Block;
 import org.bukkit.util.Vector;
 
-import java.util.Arrays;
-import java.util.List;
 import java.util.Objects;
 
 public class Position implements Cloneable {

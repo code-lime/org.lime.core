@@ -1,7 +1,5 @@
 package org.lime.json;
 
-import com.google.gson.JsonArray;
-import com.google.gson.JsonElement;
 import com.google.gson.JsonNull;
 
 public class JsonNullOptional extends JsonElementOptional {

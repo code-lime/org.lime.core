@@ -3,6 +3,7 @@ package org.lime.timings.lib;
 import org.bukkit.Bukkit;
 import org.spigotmc.CustomTimingsHandler;
 
+@Deprecated
 class SpigotTiming extends MCTiming {
     private final CustomTimingsHandler timing;
     SpigotTiming(String name) { this.timing = new CustomTimingsHandler(name); }

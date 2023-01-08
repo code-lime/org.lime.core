@@ -5,6 +5,7 @@ import org.bukkit.plugin.Plugin;
 import java.lang.reflect.InvocationTargetException;
 
 enum TimingType {
+    @Deprecated
     SPIGOT(true) {
         @Override
         MCTiming newTiming(Plugin plugin, String command, MCTiming parent) {

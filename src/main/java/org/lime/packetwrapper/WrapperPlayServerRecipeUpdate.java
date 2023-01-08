@@ -33,6 +33,4 @@ public class WrapperPlayServerRecipeUpdate extends AbstractPacket {
     public WrapperPlayServerRecipeUpdate(PacketContainer packet) {
         super(packet, TYPE);
     }
-    
-    // TODO manually upon request
 }

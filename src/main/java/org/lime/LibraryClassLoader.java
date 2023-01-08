@@ -18,6 +18,7 @@ import java.util.jar.JarEntry;
 import java.util.jar.JarFile;
 import java.util.stream.Collectors;
 
+@SuppressWarnings("all")
 public class LibraryClassLoader extends URLClassLoader {
     /**Классы, загруженные из файла*/
     private final Map<String, Class<?>> classes = new ConcurrentHashMap<>();

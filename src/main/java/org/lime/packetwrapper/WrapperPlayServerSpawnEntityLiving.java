@@ -30,7 +30,6 @@ import com.comphenix.protocol.ProtocolLibrary;
 import com.comphenix.protocol.events.PacketContainer;
 import com.comphenix.protocol.events.PacketEvent;
 import com.comphenix.protocol.injector.PacketConstructor;
-import com.comphenix.protocol.utility.MinecraftVersion;
 import com.comphenix.protocol.wrappers.WrappedDataWatcher;
 
 public class WrapperPlayServerSpawnEntityLiving extends AbstractPacket {

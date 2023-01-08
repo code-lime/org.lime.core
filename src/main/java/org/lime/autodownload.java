@@ -2,8 +2,6 @@ package org.lime;
 
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
-import com.google.gson.JsonParser;
-
 import java.nio.ByteBuffer;
 import java.nio.charset.StandardCharsets;
 import java.util.*;
@@ -62,6 +60,7 @@ public class autodownload implements core.IUpdateConfig, core.ICore {
     private void downloadConfigFiles(Collection<String> fileList, system.Action0 callback) {
         base_core._invokeAsync(() -> downloadConfigFiles(fileList), callback);
     }
+    
     private void downloadConfigFiles(Collection<String> fileList) {
         base_core._logOP("Downloading...");
         system.Toast2<byte[], Integer> downloaded = web.method.GET.create(url).data().execute();
@@ -73,7 +72,7 @@ public class autodownload implements core.IUpdateConfig, core.ICore {
             throw new IllegalArgumentException("Error download: " + e.toString() + " with code '" + downloaded.val1 + "' with data '" + new String(downloaded.val0) + "'", e);
         }
         base_core._logOP("Reading...");
-        for (Map.Entry<String, JsonElement> kv : new JsonParser().parse(new String(files.get("link.json"))).getAsJsonObject().entrySet()) {
+        for (Map.Entry<String, JsonElement> kv : system.json.parse(new String(files.get("link.json"))).getAsJsonObject().entrySet()) {
             if (!(fileList == null || fileList.contains(kv.getKey()) || (!kv.getKey().endsWith(".json") && fileList.contains(kv.getKey() + ".json")))) continue;
             byte[] bytes = files.get(kv.getValue().getAsString());
             base_core._logOP(" - " + kv.getValue().getAsString() + " : " + bytes.length + "B");
