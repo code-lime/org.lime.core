@@ -217,6 +217,8 @@ static byte[] zip(HashMap<String, byte[]> entries) {
 }
 
 task generator() {
+    String projectName = getFileNameWithoutExt(jar.archiveFile.get().asFile.toPath().fileName.toString());
+
     HashMap<String, byte[]> entries = new HashMap<>();
     String prefix = Paths.get(projectDir.absolutePath, "src", "main", "java").toAbsolutePath();
     for (File file : getFiles(Paths.get(projectDir.absolutePath, "src", "main", "java").toAbsolutePath().toFile())) {
@@ -228,7 +230,7 @@ task generator() {
             System.out.println("EDITED: " + filePath);
             file.text = text = _file;
         }
-        entries.put(filePath.replace(prefix + "\\", ""), text.getBytes());
+        entries.put(Paths.get(projectName, filePath.replace(prefix + "\\", "")).toString(), text.getBytes());
     }
 
     java.nio.file.Path srcPath = Paths.get(projectDir.absolutePath, "build", "src");
@@ -237,7 +239,7 @@ task generator() {
     Paths.get(projectDir.absolutePath,
         "build",
         "src",
-        getFileNameWithoutExt(jar.archiveFile.get().asFile.toPath().fileName.toString()) + '-src.zip')
+        projectName + '-src.zip')
             .toAbsolutePath()
             .toFile()
             .bytes = zip(entries);
