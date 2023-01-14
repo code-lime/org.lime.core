@@ -5,6 +5,7 @@ import com.google.gson.JsonObject;
 import java.nio.ByteBuffer;
 import java.nio.charset.StandardCharsets;
 import java.util.*;
+import java.util.regex.Pattern;
 
 public class autodownload implements core.IUpdateConfig, core.ICore {
     public static core.element create() { return new autodownload()._create(); }
@@ -17,12 +18,28 @@ public class autodownload implements core.IUpdateConfig, core.ICore {
 
     public boolean enable = false;
     public String url = null;
+    public HashMap<String, String> headers = new HashMap<>();
+    public Pattern path = null;
+    public List<Pattern> ignore = new ArrayList<>();
     public core base_core;
 
     public void syncConfig() {
         JsonObject json = base_core._existConfig("autodownload") ? system.json.parse(base_core._readAllConfig("autodownload")).getAsJsonObject() : new JsonObject();
         enable = json.has("enable") && json.get("enable").getAsBoolean();
         url = enable ? json.get("url").getAsString() : null;
+
+        headers.clear();
+        if (json.has("headers"))
+            json.getAsJsonObject("headers")
+                .entrySet()
+                .forEach(kv -> headers.put(kv.getKey(), kv.getValue().getAsString()));
+
+        ignore.clear();
+        if (json.has("ignore"))
+            json.getAsJsonArray("ignore")
+                .forEach(kv -> ignore.add(Pattern.compile(kv.getAsString())));
+
+        path = enable && json.has("path") ? Pattern.compile(json.get("path").getAsString()) : Pattern.compile("");
         if (url == null && enable) {
             enable = false;
             base_core._logOP("[AutoDownload] Disable - URL is empty");
@@ -60,17 +77,39 @@ public class autodownload implements core.IUpdateConfig, core.ICore {
     private void downloadConfigFiles(Collection<String> fileList, system.Action0 callback) {
         base_core._invokeAsync(() -> downloadConfigFiles(fileList), callback);
     }
-    
+
     private void downloadConfigFiles(Collection<String> fileList) {
         base_core._logOP("Downloading...");
-        system.Toast2<byte[], Integer> downloaded = web.method.GET.create(url).data().execute();
+        web.method.builder builder = web.method.GET.create(url);
+        headers.forEach(builder::header);
+        system.Toast2<byte[], Integer> downloaded = builder.data().execute();
         base_core._logOP("Opening...");
         Map<String, byte[]> files;
         try {
-            files = zip.unzip(downloaded.val0);
+            Map<String, byte[]> _files = zip.unzip(downloaded.val0);
+            files = new HashMap<>();
+            Map<String, JsonObject> dirs = new HashMap<>();
+            _files.forEach((key,value) -> {
+                String __path = String.join("", path.split(key));
+                for (Pattern pattern : ignore) {
+                    if (pattern.matcher(__path).matches())
+                        return;
+                }
+                String[] _path = __path.split("\\\\", 2);
+                if (_path.length > 1) {
+                    dirs.compute(key, (k,json) -> {
+                        if (json == null) json = new JsonObject();
+                        json = base_core._combineJson(json, system.json.parse(StandardCharsets.UTF_8.decode(ByteBuffer.wrap(value)).toString()), false).getAsJsonObject();
+                        return json;
+                    });
+                } 
+                else files.put(_path[0], value);
+            });
+            dirs.forEach((key,value) -> files.put(key + ".json", value.toString().getBytes()));
         } catch (Exception e) {
-            throw new IllegalArgumentException("Error download: " + e.toString() + " with code '" + downloaded.val1 + "' with data '" + new String(downloaded.val0) + "'", e);
+            throw new IllegalArgumentException("Error download: " + e.toString() + " with code '" + downloaded.val1 + "' with data '" + /*new String(downloaded.val0)*/"..." + "'", e);
         }
+
         base_core._logOP("Reading...");
         for (Map.Entry<String, JsonElement> kv : system.json.parse(new String(files.get("link.json"))).getAsJsonObject().entrySet()) {
             if (!(fileList == null || fileList.contains(kv.getKey()) || (!kv.getKey().endsWith(".json") && fileList.contains(kv.getKey() + ".json")))) continue;
