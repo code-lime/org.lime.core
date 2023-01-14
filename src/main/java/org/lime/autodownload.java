@@ -37,7 +37,7 @@ public class autodownload implements core.IUpdateConfig, core.ICore {
         ignore.clear();
         if (json.has("ignore"))
             json.getAsJsonArray("ignore")
-                .forEach(kv -> ignore.add(Pattern.compile(kv.getAsString())));
+                .forEach(kv -> ignore.add(Pattern.compile(kv.getAsString(), Pattern.CASE_INSENSITIVE)));
 
         path = enable && json.has("path") ? Pattern.compile(json.get("path").getAsString()) : Pattern.compile("");
         if (url == null && enable) {
@@ -92,12 +92,13 @@ public class autodownload implements core.IUpdateConfig, core.ICore {
             _files.forEach((key,value) -> {
                 String __path = String.join("", path.split(key));
                 for (Pattern pattern : ignore) {
-                    if (pattern.matcher(__path).matches())
+                    if (pattern.matcher(__path).find())
                         return;
                 }
-                String[] _path = __path.split("\\\\", 2);
+                base_core._logOP("File path: " + __path);
+                String[] _path = __path.split("/", 2);
                 if (_path.length > 1) {
-                    dirs.compute(key, (k,json) -> {
+                    dirs.compute(_path[0], (k,json) -> {
                         if (json == null) json = new JsonObject();
                         json = base_core._combineJson(json, system.json.parse(StandardCharsets.UTF_8.decode(ByteBuffer.wrap(value)).toString()), false).getAsJsonObject();
                         return json;
