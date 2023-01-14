@@ -1164,13 +1164,17 @@ public class core extends JavaPlugin {
     }
 
     public void _logStackTrace(Throwable exception) {
-        _logOP(ChatColor.RED + exception.getMessage());
-        StackTraceElement[] stackTraceElements = exception.getStackTrace();
-        int length = stackTraceElements.length;
-        for (int i = 0; i < length; i++)
-        {
-            if (i > 10) _logConsole(stackTraceElements[i].toString());
-            else _logOP(stackTraceElements[i].toString());
+        Throwable target = exception;
+        while (target != null) {
+            _logOP(ChatColor.RED + target.getMessage());
+            StackTraceElement[] stackTraceElements = target.getStackTrace();
+            int length = stackTraceElements.length;
+            for (int i = 0; i < length; i++)
+            {
+                if (i > 10) _logConsole(stackTraceElements[i].toString());
+                else _logOP(stackTraceElements[i].toString());
+            }
+            target = target.getCause();
         }
     }
     public void _logStackTrace() {
