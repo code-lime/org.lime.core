@@ -2,6 +2,10 @@ package org.lime;
 
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
+
+import net.kyori.adventure.text.Component;
+import net.kyori.adventure.text.event.HoverEvent;
+
 import java.nio.ByteBuffer;
 import java.nio.charset.StandardCharsets;
 import java.util.*;
@@ -90,6 +94,8 @@ public class autodownload implements core.IUpdateConfig, core.ICore {
             files = new HashMap<>();
             Map<String, JsonObject> dirs = new HashMap<>();
             
+            List<String> loadList = new ArrayList<>();
+
             _files.entrySet()
                 .stream()
                 .map(kv -> system.toast(String.join("", path.split(kv.getKey())), kv.getValue()))
@@ -98,7 +104,7 @@ public class autodownload implements core.IUpdateConfig, core.ICore {
                 .sorted(Comparator.comparing(kv -> kv.val0[kv.val0.length - 1]))
                 .forEach(kv -> kv.invoke((path, bytes) -> {
                     if (path.length > 1) {
-                        base_core._logOP("Dir path: " + String.join("/", path));
+                        loadList.add("[D] " + path[0] + " / " + String.join("/", path));
                         dirs.compute(path[0], (k,json) -> {
                             if (json == null) json = new JsonObject();
                             JsonElement item = system.json.parse(StandardCharsets.UTF_8.decode(ByteBuffer.wrap(bytes)).toString());
@@ -107,10 +113,12 @@ public class autodownload implements core.IUpdateConfig, core.ICore {
                         });
                     } 
                     else {
-                        base_core._logOP("File path: " + String.join("/", path));
+                        loadList.add("[F] " + path[0] + " / " + String.join("/", path));
                         files.put(path[0], bytes);
                     } 
                 }));
+            base_core._logOP(Component.text("Load list: [view]")
+                .hoverEvent(HoverEvent.showText(Component.text(String.join("\n", loadList)))));
             dirs.forEach((key,value) -> files.put(key + ".json", value.toString().getBytes()));
         } catch (Exception e) {
             throw new IllegalArgumentException("Error download: " + e.toString() + " with code '" + downloaded.val1 + "' with data '" + /*new String(downloaded.val0)*/"..." + "'", e);
