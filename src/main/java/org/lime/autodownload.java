@@ -89,23 +89,28 @@ public class autodownload implements core.IUpdateConfig, core.ICore {
             Map<String, byte[]> _files = zip.unzip(downloaded.val0);
             files = new HashMap<>();
             Map<String, JsonObject> dirs = new HashMap<>();
-            _files.forEach((key,value) -> {
-                String __path = String.join("", path.split(key));
-                for (Pattern pattern : ignore) {
-                    if (pattern.matcher(__path).find())
-                        return;
-                }
-                base_core._logOP("File path: " + __path);
-                String[] _path = __path.split("/", 2);
-                if (_path.length > 1) {
-                    dirs.compute(_path[0], (k,json) -> {
-                        if (json == null) json = new JsonObject();
-                        json = base_core._combineJson(json, system.json.parse(StandardCharsets.UTF_8.decode(ByteBuffer.wrap(value)).toString()), false).getAsJsonObject();
-                        return json;
-                    });
-                } 
-                else files.put(_path[0], value);
-            });
+            
+            _files.entrySet()
+                .stream()
+                .map(kv -> system.toast(String.join("", path.split(kv.getKey())), kv.getValue()))
+                .filter(kv -> ignore.stream().noneMatch(pattern -> pattern.matcher(kv.val0).find()))
+                .map(kv -> system.toast(kv.val0.split("/"), kv.val1))
+                .sorted(Comparator.comparing(kv -> kv.val0[kv.val0.length - 1]))
+                .forEach(kv -> kv.invoke((path, bytes) -> {
+                    if (path.length > 1) {
+                        base_core._logOP("Dir path: " + String.join("/", path));
+                        dirs.compute(path[0], (k,json) -> {
+                            if (json == null) json = new JsonObject();
+                            JsonElement item = system.json.parse(StandardCharsets.UTF_8.decode(ByteBuffer.wrap(bytes)).toString());
+                            json = base_core._combineJson(json, item, false).getAsJsonObject();
+                            return json;
+                        });
+                    } 
+                    else {
+                        base_core._logOP("File path: " + String.join("/", path));
+                        files.put(path[0], bytes);
+                    } 
+                }));
             dirs.forEach((key,value) -> files.put(key + ".json", value.toString().getBytes()));
         } catch (Exception e) {
             throw new IllegalArgumentException("Error download: " + e.toString() + " with code '" + downloaded.val1 + "' with data '" + /*new String(downloaded.val0)*/"..." + "'", e);
