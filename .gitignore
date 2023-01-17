@@ -1,6 +1,7 @@
 /build/
 /.gradle/
 /.idea/
+/.settings/
 /gradle/wrapper/gradle-wrapper.jar
 /hs_err_pid8000.log
 /hs_err_pid14936.log
