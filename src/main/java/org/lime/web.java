@@ -111,6 +111,7 @@ public class web {
             public builder version(HttpClient.Version version) { base.version(version); return this; }
             public builder header(String name, String value) { base.header(name, value); return this; }
             public builder headers(String... headers) { base.headers(headers); return this; }
+            public builder headers(Map<String, String> headers) { headers.forEach(this::header); return this; }
             public builder timeout(Duration duration) { base.timeout(duration); return this; }
             public builder setHeader(String name, String value) { base.setHeader(name, value); return this; }
 
