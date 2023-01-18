@@ -12,78 +12,9 @@ import java.nio.charset.StandardCharsets;
 import java.time.Duration;
 import java.util.*;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 public class web {
-    /*public static class server {
-        public static class builder {
-            public final core plugin;
-            private builder(core plugin) {
-                this.plugin = plugin;
-            }
-
-            public server host(int port) {
-                return new server(this, port);
-            }
-        }
-
-        private final core plugin;
-        private final HttpServer server;
-        private final system.cancel cancel;
-
-        private final UriHttpRequestHandlerMapper handlerMapper = new UriHttpRequestHandlerMapper();
-
-        public void addPage(String pattern, HttpRequestHandler handler) {
-            handlerMapper.register(pattern, handler);
-        }
-        public void addPage(String pattern, ContentType type, system.Func0<String> callback) {
-            addPage(pattern, (HttpRequest request, HttpResponse response, HttpContext context) -> {
-                response.setStatusCode(HttpStatus.SC_OK);
-                response.setEntity(new StringEntity("{\"data\":\"tmp\"}", ContentType.APPLICATION_JSON));
-                plugin._InvokeSync(() -> {
-                });
-            });
-        }
-
-        private core.element create() {
-            return core.element.create(server.class)
-                    .withUninit(this::uninit);
-        }
-
-        private server(builder builder, int port) {
-            HttpProcessor proc = HttpProcessorBuilder.create().
-                    add(new ResponseServer("MockUpdateCenter")).
-                    add(new ResponseContent()).
-                    add(new RequestConnControl()).
-                    build();
-
-            handlerMapper.register("/tmp.txt", (HttpRequest request, HttpResponse response, HttpContext context) -> {
-                response.setStatusCode(HttpStatus.SC_OK);
-                response.setEntity(new StringEntity("{\"data\":\"tmp\"}", ContentType.APPLICATION_JSON));
-            });
-
-            plugin = builder.plugin;
-            server = ServerBootstrap
-                    .bootstrap()
-                    .setListenerPort(port)
-                    .setHttpProcessor(proc)
-                    .setHandlerMapper(handlerMapper)
-                    .setExceptionLogger(builder.plugin::_LogStackTrace)
-                    .create();
-            try { server.start(); }
-            catch (IOException e) { throw new IllegalArgumentException(e); }
-            cancel = plugin.add(create());
-        }
-        public void dispose() {
-            cancel.invoke();
-        }
-        private void uninit() {
-            server.shutdown(0, null);
-        }
-    }
-
-    public static server.builder create(core plugin) {
-        return new server.builder(plugin);
-    }*/
     public static class method {
         public static final method DELETE = method.of(HttpRequest.Builder::DELETE);
         public static final method GET = method.of(HttpRequest.Builder::GET);
@@ -119,6 +50,7 @@ public class web {
             public executor<byte[]> data() { return custom(HttpResponse.BodyHandlers.ofByteArray()); }
             public executor<Void> none() { return custom(HttpResponse.BodyHandlers.discarding()); }
             public executor<String> text() { return custom(HttpResponse.BodyHandlers.ofString()); }
+            public executor<Stream<String>> lines() { return custom(HttpResponse.BodyHandlers.ofLines()); }
             public executor<JsonElement> json() { return text().map(system.json::parse); }
 
             private static <T>system.Toast2<T, Integer> of(HttpResponse<T> response) {
@@ -231,84 +163,6 @@ public class web {
         }
         public static Builder create() { return new Builder(); }
     }
-/*
-    public static HttpRequest.BodyPublisher ofMimeMultipartData(Map<String, byte[]> data) {
-        HttpRequest.BodyPublishers.ofByteArray()
-        // Result request body
-        List<byte[]> byteArrays = new ArrayList<>();
-
-        String boundary = new BigInteger(256, new Random()).toString();
-
-        // Separator with boundary
-        byte[] separator = ("--" + boundary + "\r\nContent-Disposition: form-data; name=").getBytes(StandardCharsets.UTF_8);
-
-        // Iterating over data parts
-        for (Map.Entry<String, byte[]> entry : data.entrySet()) {
-            // Opening boundary
-            byteArrays.add(separator);
-            var path = (Path) entry.getValue();
-            String mimeType = Files.probeContentType(path);
-            byteArrays.add(("\"" + entry.getKey() + "\"; filename=\""
-                    + path.getFileName() + "\"\r\nContent-Type: " + mimeType
-                    + "\r\n\r\n").getBytes(StandardCharsets.UTF_8));
-            byteArrays.add(Files.readAllBytes(path));
-            byteArrays.add("\r\n".getBytes(StandardCharsets.UTF_8));
-        }
-
-        // Closing boundary
-        byteArrays.add(("--" + boundary + "--").getBytes(StandardCharsets.UTF_8));
-
-        // Serializing as byte array
-        return HttpRequest.BodyPublishers.ofByteArrays(byteArrays);
-    }
-*/
-
-    /*public enum method {
-        DELETE(url -> HttpRequest.newBuilder(toURI(url)).DELETE()),
-        GET(url -> HttpRequest.newBuilder(toURI(url)).GET()),
-        PATCH((url, data) -> HttpRequest.newBuilder(toURI(url)).method("PATCH", data)),
-        POST((url, data) -> HttpRequest.newBuilder(toURI(url)).POST(data)),
-        PUT((url, data) -> HttpRequest.newBuilder(toURI(url)).PUT(data));
-
-        static URI toURI(String url) {
-            try { return new URI(url); } catch (URISyntaxException e) { throw new IllegalArgumentException(e); }
-        }
-
-        system.Func2<String, String, HttpRequest.Builder> createBase;
-        system.Func2<String, byte[], HttpRequest.Builder> createBaseBytes;
-        method(system.Func2<String, HttpRequest.BodyPublisher, HttpRequest.Builder> createBase) {
-            this.createBase = (url, data) -> createBase.invoke(url, HttpRequest.BodyPublishers.ofString(data));
-            this.createBaseBytes = (url, data) -> createBase.invoke(url, HttpRequest.BodyPublishers.ofByteArray(data));
-        }
-        method(system.Func1<String, HttpRequest.Builder> createBase) { this((url, data) -> createBase.invoke(url)); }
-
-        public HttpRequest.Builder create(String url) { return createBase.invoke(url, null); }
-        public HttpRequest.Builder create(String url, String data) { return createBase.invoke(url, data); }
-        public HttpRequest.Builder create(String url, byte[] data) { return createBaseBytes.invoke(url, data); }
-    }*/
-
-
-    /*public static system.Toast2<byte[], Integer> execute(HttpRequest.Builder base) {
-        try { return of(HttpClient.newHttpClient().send(base.build(), HttpResponse.BodyHandlers.ofByteArray())); }
-        catch (Exception e) { throw new IllegalArgumentException(e); }
-    }
-    public static system.Toast2<String, Integer> executeText(HttpRequest.Builder base) {
-        try { return of(HttpClient.newHttpClient().send(base.build(), HttpResponse.BodyHandlers.ofString())); }
-        catch (Exception e) { throw new IllegalArgumentException(e); }
-    }
-    public static system.Toast2<JsonElement, Integer> executeJson(HttpRequest.Builder base) {
-        return executeText(base).map(system.json::parse, v -> v);
-    }
-
-    public static void executeAsync(HttpRequest.Builder base, system.Action2<byte[], Integer> callback) {
-        core.instance._InvokeAsync(() -> execute(base), data -> callback.invoke(data.val0, data.val1));
-    }
-    public static void executeTextAsync(HttpRequest.Builder base, system.Action2<String, Integer> callback) {
-        core.instance._InvokeAsync(() -> executeText(base), data -> callback.invoke(data.val0, data.val1));
-    }
-    public static void executeJsonAsync(HttpRequest.Builder base, system.Action2<JsonElement, Integer> callback) {
-        core.instance._InvokeAsync(() -> executeJson(base), data -> callback.invoke(data.val0, data.val1));
-    }*/
 }
 
 
