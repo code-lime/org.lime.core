@@ -8,6 +8,7 @@ import java.net.URISyntaxException;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
+import java.net.http.HttpClient.Version;
 import java.nio.charset.StandardCharsets;
 import java.time.Duration;
 import java.util.*;
@@ -59,7 +60,7 @@ public class web {
             private static <T> executor<T> of(HttpRequest.Builder base, HttpResponse.BodyHandler<T> handler) {
                 return new executor<>() {
                     @Override public system.Toast2<T, Integer> execute() {
-                        try { return of(HttpClient.newBuilder().followRedirects(HttpClient.Redirect.ALWAYS).build().send(base.build(), handler)); }
+                        try { return of(HttpClient.newBuilder().version(Version.HTTP_1_1).followRedirects(HttpClient.Redirect.ALWAYS).build().send(base.build(), handler)); }
                         catch (Exception e) { throw new IllegalArgumentException(e); }
                     }
                     @Override public void executeAsync(system.Action2<T, Integer> callback) {
