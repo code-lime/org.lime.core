@@ -1,5 +1,6 @@
 package org.lime;
 
+import com.google.common.io.Files;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 
@@ -115,12 +116,14 @@ public class autodownload implements core.IUpdateConfig, core.ICore {
                     else {
                         loadList.add("[F] " + path[0] + " / " + String.join("/", path));
                         files.put(path[0], bytes);
-                    } 
+                    }
                 }));
             base_core._logOP(Component.text("Load list: [view]")
                 .hoverEvent(HoverEvent.showText(Component.text(String.join("\n", loadList)))));
             dirs.forEach((key,value) -> files.put(key + ".json", value.toString().getBytes()));
         } catch (Exception e) {
+            try { Files.write(downloaded.val0, base_core._getConfigFile("autodownload-error.zip")); }
+            catch (Exception ignore) { }
             throw new IllegalArgumentException("Error download: " + e.toString() + " with code '" + downloaded.val1 + "' with data '" + /*new String(downloaded.val0)*/"..." + "'", e);
         }
 
