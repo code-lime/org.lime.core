@@ -23,6 +23,7 @@ import org.bukkit.plugin.java.PluginClassLoader;
 import org.bukkit.scheduler.BukkitScheduler;
 import org.bukkit.scheduler.BukkitTask;
 import org.lime.invokable.IInvokable;
+import org.lime.json.JsonObjectOptional;
 import org.lime.timings.lib.MCTiming;
 import org.lime.timings.lib.TimerTimings;
 import org.lime.timings.lib.TimingManager;
@@ -1097,22 +1098,36 @@ public class core extends JavaPlugin {
     protected JavaScript js() {
         throw new IllegalAccessError("JavaScript module not overrided");
     }
+    private Optional<JsonElement> _executePartOfJS(JavaScript js, JsonElement element) {
+        if (element.isJsonObject()) {
+            JsonObjectOptional json = JsonObjectOptional.of(element.getAsJsonObject());
+            String code = json.getAsString("code").orElseThrow();
+            HashMap<String, Object> data = new HashMap<>();
+            json.getAsJsonObject("args")
+                .ifPresent(args -> args
+                    .forEach((key, value) -> value
+                        .getAsObject()
+                        .ifPresent(item -> data.put(key, item))));
+            return js.getJsJson(code, data);
+        }
+        return js.getJsJson(element.getAsString());
+    }
     private JsonObject _executeJS(JsonObject json) {
         if (json.has("GENERATE_JS_APPEND")) {
             JavaScript js = js();
             system.Toast1<JsonObject> append = system.toast(new JsonObject());
             json.getAsJsonArray("GENERATE_JS_APPEND").forEach(_js -> {
                 if (_js.isJsonPrimitive()) 
-                    js.getJsJson(_js.getAsString())
+                    _executePartOfJS(js, _js)
                         .ifPresent(result -> append.val0 = _combineJson(append.val0, result, false).getAsJsonObject());
                 else if (_js.isJsonArray()) 
                     _js.getAsJsonArray().forEach(__js -> {
-                        js.getJsJson(_js.getAsString())
+                        _executePartOfJS(js, _js)
                             .ifPresent(result -> append.val0 = _combineJson(append.val0, result, false).getAsJsonObject());
                     });
                 else if (_js.isJsonObject()) 
                     _js.getAsJsonObject().entrySet().forEach(_kv -> {
-                        js.getJsJson(_kv.getValue().getAsString())
+                        _executePartOfJS(js, _kv.getValue())
                             .ifPresent(result -> append.val0.add(_kv.getKey(), append.val0.has(_kv.getKey())
                                     ? _combineJson(append.val0, append.val0.get(_kv.getKey()), false)
                                     : result));
