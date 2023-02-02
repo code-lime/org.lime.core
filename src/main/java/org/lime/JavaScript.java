@@ -1,5 +1,6 @@
 package org.lime;
 
+import com.google.gson.JsonElement;
 import com.vk2gpz.jsengine.JSEngine;
 import org.bukkit.scheduler.BukkitTask;
 import org.openjdk.nashorn.api.scripting.JSObject;
@@ -145,6 +146,20 @@ public class JavaScript implements core.ICore {
         {
             Object value = eval(js);
             return Optional.of(value instanceof String str ? str : value.toString());
+        }
+        catch (Exception e) {
+            base_core._logOP("JS ERROR");
+            base_core._logOP("JS:\n" + js);
+            base_core._logStackTrace(e);
+            return Optional.empty();
+        }
+    }
+    public Optional<JsonElement> getJsJson(String js) {
+        try
+        {
+            return invoke("JSON.stringify(value)", Collections.singletonMap("value", eval(js)))
+                .map(value -> value instanceof String str ? str : value.toString())
+                .map(value -> system.json.parse(value));
         }
         catch (Exception e) {
             base_core._logOP("JS ERROR");
