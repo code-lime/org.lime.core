@@ -6,6 +6,7 @@ import com.google.gson.internal.LinkedTreeMap;
 import java.math.BigDecimal;
 import java.math.BigInteger;
 import java.util.*;
+import java.util.stream.Collectors;
 
 public class JsonObjectOptional extends JsonElementOptional implements Map<String, JsonElementOptional> {
     private final LinkedTreeMap<String, JsonElementOptional> members = new LinkedTreeMap<>();
@@ -72,6 +73,8 @@ public class JsonObjectOptional extends JsonElementOptional implements Map<Strin
     public Optional<Integer> getAsInt(String memberName) { return get(memberName).flatMap(JsonElementOptional::getAsInt); }
     public Optional<Byte> getAsByte(String memberName) { return get(memberName).flatMap(JsonElementOptional::getAsByte); }
     public Optional<Character> getAsCharacter(String memberName) { return get(memberName).flatMap(JsonElementOptional::getAsCharacter); }
+
+    @Override public Map<String, Object> createObject() { return this.entrySet().stream().collect(Collectors.toMap(kv -> kv.getKey(), kv -> kv.getValue().createObject())); }
 
     public boolean equals(Object o) { return o == this || o instanceof JsonObjectOptional json && json.members.equals(this.members); }
     public int hashCode() { return this.members.hashCode(); }

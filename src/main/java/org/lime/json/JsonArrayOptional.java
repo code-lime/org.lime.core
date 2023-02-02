@@ -83,6 +83,9 @@ public class JsonArrayOptional extends JsonElementOptional implements Collection
     public Optional<Short> getAsShort() { return getAs().flatMap(JsonElementOptional::getAsShort); }
     public Optional<Boolean> getAsBoolean() { return getAs().flatMap(JsonElementOptional::getAsBoolean); }
 
+    @Override public Object[] createObject() {
+        return this.stream().map(v -> v.createObject()).toArray();
+    }
 
     public boolean equals(Object o) { return o == this || o instanceof JsonArrayOptional json && json.elements.equals(this.elements); }
     public int hashCode() { return this.elements.hashCode(); }

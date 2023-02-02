@@ -9,6 +9,8 @@ public class JsonNullOptional extends JsonElementOptional {
     @Override public JsonNullOptional deepCopy() { return INSTANCE; }
     @Override public JsonNull base() { return JsonNull.INSTANCE; }
 
+    @Override public Object createObject() { return null; }
+
     public boolean equals(Object other) { return this == other || other instanceof JsonNull; }
 
     public static JsonNullOptional of() {

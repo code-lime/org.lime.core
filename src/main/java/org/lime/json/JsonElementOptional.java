@@ -34,6 +34,8 @@ public abstract class JsonElementOptional {
     public Optional<BigInteger> getAsBigInteger() { return Optional.empty(); }
     public Optional<Short> getAsShort() { return Optional.empty(); }
 
+    public abstract Object createObject();
+
     public String toString() { return base().toString(); }
 
     public static JsonElementOptional of(JsonElement base) {

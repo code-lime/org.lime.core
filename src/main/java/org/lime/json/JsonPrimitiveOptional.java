@@ -39,6 +39,8 @@ public class JsonPrimitiveOptional extends JsonElementOptional {
     public Optional<Byte> getAsByte() { return getAsNumber().map(v -> v.byteValue()); }
     public Optional<Character> getAsCharacter() { return getAsString().filter(v -> v.length() > 0).map(v -> v.charAt(0)); }
 
+    @Override public Object createObject() { return getAsObject().orElse(null); }
+
     public int hashCode() { return base.hashCode(); }
     public boolean equals(Object obj) { return obj instanceof JsonPrimitiveOptional json && json.base.equals(base); }
 
