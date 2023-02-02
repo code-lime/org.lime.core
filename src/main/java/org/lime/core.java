@@ -4,6 +4,7 @@ import com.google.common.collect.ImmutableList;
 
 import com.google.common.collect.Streams;
 import com.google.gson.*;
+
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.format.NamedTextColor;
 import net.kyori.adventure.text.serializer.legacy.LegacyComponentSerializer;
@@ -1060,7 +1061,7 @@ public class core extends JavaPlugin {
             JsonElement replaceJson = replaceJsonList.getOrDefault(text, null);
             return replaceJson == null ? new JsonPrimitive(text) : replaceJson;
         });
-        json.entrySet().forEach(kv -> {
+        _executeJS(json).entrySet().forEach(kv -> {
             if (category) {
                 kv.getValue().getAsJsonObject().entrySet().forEach(_kv -> {
                     JsonObject _obj = _combineParentItem(parentObjects, _kv.getKey(), _kv.getValue().getAsJsonObject(), array_join);
@@ -1092,7 +1093,40 @@ public class core extends JavaPlugin {
         if (key.startsWith("_")) return null;
         return item;
     }
-
+    
+    protected JavaScript js() {
+        throw new IllegalAccessError("JavaScript module not overrided");
+    }
+    private JsonObject _executeJS(JsonObject json) {
+        if (json.has("GENERATE_JS_APPEND")) {
+            JavaScript js = js();
+            system.Toast1<JsonObject> append = system.toast(new JsonObject());
+            json.getAsJsonArray("GENERATE_JS_APPEND").forEach(_js -> {
+                if (_js.isJsonPrimitive()) 
+                    js.getJsJson(_js.getAsString())
+                        .ifPresent(result -> append.val0 = _combineJson(append.val0, result, false).getAsJsonObject());
+                else if (_js.isJsonArray()) 
+                    _js.getAsJsonArray().forEach(__js -> {
+                        js.getJsJson(_js.getAsString())
+                            .ifPresent(result -> append.val0 = _combineJson(append.val0, result, false).getAsJsonObject());
+                    });
+                else if (_js.isJsonObject()) 
+                    _js.getAsJsonObject().entrySet().forEach(_kv -> {
+                        js.getJsJson(_kv.getValue().getAsString())
+                            .ifPresent(result -> append.val0.add(_kv.getKey(), append.val0.has(_kv.getKey())
+                                    ? _combineJson(append.val0, append.val0.get(_kv.getKey()), false)
+                                    : result));
+                    });
+            });
+            json = _combineJson(system.DeepCopy(json), append.val0, false).getAsJsonObject();
+        }
+        json.entrySet().forEach(kv -> {
+            if (!kv.getValue().isJsonObject()) return;
+            kv.setValue(_executeJS(kv.getValue().getAsJsonObject()));
+        });
+        return json;
+    }
+    
     public boolean _existFile(String path) {
         File myObj = new File(path);
         return (myObj.isFile() && myObj.exists());
