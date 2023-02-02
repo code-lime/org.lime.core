@@ -1105,9 +1105,7 @@ public class core extends JavaPlugin {
             HashMap<String, Object> data = new HashMap<>();
             json.getAsJsonObject("args")
                 .ifPresent(args -> args
-                    .forEach((key, value) -> value
-                        .getAsObject()
-                        .ifPresent(item -> data.put(key, item))));
+                    .forEach((key, value) -> data.put(key, value.createObject())));
             return js.getJsJson(code, data);
         }
         return js.getJsJson(element.getAsString());
