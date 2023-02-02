@@ -168,6 +168,20 @@ public class JavaScript implements core.ICore {
             return Optional.empty();
         }
     }
+    public Optional<JsonElement> getJsJson(String js, Map<String, Object> values) {
+        try
+        {
+            return invoke("JSON.stringify(value)", Collections.singletonMap("value", eval(js, values)))
+                .map(value -> value instanceof String str ? str : value.toString())
+                .map(value -> system.json.parse(value));
+        }
+        catch (Exception e) {
+            base_core._logOP("JS ERROR");
+            base_core._logOP("JS:\n" + js);
+            base_core._logStackTrace(e);
+            return Optional.empty();
+        }
+    }
 
     public void getJsStringNext(String js, system.Action1<String> callback) {
         try
