@@ -43,8 +43,8 @@ public class JavaScript implements core.ICore {
         if (!script.startsWith(FUNCTION_PREFIX)) {
             if (values == null || values.isEmpty()) return engine.eval(script);
 
-            Map<String, Object> args = new HashMap<>(engine.getBindings(ScriptContext.ENGINE_SCOPE));
-            values.putAll(args);
+            Map<String, Object> args = new HashMap<>(values);
+            args.putAll(engine.getBindings(ScriptContext.ENGINE_SCOPE));
             return engine.eval(script, new SimpleBindings(values));
         }
         script = script.substring(FUNCTION_PREFIX_LENGTH).replace(" ", "");
