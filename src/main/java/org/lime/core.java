@@ -1139,6 +1139,7 @@ public class core extends JavaPlugin {
                     });
             });
             json = _combineJson(system.DeepCopy(json), append.val0, false).getAsJsonObject();
+            json.remove("GENERATE_JS_APPEND");
         }
         json.entrySet().forEach(kv -> {
             if (!kv.getValue().isJsonObject()) return;
