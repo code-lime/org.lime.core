@@ -1,5 +1,6 @@
 package org.lime;
 
+import com.google.common.collect.Streams;
 import com.google.gson.JsonElement;
 import com.vk2gpz.jsengine.JSEngine;
 import org.bukkit.scheduler.BukkitTask;
@@ -8,6 +9,8 @@ import org.openjdk.nashorn.api.scripting.NashornScriptEngine;
 import org.openjdk.nashorn.api.scripting.ScriptObjectMirror;
 import javax.annotation.Nullable;
 import javax.script.*;
+
+import java.lang.reflect.Array;
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentLinkedQueue;
@@ -42,10 +45,7 @@ public class JavaScript implements core.ICore {
     private Object eval(String script, @Nullable Map<String, Object> values) throws Exception {
         if (!script.startsWith(FUNCTION_PREFIX)) {
             if (values == null || values.isEmpty()) return engine.eval(script);
-
-            Map<String, Object> args = new HashMap<>(values);
-            args.putAll(engine.getBindings(ScriptContext.ENGINE_SCOPE));
-            return engine.eval(script, new SimpleBindings(values));
+            return engine.eval(script, new ArgsBinding(values, engine.getBindings(ScriptContext.ENGINE_SCOPE)));
         }
         script = script.substring(FUNCTION_PREFIX_LENGTH).replace(" ", "");
 
@@ -220,6 +220,71 @@ public class JavaScript implements core.ICore {
             base_core._logStackTrace(e);
             return Optional.empty();
         }
+    }
+
+    private static class ArgsBinding implements Bindings {
+        private final Map<String, Object> args;
+        private final Bindings owner;
+
+        public ArgsBinding(Map<String, Object> args, Bindings owner) {
+            this.args = args;
+            this.owner = owner;
+        }
+
+        @Override public int size() { return args.size() + owner.size(); }
+        @Override public boolean isEmpty() { return args.isEmpty() && owner.isEmpty(); }
+        @Override public boolean containsValue(Object value) { return args.containsValue(value) || owner.containsValue(value); }
+        @Override public void clear() { owner.clear(); }
+
+        private static <T>Set<T> combile(Set<T> args, Set<T> owner) {
+            return new Set<T>() {
+                @Override public int size() { return args.size() + owner.size(); }
+                @Override public boolean isEmpty() { return args.isEmpty() && owner.isEmpty(); }
+                @Override public boolean contains(Object value) { return args.contains(value) || owner.contains(value); }
+                @Override public Iterator<T> iterator() { return Streams.concat(args.stream(), owner.stream()).iterator(); }
+                @Override public Object[] toArray() { return Streams.concat(args.stream(), owner.stream()).toArray(); }
+                @SuppressWarnings("all") @Override public <_T> _T[] toArray(_T[] a) {
+                    Class<_T> type = (Class<_T>)a.getClass().getComponentType();
+                    return Streams.concat(args.stream(), owner.stream()).toArray(length -> (_T[])Array.newInstance(type, length));
+                }
+                @Override public boolean add(T e) { throw new IllegalAccessError(); }
+                @Override public boolean remove(Object o) { throw new IllegalAccessError(); }
+                @Override public boolean containsAll(Collection<?> c) { return args.containsAll(c) && owner.containsAll(c); }
+                @Override public boolean addAll(Collection<? extends T> c) { return owner.addAll(c); }
+                @Override public boolean retainAll(Collection<?> c) { return owner.retainAll(c); }
+                @Override public boolean removeAll(Collection<?> c) { return owner.removeAll(c); }
+                @Override public void clear() { owner.clear(); }
+            };
+        }
+        private static <T>Collection<T> combile(Collection<T> args, Collection<T> owner) {
+            return new Collection<T>() {
+                @Override public int size() { return args.size() + owner.size(); }
+                @Override public boolean isEmpty() { return args.isEmpty() && owner.isEmpty(); }
+                @Override public boolean contains(Object value) { return args.contains(value) || owner.contains(value); }
+                @Override public Iterator<T> iterator() { return Streams.concat(args.stream(), owner.stream()).iterator(); }
+                @Override public Object[] toArray() { return Streams.concat(args.stream(), owner.stream()).toArray(); }
+                @SuppressWarnings("all") @Override public <_T> _T[] toArray(_T[] a) {
+                    Class<_T> type = (Class<_T>)a.getClass().getComponentType();
+                    return Streams.concat(args.stream(), owner.stream()).toArray(length -> (_T[])Array.newInstance(type, length));
+                }
+                @Override public boolean add(T e) { throw new IllegalAccessError(); }
+                @Override public boolean remove(Object o) { throw new IllegalAccessError(); }
+                @Override public boolean containsAll(Collection<?> c) { return args.containsAll(c) && owner.containsAll(c); }
+                @Override public boolean addAll(Collection<? extends T> c) { return owner.addAll(c); }
+                @Override public boolean retainAll(Collection<?> c) { return owner.retainAll(c); }
+                @Override public boolean removeAll(Collection<?> c) { return owner.removeAll(c); }
+                @Override public void clear() { owner.clear(); }
+            };
+        }
+
+        @Override public Set<String> keySet() { return combile(args.keySet(), owner.keySet()); }
+        @Override public Collection<Object> values() { return combile(args.values(), owner.values()); }
+        @Override public Set<Entry<String, Object>> entrySet() { return combile(args.entrySet(), owner.entrySet()); }
+        @Override public Object put(String name, Object value) { return owner.put(name, value); }
+        @Override public void putAll(Map<? extends String, ? extends Object> toMerge) { owner.putAll(toMerge); }
+        @Override public boolean containsKey(Object key) { return args.containsKey(key) || owner.containsKey(key); }
+        @Override public Object get(Object key) { return args.getOrDefault(key, owner.get(key)); }
+        @Override public Object remove(Object key) { return owner.remove(key); }
     }
 }
 
