@@ -1099,10 +1099,13 @@ public class core extends JavaPlugin {
         throw new IllegalAccessError("JavaScript module not overrided");
     }
     private Optional<JsonElement> _executePartOfJS(JavaScript js, JsonElement element) {
+        return _executePartOfJS(js, element, Collections.emptyMap());
+    }
+    private Optional<JsonElement> _executePartOfJS(JavaScript js, JsonElement element, Map<String, Object> setup) {
         if (element.isJsonObject()) {
             JsonObjectOptional json = JsonObjectOptional.of(element.getAsJsonObject());
             String code = json.getAsString("code").orElseThrow();
-            HashMap<String, Object> data = new HashMap<>();
+            HashMap<String, Object> data = new HashMap<>(setup);
             json.getAsJsonObject("args")
                 .ifPresent(args -> args
                     .forEach((key, value) -> data.put(key, value.createObject())));
@@ -1125,10 +1128,14 @@ public class core extends JavaPlugin {
                     });
                 else if (_js.isJsonObject()) 
                     _js.getAsJsonObject().entrySet().forEach(_kv -> {
-                        _executePartOfJS(js, _kv.getValue())
-                            .ifPresent(result -> append.val0.add(_kv.getKey(), append.val0.has(_kv.getKey())
-                                    ? _combineJson(append.val0, append.val0.get(_kv.getKey()), false)
-                                    : result));
+                        if (_kv.getKey().startsWith("!"))
+                            _executePartOfJS(js, _kv.getValue(), Collections.singletonMap("key", _kv.getKey().substring(1)))
+                                .ifPresent(result -> append.val0 = _combineJson(append.val0, result, false).getAsJsonObject());
+                        else 
+                            _executePartOfJS(js, _kv.getValue(), Collections.singletonMap("key", _kv.getKey()))
+                                .ifPresent(result -> append.val0.add(_kv.getKey(), append.val0.has(_kv.getKey())
+                                        ? _combineJson(append.val0, append.val0.get(_kv.getKey()), false)
+                                        : result));
                     });
             });
             json = _combineJson(system.DeepCopy(json), append.val0, false).getAsJsonObject();
