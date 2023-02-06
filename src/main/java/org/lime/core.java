@@ -1062,7 +1062,9 @@ public class core extends JavaPlugin {
             JsonElement replaceJson = replaceJsonList.getOrDefault(text, null);
             return replaceJson == null ? new JsonPrimitive(text) : replaceJson;
         });
-        _executeJS(json).entrySet().forEach(kv -> {
+        json = _executeJS(json);
+        this._writeAllConfig("tmp.parent", system.toFormat(json));
+        json.entrySet().forEach(kv -> {
             if (category) {
                 kv.getValue().getAsJsonObject().entrySet().forEach(_kv -> {
                     JsonObject _obj = _combineParentItem(parentObjects, _kv.getKey(), _kv.getValue().getAsJsonObject(), array_join);
