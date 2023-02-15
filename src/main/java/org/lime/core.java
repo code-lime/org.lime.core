@@ -491,6 +491,10 @@ public class core extends JavaPlugin {
         return other;
     }
 
+    public Stream<element> elements() {
+        return this.elements.stream().map(v -> v.val1);
+    }
+
     public void library(File... jars) {
         LibraryClassLoader loader = new LibraryClassLoader(this, Arrays.asList(jars));
         loader.load();
