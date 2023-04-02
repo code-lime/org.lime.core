@@ -188,7 +188,7 @@ public class JavaScript implements core.ICore {
         {
             Object value = eval(js);
             if (value == null) callback.invoke(null);
-            if (value instanceof ScriptObjectMirror som && som.isFunction()) som.call(null, (system.Action1<Object>)v -> callback.invoke(v instanceof String str ? str : v.toString()));
+            else if (value instanceof ScriptObjectMirror som && som.isFunction()) som.call(null, (system.Action1<Object>)v -> callback.invoke(v instanceof String str ? str : v.toString()));
             else callback.invoke(value instanceof String str ? str : value.toString());
         }
         catch (Exception e) {

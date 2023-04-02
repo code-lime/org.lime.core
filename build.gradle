@@ -39,7 +39,6 @@ dependencies {
     }
 }
 
-
 //<editor-fold desc="LOADER">
 
 eclipse.classpath.file.whenMerged {
@@ -61,22 +60,22 @@ static String getFileNameWithoutExt(String fileName) {
     return fileName;
 }
 
-static String yandexDiskMinecraftPath() {
-    return Paths.get(yandex_disk(), "PLUGINS", "Minecraft");
+String githubMinecraftDataPath() {
+    return Paths.get(projectDir.absolutePath, "..");
 }
 
 File decompileGit(String file) {
     String path = Paths.get(projectDir.parent, file, "src", "main", "java").toString();
     return new File(path);
 }
-static String decompilePath(String file) {
-    return Paths.get(yandexDiskMinecraftPath(), ".decompile", file).toString();
+String decompilePath(String file) {
+    return Paths.get(githubMinecraftDataPath(), ".decompile", file).toString();
 }
-static File decompileFile(String file) {
+File decompileFile(String file) {
     return new File(decompilePath(file));
 }
-static String libPath(String file) {
-    return Paths.get(yandexDiskMinecraftPath(), ".libs", file);
+String libPath(String file) {
+    return Paths.get(githubMinecraftDataPath(), ".libs", file);
 }
 
 static List<String> getText(Process process) {
@@ -104,7 +103,7 @@ static void invokeText(Process process, Action1<String> action) {
     }
 }
 String executeJs(int line_index, String js) {
-    String exe = Paths.get(yandexDiskMinecraftPath(), ".utils", "js.exe").toAbsolutePath().toFile().path + " " + Base64.getEncoder().encodeToString(js.getBytes());
+    String exe = Paths.get(githubMinecraftDataPath(), ".utils", "js.exe").toAbsolutePath().toFile().path + " " + Base64.getEncoder().encodeToString(js.getBytes());
     return new String(Base64.getDecoder().decode(String.join("\n", getText(Runtime.runtime.exec(exe)))));
 }
 static Map<String, String> regedit(String... path) {
@@ -115,18 +114,6 @@ static Map<String, String> regedit(String... path) {
         map.put(args[0], args.length >= 3 ? args[2] : "")
     }
     return map
-}
-static String yandex_disk() {
-    HashMap<String, String> list = new HashMap<>();
-    list.put("HKEY_CURRENT_USER\\SOFTWARE\\Yandex\\Yandex.Disk", "RootFodler")
-    list.put("HKEY_CURRENT_USER\\SOFTWARE\\Yandex\\Yandex.Disk.2", "RootFolder")
-    for (Map.Entry<String, String> reg : list) {
-        Map<String, String> map = regedit(reg.getKey());
-        String folder = map.getOrDefault(reg.value, null)
-        if (folder == null) continue
-        return folder
-    }
-    return null
 }
 static List<File> getFiles(File dir, Predicate<File> filter) {
     List<File> files = new ArrayList<>();
@@ -217,8 +204,6 @@ static byte[] zip(HashMap<String, byte[]> entries) {
 }
 
 task generator() {
-    String projectName = getFileNameWithoutExt(jar.archiveFile.get().asFile.toPath().fileName.toString());
-
     HashMap<String, byte[]> entries = new HashMap<>();
     String prefix = Paths.get(projectDir.absolutePath, "src", "main", "java").toAbsolutePath();
     for (File file : getFiles(Paths.get(projectDir.absolutePath, "src", "main", "java").toAbsolutePath().toFile())) {
@@ -230,7 +215,7 @@ task generator() {
             System.out.println("EDITED: " + filePath);
             file.text = text = _file;
         }
-        entries.put(Paths.get(projectName, filePath.replace(prefix + "\\", "")).toString(), text.getBytes());
+        entries.put(filePath.replace(prefix + "\\", ""), text.getBytes());
     }
 
     java.nio.file.Path srcPath = Paths.get(projectDir.absolutePath, "build", "src");
@@ -239,14 +224,14 @@ task generator() {
     Paths.get(projectDir.absolutePath,
         "build",
         "src",
-        projectName + '-src.zip')
+        getFileNameWithoutExt(jar.archiveFile.get().asFile.toPath().fileName.toString()) + '-src.zip')
             .toAbsolutePath()
             .toFile()
             .bytes = zip(entries);
 }
 
-static java.nio.file.Path java_mapper() {
-    return Paths.get(yandex_disk(), "PLUGINS", "Minecraft", ".libs", "Java.Mapper.exe").toAbsolutePath()
+java.nio.file.Path java_mapper() {
+    return Paths.get(githubMinecraftDataPath(), ".libs", "Java.Mapper.exe").toAbsolutePath()
 }
 task copyToLib() {}
 static String unicode_format(String text) {
@@ -284,8 +269,8 @@ copyToLib.doLast {
     }
 
     for (String path : [
-        Paths.get(yandex_disk(), "Minecraft-Paper", "plugins"),
-        Paths.get(yandex_disk(), "PLUGINS", "Minecraft", ".libs")
+        Paths.get(githubMinecraftDataPath(), ".output"),
+        Paths.get(githubMinecraftDataPath(), ".libs")
     ])
     {
         java.nio.file.Path copied = Paths.get(path, file_name)

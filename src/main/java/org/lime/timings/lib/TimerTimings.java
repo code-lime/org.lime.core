@@ -1,9 +1,9 @@
 package org.lime.timings.lib;
 
 import co.aikar.timings.Timing;
-import org.bukkit.craftbukkit.v1_18_R2.scheduler.CraftTask;
 import org.bukkit.scheduler.BukkitTask;
 import org.lime.core;
+import org.lime.reflection;
 import org.lime.system;
 
 import javax.annotation.Nonnull;
@@ -90,9 +90,21 @@ public class TimerTimings {
         }
         return Optional.empty();*/
     }
+
+    private static final system.LockToast1<reflection.field<Timing>> timings_CraftTask = system.<reflection.field<Timing>>toast(null).lock();
+
     public static BukkitTask of(BukkitTask task, core.ITimers.TimerType type) {
-        if (task instanceof CraftTask craftTask) createInstance(!task.isSync(), type).ifPresent(timing -> craftTask.timings = timing);
+        /*if (task.getClass().getSimpleName().equals("CraftTask")) {
+            createInstance(!task.isSync(), type)
+                .ifPresent(timing -> {
+                    timings_CraftTask.invoke(v -> {
+                        if (v.val0 == null) v.val0 = reflection.field.of(task.getClass(), "timings");
+                        v.val0.set(type, timing); craftTask.timings = timing;
+                    });
+                });
+        }
         else core.instance._logStackTrace(new ClassCastException("BukkitTask("+task.getClass().getSimpleName()+") is not CraftTask! Ignore timings..."));
+        */
         return task;
     }
 

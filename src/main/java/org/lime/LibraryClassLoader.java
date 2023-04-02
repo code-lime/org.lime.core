@@ -265,9 +265,15 @@ public class LibraryClassLoader extends URLClassLoader {
      * Иначе null
      * */
     private Map<String, Class<?>> getLoadedClasses() {
+        Field f;
         try {
+            if (plugin.getClass().getClassLoader() instanceof PluginClassLoader loader) {
+                f = loader.getClass().getDeclaredField("classes");
+                f.setAccessible(true);
+                return (Map<String, Class<?>>) f.get(loader);
+            }
             JavaPluginLoader javaPluginLoader = (JavaPluginLoader) plugin.getPluginLoader();
-            Field f = javaPluginLoader.getClass().getDeclaredField("loaders");
+            f = javaPluginLoader.getClass().getDeclaredField("loaders");
             f.setAccessible(true);
             List<PluginClassLoader> loaders = (List<PluginClassLoader>) f.get(javaPluginLoader);
             PluginClassLoader loader = null;
