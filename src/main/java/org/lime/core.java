@@ -921,14 +921,6 @@ public class core extends JavaPlugin {
     public TimerBuilder _timer() {
         return TimerBuilder.create(this);
     }
-    public MCTiming _timing(String name) {
-        return timingManager.of(name);
-    }
-    public void _timing(String name, system.Action0 callback) {
-        try (MCTiming ignored = _timing(name)) {
-            callback.invoke();
-        }
-    }
 
     public BukkitTask _nextTick(ITimers.IRunnable callback) {
         return ITimers.runTaskLater(callback, this, 0, ITimers.TimerType.StaticCore);
@@ -1296,8 +1288,6 @@ public class core extends JavaPlugin {
         public static String readAllConfig(String config, String ext) { return _plugin._readAllConfig(config, ext); }
         public static void writeAllConfig(String config, String ext, String text) { _plugin._writeAllConfig(config, ext, text); }
         public static void deleteConfig(String config, String ext) { _plugin._deleteConfig(config, ext); }
-        public static MCTiming timing(String name) { return _plugin._timing(name); }
-        public static void timing(String name, system.Action0 callback) { _plugin._timing(name, callback); }
         //</editor-fold>
     }
 }

@@ -75,6 +75,10 @@ public class JavaScript implements core.ICore {
     public void init() {
         instances.values().forEach(v -> v.inits.removeIf(BukkitTask::isCancelled));
     }
+    public void reinstance(boolean cancel) {
+        if (cancel) instances.values().forEach(v -> v.inits.forEach(BukkitTask::cancel));
+        instances.forEach(engine::put);
+    }
     public void config(String js) {
         LinkedHashMap<String, String> _modules = new LinkedHashMap<>();
         List<String> _js = new ArrayList<>();

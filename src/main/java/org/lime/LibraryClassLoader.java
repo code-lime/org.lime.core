@@ -109,7 +109,7 @@ public class LibraryClassLoader extends URLClassLoader {
                 try {
                     Class<?> c = this.loadClass(name);
                     this.classes.put(c.getName(), c);
-                } catch (ClassNotFoundException ignored) {}
+                } catch (ClassNotFoundException | NoClassDefFoundError ignored) {}
             }
         });
 
