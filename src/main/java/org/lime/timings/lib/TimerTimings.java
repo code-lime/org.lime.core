@@ -1,21 +1,16 @@
 package org.lime.timings.lib;
 
-import co.aikar.timings.Timing;
 import org.bukkit.scheduler.BukkitTask;
 import org.lime.core;
-import org.lime.reflection;
 import org.lime.system;
 
-import javax.annotation.Nonnull;
-import javax.annotation.Nullable;
-import java.lang.reflect.*;
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.stream.Stream;
 
 public class TimerTimings {
     private static final ConcurrentHashMap<system.Toast2<Boolean, StackTraceElement>, system.Toast2<Integer, Long>> timings = new ConcurrentHashMap<>();
-    private static class TimingsInvocationHandler implements InvocationHandler {
+    /*private static class TimingsInvocationHandler implements InvocationHandler {
         @Override public Object invoke(Object proxy, Method method, Object[] args) throws Throwable {
             return invokeProxy((Timing)proxy, method, args);
         }
@@ -66,7 +61,7 @@ public class TimerTimings {
         };
         if (index >= stackTrace.length) return Optional.empty();
         return Optional.of((Timing)Proxy.newProxyInstance(Timing.class.getClassLoader(), new Class[] { Timing.class }, new TimingsInvocationHandler(async, stackTrace[index])));
-        /*StackTraceElement[] stackTrace = Thread.currentThread().getStackTrace();
+        StackTraceElement[] stackTrace = Thread.currentThread().getStackTrace();
         int index = 1;
         int length = stackTrace.length;
         String className = null;
@@ -88,11 +83,11 @@ public class TimerTimings {
                 }
             }
         }
-        return Optional.empty();*/
+        return Optional.empty();
     }
 
     private static final system.LockToast1<reflection.field<Timing>> timings_CraftTask = system.<reflection.field<Timing>>toast(null).lock();
-
+    */
     public static BukkitTask of(BukkitTask task, core.ITimers.TimerType type) {
         /*if (task.getClass().getSimpleName().equals("CraftTask")) {
             createInstance(!task.isSync(), type)

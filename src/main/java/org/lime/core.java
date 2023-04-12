@@ -18,15 +18,12 @@ import org.bukkit.permissions.ServerOperator;
 import org.bukkit.plugin.Plugin;
 import org.bukkit.plugin.PluginManager;
 import org.bukkit.plugin.java.JavaPlugin;
-import org.bukkit.plugin.java.JavaPluginLoader;
 import org.bukkit.plugin.java.PluginClassLoader;
 import org.bukkit.scheduler.BukkitScheduler;
 import org.bukkit.scheduler.BukkitTask;
 import org.lime.invokable.IInvokable;
 import org.lime.json.JsonObjectOptional;
-import org.lime.timings.lib.MCTiming;
 import org.lime.timings.lib.TimerTimings;
-import org.lime.timings.lib.TimingManager;
 
 import java.io.*;
 import java.lang.reflect.AccessibleObject;
@@ -400,7 +397,7 @@ public class core extends JavaPlugin {
                 });
                 if (description != null) command.setDescription(description);
                 if (usage != null) command.setUsage(usage);
-                Bukkit.getCommandMap().register(plugin.getDescription().getName(), command);
+                Bukkit.getCommandMap().register(plugin.getName(), command);
                 return command;
             } catch (Exception e) {
                 throw new IllegalArgumentException(e);
@@ -589,7 +586,7 @@ public class core extends JavaPlugin {
             _core._logOP("Updated!");
             return true;
         }));
-        add("update.class", cmd -> cmd.withCheck(ServerOperator::isOp).withTab((sender, args) -> {
+        /*add("update.class", cmd -> cmd.withCheck(ServerOperator::isOp).withTab((sender, args) -> {
             if (args.length == 1) return Arrays.stream(Bukkit.getPluginManager().getPlugins()).map(Plugin::getName).collect(Collectors.toList());
             Plugin plugin = Bukkit.getPluginManager().getPlugin(args[0]);
             if (plugin == null) return Collections.emptyList();
@@ -651,17 +648,15 @@ public class core extends JavaPlugin {
                 return true;
                 //throw new IllegalArgumentException(e);
             }
-            _core._LogOP("Updated!");*/
+            _core._LogOP("Updated!");*//*
             return true;
-        }));
+        }));*/
         commands.forEach((command, cmd) -> Bukkit.getCommandMap().register(this.getName(), cmd.build(this)));
         _repeat(system::tryClearCompare, 60);
         org.lime.reflection.init();
     }
 
-    private TimingManager timingManager;
     @Override public void onEnable() {
-        timingManager = TimingManager.of(this);
         if (instance == null) {
             instance = this;
             init_core();

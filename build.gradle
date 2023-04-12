@@ -46,7 +46,7 @@ eclipse.classpath.file.whenMerged {
         String entryFile = entry.path;
         if (entryFile.endsWith('.jar')) {
             File folder = new File(entryFile).getParentFile();
-            File srcFile = new File(getFileNameWithoutExt(entryFile) + "-src.zip");
+            File srcFile = new File(getFileNameWithoutExt(entryFile) + "-sources.jar");
             if (srcFile.exists()) {
                 entry.setSourcePath(it.fileReference(srcFile));
             }
@@ -76,6 +76,14 @@ File decompileFile(String file) {
 }
 String libPath(String file) {
     return Paths.get(githubMinecraftDataPath(), ".libs", file);
+}
+String[] libPathAll(String file) {
+    List<String> lines = new ArrayList<>();
+    for (String line : getFiles(new File(libPath(file).toString())).toArray()) {
+        if (line.endsWith("-sources.jar")) continue;
+        lines.add(line);
+    }
+    return lines.toArray();
 }
 
 static List<String> getText(Process process) {
@@ -224,7 +232,7 @@ task generator() {
     Paths.get(projectDir.absolutePath,
         "build",
         "src",
-        getFileNameWithoutExt(jar.archiveFile.get().asFile.toPath().fileName.toString()) + '-src.zip')
+        getFileNameWithoutExt(jar.archiveFile.get().asFile.toPath().fileName.toString()) + '-sources.jar')
             .toAbsolutePath()
             .toFile()
             .bytes = zip(entries);
@@ -243,7 +251,7 @@ copyToLib.doLast {
     println "Copy..."
     java.nio.file.Path originalPath = jar.archiveFile.get().asFile.toPath()
     String file_name = originalPath.fileName.toString();
-    String src_name = getFileNameWithoutExt(file_name) + "-src.zip";
+    String src_name = getFileNameWithoutExt(file_name) + "-sources.jar";
     if (_mapped) {
         try {
             println "Unmapping..."
@@ -281,6 +289,7 @@ copyToLib.doLast {
         Files.copy(originalPath, copied, StandardCopyOption.REPLACE_EXISTING)
         Files.copy(Paths.get(projectDir.absolutePath, "build", "src", src_name), copied_src, StandardCopyOption.REPLACE_EXISTING)
     }
+    println "End of time: " + java.time.LocalDate.now().toString() + " " + java.time.LocalTime.now().toString()
 }
 
 build {
