@@ -1217,9 +1217,17 @@ public class system
             return new DoubleRange(parse(damageList[0]), parse(damageList[1]));
         }
 
+        public abstract double getMin(double max);
         public abstract double getMax(double max);
         public abstract double getValue(double max);
         public abstract String displayText();
+
+        public boolean inRange(double value, double max) {
+            double _min = getMin(max);
+            double _max = getMax(max);
+
+            return value <= _max && value >= _min;
+        }
     }
     public static class OnceRange extends IRange {
         public final double value;
@@ -1227,6 +1235,9 @@ public class system
             this.value = value;
         }
 
+        public double getMin(double max) {
+            return value;
+        }
         public double getMax(double max) {
             return value;
         }
@@ -1243,6 +1254,9 @@ public class system
             this.value = value;
         }
 
+        public double getMin(double max) {
+            return value * max;
+        }
         public double getMax(double max) {
             return value * max;
         }
@@ -1261,9 +1275,13 @@ public class system
             this.to = to;
         }
 
+        public double getMin(double max) {
+            return Math.min(from.getMin(max), to.getMin(max));
+        }
         public double getMax(double max) {
             return Math.max(from.getMax(max), to.getMax(max));
         }
+
         public double getValue(double max) {
             double _v1 = from.getValue(max);
             double _v2 = to.getValue(max);
