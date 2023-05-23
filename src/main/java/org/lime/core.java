@@ -1058,17 +1058,32 @@ public class core extends JavaPlugin {
         json.entrySet().forEach(kv -> {
             if (category) {
                 kv.getValue().getAsJsonObject().entrySet().forEach(_kv -> {
-                    JsonObject _obj = _combineParentItem(parentObjects, _kv.getKey(), _kv.getValue().getAsJsonObject(), array_join);
+                    JsonElement _obj = _combineParentElement(parentObjects, _kv.getKey(), _kv.getValue(), array_join);
                     if (_obj == null) return;
                     _new.add(_kv.getKey(), _obj);
                 });
             } else {
-                JsonObject _obj = _combineParentItem(parentObjects, kv.getKey(), kv.getValue().getAsJsonObject(), array_join);
+                JsonElement _obj = _combineParentElement(parentObjects, kv.getKey(), kv.getValue(), array_join);
                 if (_obj == null) return;
                 _new.add(kv.getKey(), _obj);
             }
         });
         return _new;
+    }
+
+    private JsonElement _combineParentElement(HashMap<String, JsonObject> parentObjects, String key, JsonElement item, boolean array_join) {
+        if (item.isJsonArray()) {
+            JsonArray arr = item.getAsJsonArray();
+            int length = arr.size();
+            for (int i = 0; i < length; i++) {
+                JsonElement element = _combineParentElement(parentObjects, key + "["+i+"]", arr.get(i), array_join);
+                if (element == null) continue;
+                arr.set(i, element);
+            }
+            return arr;
+        }
+        if (item.isJsonObject()) return _combineParentItem(parentObjects, key, item.getAsJsonObject(), array_join);
+        return item;
     }
     private JsonObject _combineParentItem(HashMap<String, JsonObject> parentObjects, String key, JsonObject item, boolean array_join) {
         String parent = item.has("parent") ? item.get("parent").getAsString() : null;
@@ -1083,8 +1098,20 @@ public class core extends JavaPlugin {
             item = _combineJson(item, _parent, array_join).getAsJsonObject();
         }
         item.remove("parent");
+        item.entrySet().forEach(sub -> {
+            if (!sub.getValue().isJsonObject()) {
+                JsonElement sub_element = _combineParentElement(parentObjects, key + "." + sub.getKey(), sub.getValue(), array_join);
+                if (sub_element == null) return;
+                sub.setValue(sub_element);
+                return;
+            }
+            JsonObject sub_item = _combineParentItem(parentObjects, key + "." + sub.getKey(), sub.getValue().getAsJsonObject(), array_join);
+            if (sub_item == null) return;
+            sub.setValue(sub_item);
+        });
         parentObjects.put(key, item);
         if (key.startsWith("_")) return null;
+
         return item;
     }
     
