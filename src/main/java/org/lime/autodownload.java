@@ -12,6 +12,8 @@ import java.nio.charset.StandardCharsets;
 import java.util.*;
 import java.util.regex.Pattern;
 
+import org.apache.commons.io.FilenameUtils;
+
 public class autodownload implements core.IUpdateConfig, core.ICore {
     public static core.element create() { return new autodownload()._create(); }
     private core.element _create() {
@@ -93,7 +95,8 @@ public class autodownload implements core.IUpdateConfig, core.ICore {
         try {
             Map<String, byte[]> _files = zip.unzip(downloaded.val0);
             files = new HashMap<>();
-            Map<String, JsonObject> dirs = new HashMap<>();
+            Map<String, JsonObject> jsonDirs = new HashMap<>();
+            Map<String, StringBuilder> jsDirs = new HashMap<>();
             
             List<String> loadList = new ArrayList<>();
 
@@ -105,13 +108,27 @@ public class autodownload implements core.IUpdateConfig, core.ICore {
                 .sorted(Comparator.comparing(kv -> kv.val0[kv.val0.length - 1]))
                 .forEach(kv -> kv.invoke((path, bytes) -> {
                     if (path.length > 1) {
+                        String ext = FilenameUtils.getExtension(path[path.length - 1]);
                         loadList.add("[D] " + path[0] + " / " + String.join("/", path));
-                        dirs.compute(path[0], (k,json) -> {
-                            if (json == null) json = new JsonObject();
-                            JsonElement item = system.json.parse(StandardCharsets.UTF_8.decode(ByteBuffer.wrap(bytes)).toString());
-                            json = base_core._combineJson(json, item, false).getAsJsonObject();
-                            return json;
-                        });
+                        switch (ext) {
+                            case "json": 
+                                jsonDirs.compute(path[0], (k, json) -> {
+                                    if (json == null) json = new JsonObject();
+                                    JsonElement item = system.json.parse(StandardCharsets.UTF_8.decode(ByteBuffer.wrap(bytes)).toString());
+                                    json = base_core._combineJson(json, item, false).getAsJsonObject();
+                                    return json;
+                                });
+                                break;
+                            case "js": 
+                                jsDirs.compute(path[0], (k, text) -> {
+                                    if (text == null) text = new StringBuilder();
+                                    text.append(StandardCharsets.UTF_8.decode(ByteBuffer.wrap(bytes)).toString());
+                                    return text;
+                                });
+                                break;
+                            default:
+                                throw new IllegalArgumentException("Not supported extension '" + ext + "' of file '" + String.join("/", path) + "'");
+                        }
                     } 
                     else {
                         loadList.add("[F] " + path[0] + " / " + String.join("/", path));
@@ -120,7 +137,8 @@ public class autodownload implements core.IUpdateConfig, core.ICore {
                 }));
             base_core._logOP(Component.text("Load list: [view]")
                 .hoverEvent(HoverEvent.showText(Component.text(String.join("\n", loadList)))));
-            dirs.forEach((key,value) -> files.put(key + ".json", value.toString().getBytes()));
+            jsonDirs.forEach((key,value) -> files.put(key + ".json", value.toString().getBytes()));
+            jsDirs.forEach((key,value) -> files.put(key + ".js", value.toString().getBytes()));
         } catch (Exception e) {
             try { Files.write(downloaded.val0, base_core._getConfigFile("autodownload-error.zip")); }
             catch (Exception ignore) { }
