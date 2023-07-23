@@ -237,6 +237,7 @@ public class reflection {
         public static <T>dynamic<T> of(T value, Class<T> tClass) { return new dynamic<>(value, tClass); }
         public static <T>dynamic<T> ofValue(T value) { return of(value, value == null ? null : (Class<T>)value.getClass()); }
         public static <T>dynamic<T> ofStatic(T value, Class<T> tClass) { return of(null, tClass); }
+        public static <T>dynamic<T> ofStatic(Class<T> tClass) { return of(null, tClass); }
 
         public <I>dynamic<I> cast(Class<I> tClass) { return of((I)value, tClass); }
 
@@ -301,6 +302,36 @@ public class reflection {
                     .append(",methods=[").append(String.join(",", methods(mojang))).append("]")
                     .append("]")
                     .toString();
+        }
+
+        public method getMethod(String name, dynamic<?>... args) {
+            int length = args.length;
+            Class<?>[] classes = new Class[length];
+            Object[] values = new Object[length];
+            for (int i = 0; i < length; i++) {
+                dynamic<?> arg = args[i];
+                classes[i] = arg.tClass;
+                values[i] = arg.value;
+            }
+            return method.of(tClass, name, classes);
+        }
+        public method getMojangMethod(String name, dynamic<?>... args) {
+            int length = args.length;
+            Class<?>[] classes = new Class[length];
+            Object[] values = new Object[length];
+            for (int i = 0; i < length; i++) {
+                dynamic<?> arg = args[i];
+                classes[i] = arg.tClass;
+                values[i] = arg.value;
+            }
+            return method.ofMojang(tClass, name, classes);
+        }
+
+        public <I>field<I> getField(String name) {
+            return field.of(tClass, name);
+        }
+        public <I>field<I> getMojangField(String name) {
+            return field.ofMojang(tClass, name);
         }
     }
 
