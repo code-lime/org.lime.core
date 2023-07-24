@@ -4,6 +4,7 @@ import com.google.gson.JsonArray;
 import java.math.BigDecimal;
 import java.math.BigInteger;
 import java.util.*;
+import java.util.stream.Collectors;
 
 public class JsonArrayOptional extends JsonElementOptional implements Collection<JsonElementOptional> {
     private final List<JsonElementOptional> elements = new ArrayList<>();
@@ -83,8 +84,8 @@ public class JsonArrayOptional extends JsonElementOptional implements Collection
     public Optional<Short> getAsShort() { return getAs().flatMap(JsonElementOptional::getAsShort); }
     public Optional<Boolean> getAsBoolean() { return getAs().flatMap(JsonElementOptional::getAsBoolean); }
 
-    @Override public Object[] createObject() {
-        return this.stream().map(v -> v.createObject()).toArray();
+    @Override public List<Object> createObject() {
+        return this.stream().map(v -> v.createObject()).collect(Collectors.toList());
     }
 
     public boolean equals(Object o) { return o == this || o instanceof JsonArrayOptional json && json.elements.equals(this.elements); }
