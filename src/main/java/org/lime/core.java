@@ -2,16 +2,20 @@ package org.lime;
 
 import com.google.common.collect.ImmutableList;
 
+import com.google.common.collect.Lists;
 import com.google.common.collect.Streams;
 import com.google.gson.*;
 
 import net.kyori.adventure.text.Component;
+import net.kyori.adventure.text.event.ClickEvent;
+import net.kyori.adventure.text.event.HoverEvent;
 import net.kyori.adventure.text.format.NamedTextColor;
 import net.kyori.adventure.text.serializer.legacy.LegacyComponentSerializer;
 import org.apache.commons.lang.StringUtils;
 import org.bukkit.Bukkit;
 import org.bukkit.ChatColor;
 import org.bukkit.command.*;
+import org.bukkit.entity.Player;
 import org.bukkit.event.Listener;
 import org.bukkit.permissions.Permission;
 import org.bukkit.permissions.ServerOperator;
@@ -1238,23 +1242,71 @@ public class core extends JavaPlugin {
         _deleteText(getConfigFile() + config + ext);
     }
 
+    private void _logStackTraceSub(List<StackTraceElement> stackTraceElements) {
+        Component client = Component.empty();
+        List<String> lines = new ArrayList<>();
+        for (StackTraceElement stackTraceElement : stackTraceElements) {
+            String line = stackTraceElement.toString();
+            _log(line);
+            lines.add(line);
+            client = client.append(Component.text("  " + line));
+        }
+        client = Component.text(" - ")
+                .color(NamedTextColor.AQUA)
+                .append(Component.text("[StackTracePart]")
+                        .hoverEvent(HoverEvent.showText(client))
+                        .clickEvent(ClickEvent.copyToClipboard(String.join("\n", lines)))
+                        .color(NamedTextColor.GREEN)
+                );
+        for (Player player : Bukkit.getOnlinePlayers()) {
+            if (player.isOp())
+                player.sendMessage(client);
+        }
+    }
+    public void _logStackTrace(StackTraceElement[] stackTraceElements) {
+        if (stackTraceElements.length > 30) {
+            Component client = Component.text("["+getLogPrefix()+"] ")
+                    .color(NamedTextColor.YELLOW)
+                    .append(Component.text(" StackTraceList:"));
+            for (Player player : Bukkit.getOnlinePlayers()) {
+                if (player.isOp())
+                    player.sendMessage(client);
+            }
+            for (List<StackTraceElement> lines : Lists.partition(Arrays.asList(stackTraceElements), 30)) {
+                _logStackTraceSub(lines);
+            }
+        } else {
+            Component client = Component.empty();
+            List<String> lines = new ArrayList<>();
+            for (StackTraceElement stackTraceElement : stackTraceElements) {
+                String line = stackTraceElement.toString();
+                _log(line);
+                lines.add(line);
+                client = client.append(Component.text("  " + line));
+            }
+            client = Component.text("["+getLogPrefix()+"] ")
+                    .color(NamedTextColor.YELLOW)
+                    .append(Component.text("[StackTrace]")
+                            .hoverEvent(HoverEvent.showText(client))
+                            .clickEvent(ClickEvent.copyToClipboard(String.join("\n", lines)))
+                            .color(NamedTextColor.GREEN)
+                    );
+            for (Player player : Bukkit.getOnlinePlayers()) {
+                if (player.isOp())
+                    player.sendMessage(client);
+            }
+        }
+    }
     public void _logStackTrace(Throwable exception) {
         Throwable target = exception;
         while (target != null) {
             _logOP(ChatColor.RED + target.getMessage());
-            StackTraceElement[] stackTraceElements = target.getStackTrace();
-            int length = stackTraceElements.length;
-            for (int i = 0; i < length; i++)
-            {
-                if (i > 10) _logConsole(stackTraceElements[i].toString());
-                else _logOP(stackTraceElements[i].toString());
-            }
+            _logStackTrace(target.getStackTrace());
             target = target.getCause();
         }
     }
     public void _logStackTrace() {
-        for (StackTraceElement stackTraceElement : Thread.currentThread().getStackTrace())
-            _logOP(stackTraceElement.toString());
+        _logStackTrace(Thread.currentThread().getStackTrace());
     }
 
     @SuppressWarnings("unused")
