@@ -74,7 +74,7 @@ public class JsonObjectOptional extends JsonElementOptional implements Map<Strin
     public Optional<Byte> getAsByte(String memberName) { return get(memberName).flatMap(JsonElementOptional::getAsByte); }
     public Optional<Character> getAsCharacter(String memberName) { return get(memberName).flatMap(JsonElementOptional::getAsCharacter); }
 
-    @Override public Map<String, Object> createObject() { return this.entrySet().stream().collect(Collectors.toMap(kv -> kv.getKey(), kv -> kv.getValue().createObject())); }
+    @Override public Map<String, Object> createObject() { return this.entrySet().stream().filter(v -> !v.getValue().isJsonNull()).collect(Collectors.toMap(kv -> kv.getKey(), kv -> kv.getValue().createObject())); }
 
     public boolean equals(Object o) { return o == this || o instanceof JsonObjectOptional json && json.members.equals(this.members); }
     public int hashCode() { return this.members.hashCode(); }
