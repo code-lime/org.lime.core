@@ -1220,6 +1220,7 @@ public class system
         public abstract double getMin(double max);
         public abstract double getMax(double max);
         public abstract double getValue(double max);
+        public int getIntValue(double max) { return (int)Math.round(getValue(max)); }
         public abstract String displayText();
 
         public boolean inRange(double value, double max) {
