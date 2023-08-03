@@ -14,16 +14,22 @@ public class skin {
             this.signature = json.get("signature").getAsString();
         }
     }
-    private static JsonObject getBody(String url) {
+    public enum Variant {
+        Auto,
+        Slim,
+        Classic;
+    }
+    private static JsonObject getBody(String url, Variant variant) {
         JsonObject json = new JsonObject();
         json.addProperty("visibility", 0);
+        if (variant != Variant.Auto) json.addProperty("variant", variant.name().toLowerCase());
         json.addProperty("url", url);
         return json;
     }
-    public static uploaded upload(String url) {
+    public static uploaded upload(String url, Variant variant) {
         core.instance._logOP("Upload skin: " + url);
         JsonObject json =  web.method.POST
-                .create(API_BASE, getBody(url).toString())
+                .create(API_BASE, getBody(url, variant).toString())
                 .setHeader("User-Agent", "MineSkin-JavaClient")
                 .setHeader("Content-Type", "application/json")
                 .json()
@@ -48,5 +54,8 @@ public class skin {
         JsonObject data = json.getAsJsonObject("data").getAsJsonObject("texture");
         core.instance._logOP("Uploaded!");
         return new uploaded(data);
+    }
+    public static uploaded upload(String url) {
+        return upload(url, Variant.Auto);
     }
 }

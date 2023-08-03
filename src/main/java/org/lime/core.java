@@ -1050,12 +1050,15 @@ public class core extends JavaPlugin {
             json.remove("DEFAULT_REPLACE_FILE");
         }
         json = system.EditStringToObject(json, text -> {
+            JsonElement replaceJson = replaceJsonList.getOrDefault(text, null);
+            return replaceJson == null ? new JsonPrimitive(text) : replaceJson;
+        });
+        json = system.EditStringToObject(json, text -> {
             for (system.Toast2<String, String> replace : replaceList)
                 text = text.replaceAll(
                         Pattern.quote("{" + replace.val0 + "}"),
                         Matcher.quoteReplacement(replace.val1));
-            JsonElement replaceJson = replaceJsonList.getOrDefault(text, null);
-            return replaceJson == null ? new JsonPrimitive(text) : replaceJson;
+            return new JsonPrimitive(text);
         });
         json = _executeJS(json);
         this._writeAllConfig("tmp.parent", system.toFormat(json));

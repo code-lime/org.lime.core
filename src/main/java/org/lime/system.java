@@ -2,6 +2,7 @@ package org.lime;
 
 import com.google.common.collect.Streams;
 import com.google.gson.*;
+import com.google.gson.internal.LazilyParsedNumber;
 import com.google.gson.stream.JsonReader;
 import com.google.gson.stream.JsonWriter;
 import org.apache.commons.lang.StringUtils;
@@ -11,9 +12,12 @@ import org.bukkit.World;
 import org.bukkit.entity.Player;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.util.Vector;
+import org.openjdk.nashorn.api.scripting.JSObject;
+import org.openjdk.nashorn.api.scripting.ScriptObjectMirror;
 
 import java.io.IOException;
 import java.io.Reader;
+import java.io.Serializable;
 import java.io.StringWriter;
 import java.lang.reflect.Array;
 import java.lang.reflect.Method;
@@ -25,6 +29,8 @@ import java.util.function.Consumer;
 import java.util.function.Function;
 import java.util.function.Predicate;
 import java.util.function.Supplier;
+import java.util.regex.MatchResult;
+import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
@@ -73,9 +79,10 @@ public class system
 
     private static final ConcurrentHashMap<String, Pattern> patterns = new ConcurrentHashMap<>();
     private static final ConcurrentHashMap<system.Toast2<String, String>, Boolean> comparers = new ConcurrentHashMap<>();
+    private static final ConcurrentHashMap<system.Toast2<String, String>, Iterable<MatchResult>> iterables = new ConcurrentHashMap<>();
     public static void tryClearCompare() {
-        if (comparers.size() > 100000)
-            comparers.clear();
+        if (comparers.size() > 100000) comparers.clear();
+        if (iterables.size() > 1000) iterables.clear();
     }
     public static boolean compareRegex(String input, String regex) {
         return comparers.compute(system.toast(input, regex), (k,v) -> {
@@ -85,6 +92,47 @@ public class system
             return pattern.matcher(input).matches();
         });
     }
+    public static Iterable<MatchResult> iterableRegex(String input, String regex) {
+        return iterables.compute(system.toast(input, regex), (k,v) -> {
+            if (v != null) return v;
+            Pattern pattern = patterns.getOrDefault(regex, null);
+            if (pattern == null) patterns.put(regex, pattern = Pattern.compile(regex, Pattern.CASE_INSENSITIVE));
+            return iterableRegex(pattern, input);
+        });
+    }
+    public static Iterable<MatchResult> iterableRegex(final Pattern p, final String input) {
+        return () -> new Iterator<MatchResult>() {
+            // Use a matcher internally.
+            final Matcher matcher = p.matcher(input);
+            // Keep a match around that supports any interleaving of hasNext/next calls.
+            MatchResult pending;
+
+            public boolean hasNext() {
+                // Lazily fill pending, and avoid calling find() multiple times if the
+                // clients call hasNext() repeatedly before sampling via next().
+                if (pending == null && matcher.find()) pending = matcher.toMatchResult();
+                return pending != null;
+            }
+
+            public MatchResult next() {
+                // Fill pending if necessary (as when clients call next() without
+                // checking hasNext()), throw if not possible.
+                if (!hasNext()) throw new NoSuchElementException();
+                // Consume pending so next call to hasNext() does a find().
+                MatchResult next = pending;
+                pending = null;
+                return next;
+            }
+
+            /**
+             * Required to satisfy the interface, but unsupported.
+             */
+            public void remove() {
+                throw new UnsupportedOperationException();
+            }
+        };
+    }
+
     public static <T>T getOrDefault(List<T> list, int index, T def) {
         return index < list.size() ? list.get(index) : def;
     }
@@ -156,6 +204,10 @@ public class system
             public static builder<?> byObject(Object value) {
                 if (value == null) return element.create();
                 else if (value instanceof builder<?> dat) return dat;
+                else if (value instanceof JSObject dat) {
+                    System.out.println("JSOBJECT: " + dat.getClass().getSimpleName() + " / " + dat.isArray() + ": " + (dat.isArray() ? dat.values() : dat).getClass().getSimpleName());
+                    return byObject(dat.isArray() ? dat.values() : dat);
+                }
                 else if (value instanceof String dat) return element.create(dat);
                 else if (value instanceof Number dat) return element.create(dat);
                 else if (value instanceof Boolean dat) return element.create(dat);
@@ -508,7 +560,7 @@ public class system
         catch (Exception e) { throw new IllegalArgumentException(e); }
     }
 
-    public interface ICallable {
+    public interface ICallable extends Serializable {
         Object call(Object[] args);
 
         default Object createObjectProxy(Class<?> tClass, String method) { return createObjectProxy(tClass, method, this); }
@@ -528,7 +580,6 @@ public class system
                     });
         }
     }
-
     public interface Action0 extends core.ITimers.IRunnable, AutoCloseable, ICallable {
         void invoke();
         @Override default void run() { invoke(); }
