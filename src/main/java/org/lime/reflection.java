@@ -1,6 +1,8 @@
 package org.lime;
 
 import com.google.common.collect.Streams;
+import org.lime.system.execute.Func1;
+import org.lime.system.execute.ICallable;
 import org.objectweb.asm.Type;
 
 import java.lang.invoke.MethodHandles;
@@ -64,7 +66,7 @@ public class reflection {
         try { return access(tClass.getDeclaredMethod(name, args)); }
         catch (Exception e) { throw new IllegalArgumentException(e); }
     }
-    public static Optional<Method> getFirst(Class<?> tClass, system.Func1<Method, Boolean> filter, Class<?>... args) {
+    public static Optional<Method> getFirst(Class<?> tClass, Func1<Method, Boolean> filter, Class<?>... args) {
         try {
             int args_length = args.length;
             for (Method method : tClass.getDeclaredMethods()) {
@@ -80,7 +82,7 @@ public class reflection {
         try { return access(tClass.getDeclaredField(name)); }
         catch (Exception e) { throw new IllegalArgumentException(e); }
     }
-    public static Optional<Field> getFirst(Class<?> tClass, system.Func1<Field, Boolean> filter) {
+    public static Optional<Field> getFirst(Class<?> tClass, Func1<Field, Boolean> filter) {
         try {
             for (Field field : tClass.getDeclaredFields()) {
                 if (filter.invoke(field)) return Optional.of(access(field));
@@ -141,7 +143,7 @@ public class reflection {
         }*/
     }
 
-    public static class method implements system.ICallable {
+    public static class method implements ICallable {
         public final Method method;
 
         public method(Method method) { this.method = method; }
@@ -173,10 +175,10 @@ public class reflection {
                     : call(args[0], Arrays.copyOfRange(args, 1, args.length));
         }
 
-        public <T extends system.ICallable>T build(Class<T> tClass) { return build(tClass, "invoke"); }
-        public <T extends system.ICallable>T build(Class<T> tClass, String invokable) { return createProxy(tClass, invokable); }
+        public <T extends ICallable>T build(Class<T> tClass) { return build(tClass, "invoke"); }
+        public <T extends ICallable>T build(Class<T> tClass, String invokable) { return createProxy(tClass, invokable); }
     }
-    public static class constructor<T> implements system.ICallable {
+    public static class constructor<T> implements ICallable {
         public final Constructor<T> constructor;
 
         public constructor(Constructor<T> constructor) { this.constructor = constructor; }
@@ -193,9 +195,9 @@ public class reflection {
         }
 
         @SuppressWarnings("hiding")
-        public <T extends system.ICallable>T build(Class<T> tClass) { return build(tClass, "invoke"); }
+        public <T extends ICallable>T build(Class<T> tClass) { return build(tClass, "invoke"); }
         @SuppressWarnings("hiding")
-        public <T extends system.ICallable>T build(Class<T> tClass, String invokable) { return createProxy(tClass, invokable); }
+        public <T extends ICallable>T build(Class<T> tClass, String invokable) { return createProxy(tClass, invokable); }
     }
     public static class field<T> {
         public final Field field;

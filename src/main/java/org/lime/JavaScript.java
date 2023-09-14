@@ -2,10 +2,14 @@ package org.lime;
 
 import com.google.common.collect.Streams;
 import com.google.gson.JsonElement;
-import com.vk2gpz.jsengine.JSEngine;
 import org.bukkit.scheduler.BukkitTask;
+import org.lime.plugin.ICore;
+import org.lime.plugin.CoreElement;
+import org.lime.system.execute.Action1;
+import org.lime.system.json;
 import org.openjdk.nashorn.api.scripting.JSObject;
 import org.openjdk.nashorn.api.scripting.NashornScriptEngine;
+import org.openjdk.nashorn.api.scripting.NashornScriptEngineFactory;
 import org.openjdk.nashorn.api.scripting.ScriptObjectMirror;
 import javax.annotation.Nullable;
 import javax.script.*;
@@ -14,14 +18,15 @@ import java.lang.reflect.Array;
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentLinkedQueue;
+import java.util.regex.Pattern;
 
-public class JavaScript implements core.ICore {
-    private NashornScriptEngine engine;
-    public static core.element create() {
-        return new JavaScript()._create();
-    }
-    private core.element _create() {
-        return core.element.create(JavaScript.class)
+public class JavaScript implements ICore {
+    private static NashornScriptEngine engine;
+    private static NashornScriptEngineFactory factory = new NashornScriptEngineFactory();
+
+    public static CoreElement create() { return new JavaScript()._create(); }
+    private CoreElement _create() {
+        return CoreElement.create(JavaScript.class)
                 .withInstance(this)
                 .withInit(this::init)
                 .addText("global.js", v -> v.withInvoke(this::config));
@@ -39,6 +44,17 @@ public class JavaScript implements core.ICore {
 
     private static final String FUNCTION_PREFIX = "FUNCTION ";
     private static final int FUNCTION_PREFIX_LENGTH = FUNCTION_PREFIX.length();
+    private Object invokeFunction(JSObject global, String methodPath) throws Exception {
+        return invokeFunction(global, methodPath, null);
+    }
+    private Object invokeFunction(JSObject global, String methodPath, @Nullable Object[] args) throws Exception {
+        if (!methodPath.contains("."))
+            return args == null ? engine.invokeFunction(methodPath) : engine.invokeFunction(methodPath, args);
+        JSObject function = global;
+        for (String part : methodPath.split(Pattern.quote(".")))
+            function = (JSObject)function.getMember(part);
+        return args == null ? function.call(null) : function.call(null, args);
+    }
     private Object eval(String script) throws Exception {
         return eval(script, null);
     }
@@ -57,19 +73,19 @@ public class JavaScript implements core.ICore {
         String methodName = script.substring(0, startFunc);
         String methodArgsLine = script.substring(startFunc + 1, endFunc);
 
-        if (methodArgsLine.length() == 0) return engine.invokeFunction(methodName);
+        JSObject global = (JSObject)engine.get(NashornScriptEngine.NASHORN_GLOBAL);
+        if (methodArgsLine.length() == 0) return invokeFunction(global, methodName);
 
         String[] methodArgs = script.substring(startFunc + 1, endFunc).split(",");
         int argsLength = methodArgs.length;
         Object[] args = new Object[argsLength];
-        JSObject global = (JSObject)engine.get(NashornScriptEngine.NASHORN_GLOBAL);
         for (int i = 0; i < argsLength; i++) {
             String arg = methodArgs[i];
             args[i] = values != null && values.containsKey(arg)
                     ? values.get(arg)
                     : global.getMember(arg);
         }
-        return engine.invokeFunction(methodName, args);
+        return invokeFunction(global, methodName, args);
     }
 
     public void init() {
@@ -94,7 +110,8 @@ public class JavaScript implements core.ICore {
             }
         }
         instances.values().forEach(v -> v.inits.forEach(BukkitTask::cancel));
-        engine = (NashornScriptEngine)JSEngine.getEngine();
+
+        engine = (NashornScriptEngine)factory.getScriptEngine();
         engine.getContext().setBindings(new SimpleBindings(new ConcurrentHashMap<>()), ScriptContext.ENGINE_SCOPE);
         base_core._logOP("JavaScriptEngine: " + engine.getClass().getName());
         String loadModule = "???";
@@ -118,10 +135,12 @@ public class JavaScript implements core.ICore {
             base_core._logStackTrace(e);
         }
     }
-    public Optional<Boolean> isJsTrue(String js) {
+
+    public Optional<Boolean> isJsTrue(String js) { return isJsTrue(js, Collections.emptyMap()); }
+    public Optional<Boolean> isJsTrue(String js, Map<String, Object> values) {
         try
         {
-            Object value = eval(js);
+            Object value = eval(js, values);
             return Optional.of(value instanceof Boolean bool ? bool : value.equals(1));
         }
         catch (Exception e) {
@@ -131,53 +150,12 @@ public class JavaScript implements core.ICore {
             return Optional.empty();
         }
     }
-    public Optional<Number> getJsNumber(String js) {
+
+    public Optional<Number> getJsNumber(String js) { return getJsNumber(js, Collections.emptyMap()); }
+    public Optional<Number> getJsNumber(String js, Map<String, Object> values) {
         try
         {
-            return Optional.ofNullable((Number)eval(js));
-        }
-        catch (Exception e) {
-            base_core._logOP("JS ERROR");
-            base_core._logOP("JS:\n" + js);
-            base_core._logStackTrace(e);
-            return Optional.empty();
-        }
-    }
-    public Optional<Integer> getJsInt(String js) { return getJsNumber(js).map(Number::intValue); }
-    public Optional<Double> getJsDouble(String js) { return getJsNumber(js).map(Number::doubleValue); }
-    public Optional<String> getJsString(String js) {
-        try
-        {
-            Object value = eval(js);
-            return Optional.of(value instanceof String str ? str : value.toString());
-        }
-        catch (Exception e) {
-            base_core._logOP("JS ERROR");
-            base_core._logOP("JS:\n" + js);
-            base_core._logStackTrace(e);
-            return Optional.empty();
-        }
-    }
-    public Optional<JsonElement> getJsJson(String js) {
-        try
-        {
-            return invoke("JSON.stringify(value)", Collections.singletonMap("value", eval(js)))
-                .map(value -> value instanceof String str ? str : value.toString())
-                .map(value -> system.json.parse(value));
-        }
-        catch (Exception e) {
-            base_core._logOP("JS ERROR");
-            base_core._logOP("JS:\n" + js);
-            base_core._logStackTrace(e);
-            return Optional.empty();
-        }
-    }
-    public Optional<JsonElement> getJsJson(String js, Map<String, Object> values) {
-        try
-        {
-            return invoke("JSON.stringify(value)", Collections.singletonMap("value", eval(js, values)))
-                .map(value -> value instanceof String str ? str : value.toString())
-                .map(value -> system.json.parse(value));
+            return Optional.ofNullable((Number)eval(js, values));
         }
         catch (Exception e) {
             base_core._logOP("JS ERROR");
@@ -187,12 +165,49 @@ public class JavaScript implements core.ICore {
         }
     }
 
-    public void getJsStringNext(String js, system.Action1<String> callback) {
+    public Optional<Integer> getJsInt(String js) { return getJsInt(js, Collections.emptyMap()); }
+    public Optional<Integer> getJsInt(String js, Map<String, Object> values) { return getJsNumber(js, values).map(Number::intValue); }
+
+    public Optional<Double> getJsDouble(String js) { return getJsDouble(js, Collections.emptyMap()); }
+    public Optional<Double> getJsDouble(String js, Map<String, Object> values) { return getJsNumber(js, values).map(Number::doubleValue); }
+
+    public Optional<String> getJsString(String js) { return getJsString(js, Collections.emptyMap()); }
+    public Optional<String> getJsString(String js, Map<String, Object> values) {
+        try
+        {
+            Object value = eval(js, values);
+            return Optional.of(value instanceof String str ? str : value.toString());
+        }
+        catch (Exception e) {
+            base_core._logOP("JS ERROR");
+            base_core._logOP("JS:\n" + js);
+            base_core._logStackTrace(e);
+            return Optional.empty();
+        }
+    }
+
+    public Optional<JsonElement> getJsJson(String js) { return getJsJson(js, Collections.emptyMap()); }
+    public Optional<JsonElement> getJsJson(String js, Map<String, Object> values) {
+        try
+        {
+            return invoke("JSON.stringify(value)", Collections.singletonMap("value", eval(js, values)))
+                .map(value -> value instanceof String str ? str : value.toString())
+                .map(json::parse);
+        }
+        catch (Exception e) {
+            base_core._logOP("JS ERROR");
+            base_core._logOP("JS:\n" + js);
+            base_core._logStackTrace(e);
+            return Optional.empty();
+        }
+    }
+
+    public void getJsStringNext(String js, Action1<String> callback) {
         try
         {
             Object value = eval(js);
             if (value == null) callback.invoke(null);
-            else if (value instanceof ScriptObjectMirror som && som.isFunction()) som.call(null, (system.Action1<Object>)v -> callback.invoke(v instanceof String str ? str : v.toString()));
+            else if (value instanceof ScriptObjectMirror som && som.isFunction()) som.call(null, (Action1<Object>) v -> callback.invoke(v instanceof String str ? str : v.toString()));
             else callback.invoke(value instanceof String str ? str : value.toString());
         }
         catch (Exception e) {
@@ -226,15 +241,7 @@ public class JavaScript implements core.ICore {
         }
     }
 
-    private static class ArgsBinding implements Bindings {
-        private final Map<String, Object> args;
-        private final Bindings owner;
-
-        public ArgsBinding(Map<String, Object> args, Bindings owner) {
-            this.args = args;
-            this.owner = owner;
-        }
-
+    private record ArgsBinding(Map<String, Object> args, Bindings owner) implements Bindings {
         @Override public int size() { return args.size() + owner.size(); }
         @Override public boolean isEmpty() { return args.isEmpty() && owner.isEmpty(); }
         @Override public boolean containsValue(Object value) { return args.containsValue(value) || owner.containsValue(value); }

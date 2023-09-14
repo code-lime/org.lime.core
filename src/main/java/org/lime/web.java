@@ -1,6 +1,10 @@
 package org.lime;
 
 import com.google.gson.JsonElement;
+import org.lime.system.execute.*;
+import org.lime.system.json;
+import org.lime.system.list;
+import org.lime.system.toast.*;
 
 import java.math.BigInteger;
 import java.net.URI;
@@ -23,10 +27,10 @@ public class web {
         public static final method POST = method.of(HttpRequest.Builder::POST);
         public static final method PUT = method.of(HttpRequest.Builder::PUT);
 
-        private static method of(system.Func1<HttpRequest.Builder, HttpRequest.Builder> apply) { return of((a,b) -> apply.invoke(a)); }
-        private static method of(system.Func2<HttpRequest.Builder, HttpRequest.BodyPublisher, HttpRequest.Builder> apply) { return new method(apply); }
-        private final system.Func2<HttpRequest.Builder, HttpRequest.BodyPublisher, HttpRequest.Builder> apply;
-        private method(system.Func2<HttpRequest.Builder, HttpRequest.BodyPublisher, HttpRequest.Builder> apply) { this.apply = apply; }
+        private static method of(Func1<HttpRequest.Builder, HttpRequest.Builder> apply) { return of((a, b) -> apply.invoke(a)); }
+        private static method of(Func2<HttpRequest.Builder, HttpRequest.BodyPublisher, HttpRequest.Builder> apply) { return new method(apply); }
+        private final Func2<HttpRequest.Builder, HttpRequest.BodyPublisher, HttpRequest.Builder> apply;
+        private method(Func2<HttpRequest.Builder, HttpRequest.BodyPublisher, HttpRequest.Builder> apply) { this.apply = apply; }
 
         public builder create(String url) { return create(url, HttpRequest.BodyPublishers.noBody()); }
         public builder create(String url, String data) { return create(url, HttpRequest.BodyPublishers.ofString(data)); }
@@ -52,31 +56,31 @@ public class web {
             public executor<Void> none() { return custom(HttpResponse.BodyHandlers.discarding()); }
             public executor<String> text() { return custom(HttpResponse.BodyHandlers.ofString()); }
             public executor<Stream<String>> lines() { return custom(HttpResponse.BodyHandlers.ofLines()); }
-            public executor<JsonElement> json() { return text().map(system.json::parse); }
+            public executor<JsonElement> json() { return text().map(json::parse); }
 
-            private static <T>system.Toast2<T, Integer> of(HttpResponse<T> response) {
-                return system.toast(response.body(), response.statusCode());
+            private static <T> Toast2<T, Integer> of(HttpResponse<T> response) {
+                return Toast.of(response.body(), response.statusCode());
             }
             private static <T> executor<T> of(HttpRequest.Builder base, HttpResponse.BodyHandler<T> handler) {
                 return new executor<>() {
-                    @Override public system.Toast2<T, Integer> execute() {
+                    @Override public Toast2<T, Integer> execute() {
                         try { return of(HttpClient.newBuilder().version(Version.HTTP_1_1).followRedirects(HttpClient.Redirect.ALWAYS).build().send(base.build(), handler)); }
                         catch (Exception e) { throw new IllegalArgumentException(e); }
                     }
-                    @Override public void executeAsync(system.Action2<T, Integer> callback) {
+                    @Override public void executeAsync(Action2<T, Integer> callback) {
                         core.instance._invokeAsync(this::execute, data -> callback.invoke(data.val0, data.val1));
                     }
                 };
             }
 
             public interface executor<T> {
-                system.Toast2<T, Integer> execute();
-                void executeAsync(system.Action2<T, Integer> callback);
+                Toast2<T, Integer> execute();
+                void executeAsync(Action2<T, Integer> callback);
 
-                default <R> executor<R> map(system.Func1<T, R> map) {
+                default <R> executor<R> map(Func1<T, R> map) {
                     return new executor<>() {
-                        @Override public system.Toast2<R, Integer> execute() { return executor.this.execute().map(map, v -> v); }
-                        @Override public void executeAsync(system.Action2<R, Integer> callback) { executor.this.executeAsync((k, v) -> callback.invoke(map.invoke(k), v)); }
+                        @Override public Toast2<R, Integer> execute() { return executor.this.execute().map(map, v -> v); }
+                        @Override public void executeAsync(Action2<R, Integer> callback) { executor.this.executeAsync((k, v) -> callback.invoke(map.invoke(k), v)); }
                     };
                 }
             }
@@ -104,7 +108,7 @@ public class web {
                 }
 
                 private List<String> _head(String key, String boundary) {
-                    return system.list.<String>of()
+                    return list.<String>of()
                             .add("--" + boundary)
                             .add("Content-Disposition: form-data; name=\""+key+"\"")
                             .add(headers.entrySet(), kv -> kv.getKey() + ": " + kv.getValue())

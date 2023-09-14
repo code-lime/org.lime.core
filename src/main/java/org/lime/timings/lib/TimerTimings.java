@@ -1,15 +1,15 @@
 package org.lime.timings.lib;
 
 import org.bukkit.scheduler.BukkitTask;
-import org.lime.core;
-import org.lime.system;
+import org.lime.plugin.Timers;
+import org.lime.system.toast.Toast2;
 
-import java.util.*;
+import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.stream.Stream;
 
 public class TimerTimings {
-    private static final ConcurrentHashMap<system.Toast2<Boolean, StackTraceElement>, system.Toast2<Integer, Long>> timings = new ConcurrentHashMap<>();
+    private static final ConcurrentHashMap<Toast2<Boolean, StackTraceElement>, Toast2<Integer, Long>> timings = new ConcurrentHashMap<>();
     /*private static class TimingsInvocationHandler implements InvocationHandler {
         @Override public Object invoke(Object proxy, Method method, Object[] args) throws Throwable {
             return invokeProxy((Timing)proxy, method, args);
@@ -88,7 +88,7 @@ public class TimerTimings {
 
     private static final system.LockToast1<reflection.field<Timing>> timings_CraftTask = system.<reflection.field<Timing>>toast(null).lock();
     */
-    public static BukkitTask of(BukkitTask task, core.ITimers.TimerType type) {
+    public static BukkitTask of(BukkitTask task, Timers.TimerType type) {
         /*if (task.getClass().getSimpleName().equals("CraftTask")) {
             createInstance(!task.isSync(), type)
                 .ifPresent(timing -> {
@@ -103,7 +103,7 @@ public class TimerTimings {
         return task;
     }
 
-    public static Stream<Map.Entry<system.Toast2<Boolean, StackTraceElement>, system.Toast2<Integer, Long>>> timings() {
+    public static Stream<Map.Entry<Toast2<Boolean, StackTraceElement>, Toast2<Integer, Long>>> timings() {
         return timings.entrySet().stream();
     }
 }

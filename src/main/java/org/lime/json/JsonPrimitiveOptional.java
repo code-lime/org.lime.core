@@ -1,7 +1,8 @@
 package org.lime.json;
 
 import com.google.gson.JsonPrimitive;
-import org.lime.system;
+import org.lime._system;
+import org.lime.system.utils.EnumUtils;
 
 import java.math.BigDecimal;
 import java.math.BigInteger;
@@ -26,7 +27,7 @@ public class JsonPrimitiveOptional extends JsonElementOptional {
     public Optional<Number> getAsNumber() { return base.isNumber() ? Optional.of(base.getAsNumber()) : Optional.empty(); }
     public boolean isString() { return base.isString(); }
     public Optional<String> getAsString() { return base.isString() ? Optional.of(base.getAsString()) : Optional.empty(); }
-    public <T extends Enum<T>>Optional<T> getAsEnum(Class<T> tClass) { return getAsString().flatMap(v -> system.tryParse(tClass, v)); }
+    public <T extends Enum<T>>Optional<T> getAsEnum(Class<T> tClass) { return getAsString().flatMap(v -> EnumUtils.tryParse(tClass, v)); }
 
     public Optional<Object> getAsObject() { return Optional.<Object>empty().or(this::getAsBoolean).or(this::getAsNumber).or(this::getAsString); }
     public Optional<Double> getAsDouble() { return getAsNumber().map(v -> v.doubleValue()); }

@@ -22,6 +22,16 @@ public class skin {
     private static JsonObject getBody(String url, Variant variant) {
         JsonObject json = new JsonObject();
         json.addProperty("visibility", 0);
+        if (variant == Variant.Auto) {
+            if (url.startsWith("slim#")) {
+                url = url.substring(5);
+                variant = Variant.Slim;
+            }
+            else if (url.startsWith("classic#")) {
+                url = url.substring(8);
+                variant = Variant.Classic;
+            }
+        }
         if (variant != Variant.Auto) json.addProperty("variant", variant.name().toLowerCase());
         json.addProperty("url", url);
         return json;

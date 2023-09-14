@@ -13,11 +13,17 @@ import java.util.*;
 import java.util.regex.Pattern;
 
 import org.apache.commons.io.FilenameUtils;
+import org.lime.plugin.ICore;
+import org.lime.plugin.IUpdateConfig;
+import org.lime.plugin.CoreElement;
+import org.lime.system.execute.Action0;
+import org.lime.system.json;
+import org.lime.system.toast.*;
 
-public class autodownload implements core.IUpdateConfig, core.ICore {
-    public static core.element create() { return new autodownload()._create(); }
-    private core.element _create() {
-        return core.element.create(autodownload.class)
+public class autodownload implements IUpdateConfig, ICore {
+    public static CoreElement create() { return new autodownload()._create(); }
+    private CoreElement _create() {
+        return CoreElement.create(autodownload.class)
                 .withInstance(this)
                 .addEmpty("autodownload-on", () -> enable(true))
                 .addEmpty("autodownload-off", () -> enable(false));
@@ -31,7 +37,7 @@ public class autodownload implements core.IUpdateConfig, core.ICore {
     public core base_core;
 
     public void syncConfig() {
-        JsonObject json = base_core._existConfig("autodownload") ? system.json.parse(base_core._readAllConfig("autodownload")).getAsJsonObject() : new JsonObject();
+        JsonObject json = base_core._existConfig("autodownload") ? org.lime.system.json.parse(base_core._readAllConfig("autodownload")).getAsJsonObject() : new JsonObject();
         enable = json.has("enable") && json.get("enable").getAsBoolean();
         url = enable ? json.get("url").getAsString() : null;
 
@@ -56,12 +62,12 @@ public class autodownload implements core.IUpdateConfig, core.ICore {
     }
 
     public void enable(boolean state) {
-        JsonObject json = base_core._existConfig("autodownload") ? system.json.parse(base_core._readAllConfig("autodownload")).getAsJsonObject() : new JsonObject();
+        JsonObject json = base_core._existConfig("autodownload") ? org.lime.system.json.parse(base_core._readAllConfig("autodownload")).getAsJsonObject() : new JsonObject();
         json.addProperty("enable", state);
-        base_core._writeAllConfig("autodownload", system.toFormat(json));
+        base_core._writeAllConfig("autodownload", org.lime.system.json.format(json));
         updateConfigAsync(Collections.emptyList(), () -> {});
     }
-    @Override public void updateConfigAsync(Collection<String> files, system.Action0 callback) {
+    @Override public void updateConfigAsync(Collection<String> files, Action0 callback) {
         syncConfig();
         base_core._logOP("UPDATE: " + (files == null ? "ALL" : String.join(", ", files)));
         if (enable) downloadConfigFiles(files, callback);
@@ -81,7 +87,7 @@ public class autodownload implements core.IUpdateConfig, core.ICore {
         downloadConfigFiles(null);
     }
 
-    private void downloadConfigFiles(Collection<String> fileList, system.Action0 callback) {
+    private void downloadConfigFiles(Collection<String> fileList, Action0 callback) {
         base_core._invokeAsync(() -> downloadConfigFiles(fileList), callback);
     }
 
@@ -89,7 +95,7 @@ public class autodownload implements core.IUpdateConfig, core.ICore {
         base_core._logOP("Downloading...");
         web.method.builder builder = web.method.GET.create(url);
         headers.forEach(builder::header);
-        system.Toast2<byte[], Integer> downloaded = builder.data().execute();
+        Toast2<byte[], Integer> downloaded = builder.data().execute();
         base_core._logOP("Opening...");
         Map<String, byte[]> files;
         try {
@@ -102,9 +108,9 @@ public class autodownload implements core.IUpdateConfig, core.ICore {
 
             _files.entrySet()
                 .stream()
-                .map(kv -> system.toast(String.join("", path.split(kv.getKey())), kv.getValue()))
+                .map(kv -> Toast.of(String.join("", path.split(kv.getKey())), kv.getValue()))
                 .filter(kv -> ignore.stream().noneMatch(pattern -> pattern.matcher(kv.val0).find()))
-                .map(kv -> system.toast(kv.val0.split("/"), kv.val1))
+                .map(kv -> Toast.of(kv.val0.split("/"), kv.val1))
                 .sorted(Comparator.comparing(kv -> kv.val0[kv.val0.length - 1]))
                 .forEach(kv -> kv.invoke((path, bytes) -> {
                     if (path.length > 1) {
@@ -114,7 +120,7 @@ public class autodownload implements core.IUpdateConfig, core.ICore {
                             case "json": 
                                 jsonDirs.compute(path[0], (k, json) -> {
                                     if (json == null) json = new JsonObject();
-                                    JsonElement item = system.json.parse(StandardCharsets.UTF_8.decode(ByteBuffer.wrap(bytes)).toString());
+                                    JsonElement item = org.lime.system.json.parse(StandardCharsets.UTF_8.decode(ByteBuffer.wrap(bytes)).toString());
                                     json = base_core._combineJson(json, item, false).getAsJsonObject();
                                     return json;
                                 });
@@ -122,7 +128,7 @@ public class autodownload implements core.IUpdateConfig, core.ICore {
                             case "js": 
                                 jsDirs.compute(path[0], (k, text) -> {
                                     if (text == null) text = new StringBuilder();
-                                    text.append(StandardCharsets.UTF_8.decode(ByteBuffer.wrap(bytes)).toString());
+                                    text.append(StandardCharsets.UTF_8.decode(ByteBuffer.wrap(bytes)).toString() + "\n");
                                     return text;
                                 });
                                 break;
@@ -146,7 +152,7 @@ public class autodownload implements core.IUpdateConfig, core.ICore {
         }
 
         base_core._logOP("Reading...");
-        for (Map.Entry<String, JsonElement> kv : system.json.parse(new String(files.get("link.json"))).getAsJsonObject().entrySet()) {
+        for (Map.Entry<String, JsonElement> kv : json.parse(new String(files.get("link.json"))).getAsJsonObject().entrySet()) {
             if (!(fileList == null || fileList.contains(kv.getKey()) || (!kv.getKey().endsWith(".json") && fileList.contains(kv.getKey() + ".json")))) continue;
             byte[] bytes = files.get(kv.getValue().getAsString());
             base_core._logOP(" - " + kv.getValue().getAsString() + " : " + bytes.length + "B");

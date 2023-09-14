@@ -1,7 +1,7 @@
 package org.lime;
 
+import io.papermc.paper.plugin.provider.classloader.ConfiguredPluginClassLoader;
 import org.bukkit.plugin.java.JavaPlugin;
-import org.bukkit.plugin.java.JavaPluginLoader;
 import org.bukkit.plugin.java.PluginClassLoader;
 
 import java.io.File;
@@ -20,11 +20,12 @@ import java.util.stream.Collectors;
 
 @SuppressWarnings("all")
 public class LibraryClassLoader extends URLClassLoader {
+    //DummyBukkitPluginLoader
     /**Классы, загруженные из файла*/
     private final Map<String, Class<?>> classes = new ConcurrentHashMap<>();
 
     /**Плагин, в который классы из файла будут загружены*/
-    private final JavaPlugin plugin;
+    private final Class<? extends JavaPlugin> pluginClass;
 
     private record JarInfo(JarFile jar, URL url) {}
 
@@ -43,10 +44,17 @@ public class LibraryClassLoader extends URLClassLoader {
      * @param files Файлы, из которого будут загружены классы
      * @exception IllegalStateException Загрузчик для файла уже зарегистрирован
      * */
-    public LibraryClassLoader(JavaPlugin plugin, List<File> files) {
-        super(new URL[]{}, plugin.getClass().getClassLoader());
+    public LibraryClassLoader(Class<? extends JavaPlugin> pluginClass, List<File> files) {
+        super(new URL[]{}, pluginClass.getClassLoader());
         this.files = files;
-        this.plugin = plugin;
+        this.pluginClass = pluginClass;
+    }
+    public Iterable<File> getFiles() { return files; }
+    private void writeInfo(String line) {
+        System.out.println("[INFO:"+pluginClass.getSimpleName()+"] " + line);
+    }
+    private void writeWarning(String line) {
+        System.out.println("[WARN:"+pluginClass.getSimpleName()+"] " + line);
     }
 
     public static List<String> getClasses(File file) {
@@ -75,7 +83,7 @@ public class LibraryClassLoader extends URLClassLoader {
      * */
     public synchronized void load() {
         String key = this.files.stream().map(v -> v.getName()).collect(Collectors.joining(" & "));
-        plugin.getLogger().info("Attempting to load the " + key + " files...");
+        writeInfo("Attempting to load the " + key + " files...");
 
         if (this.loaded) throw new IllegalStateException("Files " + key + " already loaded");
         List<JarInfo> jars = new ArrayList<>();
@@ -89,7 +97,7 @@ public class LibraryClassLoader extends URLClassLoader {
                 url = file.toURI().toURL();
                 jar = new JarFile(file);
             } catch (IOException e) {
-                plugin.getLogger().warning("An unexpected error occurred while processing the "
+                writeWarning("An unexpected error occurred while processing the "
                         + file.getName() + " file");
                 return;
             }
@@ -115,7 +123,7 @@ public class LibraryClassLoader extends URLClassLoader {
 
 
         this.loadToPluginClassLoader();
-        plugin.getLogger().info("The " + key + " files has been loaded (" + this.classes.size() + " classes loaded)");
+        writeInfo("The " + key + " files has been loaded (" + this.classes.size() + " classes loaded)");
     }
 
     /**
@@ -139,7 +147,7 @@ public class LibraryClassLoader extends URLClassLoader {
                 url = file.toURI().toURL();
                 jar = new JarFile(file);
             } catch (IOException e) {
-                plugin.getLogger().warning("An unexpected error occurred while processing the "
+                writeWarning("An unexpected error occurred while processing the "
                         + file.getName() + " file");
                 return;
             }
@@ -177,7 +185,7 @@ public class LibraryClassLoader extends URLClassLoader {
      * */
     public synchronized void unload(boolean close) {
         String key = this.files.stream().map(v -> v.getName()).collect(Collectors.joining(" & "));
-        plugin.getLogger().info("Attempting to unload the " + key + " files");
+        writeInfo("Attempting to unload the " + key + " files");
 
         if (!this.loaded) throw new IllegalStateException("Files " + key + " not loaded");
 
@@ -267,24 +275,34 @@ public class LibraryClassLoader extends URLClassLoader {
     private Map<String, Class<?>> getLoadedClasses() {
         Field f;
         try {
-            if (plugin.getClass().getClassLoader() instanceof PluginClassLoader loader) {
+            if (pluginClass.getClassLoader() instanceof PluginClassLoader loader) {
                 f = loader.getClass().getDeclaredField("classes");
                 f.setAccessible(true);
                 return (Map<String, Class<?>>) f.get(loader);
             }
-            JavaPluginLoader javaPluginLoader = (JavaPluginLoader) plugin.getPluginLoader();
+            /*
+        ClassLoader classLoader = this.getClass().getClassLoader();
+        if (!(classLoader instanceof ConfiguredPluginClassLoader)) {
+            throw new IllegalStateException("JavaPlugin requires to be created by a valid classloader.");
+        }
+        ConfiguredPluginClassLoader configuredPluginClassLoader = (ConfiguredPluginClassLoader)((Object)classLoader);
+        configuredPluginClassLoader.init(this);
+            */
+            ConfiguredPluginClassLoader loader = (ConfiguredPluginClassLoader)this.getClass().getClassLoader();
+            writeInfo(loader + "");
+            /*PluginLoader javaPluginLoader = INSTANCE;
             f = javaPluginLoader.getClass().getDeclaredField("loaders");
             f.setAccessible(true);
             List<PluginClassLoader> loaders = (List<PluginClassLoader>) f.get(javaPluginLoader);
             PluginClassLoader loader = null;
             for (PluginClassLoader classLoader: loaders) {
-                if (!classLoader.getPlugin().equals(plugin))
+                if (classLoader.getPlugin().getClass() != pluginClass)
                     continue;
                 loader = classLoader;
                 break;
-            }
+            }*/
             if (loader == null)
-                throw new IllegalStateException("The " + plugin.getName() + " plugin is disabled");
+                throw new IllegalStateException("The " + pluginClass.getName() + " plugin is disabled");
             f = loader.getClass().getDeclaredField("classes");
             f.setAccessible(true);
             return (Map<String, Class<?>>) f.get(loader);
@@ -300,7 +318,7 @@ public class LibraryClassLoader extends URLClassLoader {
     private boolean loadToPluginClassLoader() {
         Map<String, Class<?>> classes = this.getLoadedClasses();
         if (classes == null)
-            throw new IllegalStateException("Plugin " + plugin.getName() + " not loaded");
+            throw new IllegalStateException("Plugin " + pluginClass.getName() + " not loaded");
         Map<String, Class<?>> loaded = new ConcurrentHashMap<>();
         for (Map.Entry<String, Class<?>> entry: this.classes.entrySet()) {
             if (classes.containsKey(entry.getKey())) {
@@ -325,7 +343,7 @@ public class LibraryClassLoader extends URLClassLoader {
     private void unloadFromPluginClassLoader() {
         Map<String, Class<?>> classes = this.getLoadedClasses();
         if (classes == null)
-            throw new IllegalStateException("Plugin " + plugin.getName() + " not loaded");
+            throw new IllegalStateException("Plugin " + pluginClass.getName() + " not loaded");
         for (Map.Entry<String, Class<?>> entry: this.classes.entrySet())
             classes.remove(entry.getKey());
         this.classes.clear();
