@@ -21,25 +21,15 @@ public abstract class IRange {
     }
 
     public abstract double getMin(double max);
-
     public abstract double getMax(double max);
-
     public abstract double getValue(double max);
 
-    public int getIntValue(double max) {
-        return (int) Math.round(getValue(max));
-    }
+    public int getIntValue(double max) { return (int) Math.round(getValue(max)); }
 
     public abstract String displayText();
-
     public abstract IntStream getAllInts(double max);
-
     public abstract boolean hasInt(double max, int value);
+    public abstract boolean inRange(double value, double max);
 
-    public boolean inRange(double value, double max) {
-        double _min = getMin(max);
-        double _max = getMax(max);
-
-        return value <= _max && value >= _min;
-    }
+    public abstract String toFormat();
 }
