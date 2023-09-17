@@ -13,6 +13,7 @@ import org.bukkit.entity.Player;
 import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.FileWriter;
+import java.nio.file.Paths;
 import java.text.DateFormat;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
@@ -29,8 +30,7 @@ public interface ILogger {
         calendar.setTimeInMillis(System.currentTimeMillis());
         String time = formatter.format(calendar.getTime());
 
-        if (text.contains("{time}"))
-        {
+        if (text.contains("{time}")) {
             final DateFormat time_formatter = new SimpleDateFormat("HH:mm:ss");
             calendar.setTimeInMillis(System.currentTimeMillis());
             text = text.replace("{time}", time_formatter.format(calendar.getTime()));
@@ -40,6 +40,8 @@ public interface ILogger {
             String path = "logs/lime/" + key + "/";
             File logs = new File(path);
             if (!logs.exists()) logs.mkdirs();
+
+            key = key.split("/", 2)[0];
 
             File myObj = new File(path + key + "-" + time + ".log");
             if (!myObj.exists()) myObj.createNewFile();
