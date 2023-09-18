@@ -23,7 +23,7 @@ plugins {
 group = pluginGroup
 version = pluginVersion
 
-String _version = "1.19.4"
+String _version = "1.20.1"
 boolean _mapped = true
 
 sourceCompatibility = '17'
