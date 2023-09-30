@@ -11,6 +11,7 @@ import java.nio.ByteBuffer;
 import java.nio.charset.StandardCharsets;
 import java.util.*;
 import java.util.regex.Pattern;
+import java.util.stream.Collectors;
 
 import org.apache.commons.io.FilenameUtils;
 import org.lime.plugin.ICore;
@@ -30,6 +31,7 @@ public class autodownload implements IUpdateConfig, ICore {
     };
 
     public boolean enable = false;
+    public String ref = null;
     public String url = null;
     public HashMap<String, String> headers = new HashMap<>();
     public Pattern path = null;
@@ -51,6 +53,8 @@ public class autodownload implements IUpdateConfig, ICore {
         if (json.has("ignore"))
             json.getAsJsonArray("ignore")
                 .forEach(kv -> ignore.add(Pattern.compile(kv.getAsString(), Pattern.CASE_INSENSITIVE)));
+
+        ref = enable && json.has("ref") ? json.get("ref").getAsString() : null;
 
         path = enable && json.has("path") ? Pattern.compile(json.get("path").getAsString()) : Pattern.compile("");
         if (url == null && enable) {
@@ -106,41 +110,50 @@ public class autodownload implements IUpdateConfig, ICore {
             
             List<String> loadList = new ArrayList<>();
 
+            Set<String> refs = _files.keySet()
+                    .stream()
+                    .map(path -> String.join("", this.path.split(path)))
+                    .filter(path -> ignore.stream().noneMatch(pattern -> pattern.matcher(path).find()))
+                    .map(path -> path.split("/"))
+                    .filter(path -> path.length >= 3 && path[0].equals("ref"))
+                    .map(path -> path[1])
+                    .collect(Collectors.toSet());
+
+            String currentRef = refs.contains(ref) ? ref : ".default";
+
             _files.entrySet()
-                .stream()
-                .map(kv -> Toast.of(String.join("", path.split(kv.getKey())), kv.getValue()))
-                .filter(kv -> ignore.stream().noneMatch(pattern -> pattern.matcher(kv.val0).find()))
-                .map(kv -> Toast.of(kv.val0.split("/"), kv.val1))
-                .sorted(Comparator.comparing(kv -> kv.val0[kv.val0.length - 1]))
-                .forEach(kv -> kv.invoke((path, bytes) -> {
-                    if (path.length > 1) {
-                        String ext = FilenameUtils.getExtension(path[path.length - 1]);
-                        loadList.add("[D] " + path[0] + " / " + String.join("/", path));
-                        switch (ext) {
-                            case "json": 
-                                jsonDirs.compute(path[0], (k, json) -> {
+                    .stream()
+                    .map(kv -> Toast.of(String.join("", path.split(kv.getKey())), kv.getValue()))
+                    .filter(kv -> ignore.stream().noneMatch(pattern -> pattern.matcher(kv.val0).find()))
+                    .map(kv -> Toast.of(kv.val0.split("/"), kv.val1))
+                    .sorted(Comparator.comparing(kv -> kv.val0[kv.val0.length - 1]))
+                    .filter(kv -> !kv.val0[0].equals("ref") || kv.val0.length >= 3 && kv.val0[1].equals(currentRef))
+                    .map(kv -> kv.val0[0].equals("ref") ? Toast.of(Arrays.stream(kv.val0).skip(2).toArray(String[]::new), kv.val1) : kv)
+                    .forEach(kv -> kv.invoke((path, bytes) -> {
+                        if (path.length > 1) {
+                            String ext = FilenameUtils.getExtension(path[path.length - 1]);
+                            loadList.add("[D] " + path[0] + " / " + String.join("/", path));
+                            switch (ext) {
+                                case "json" -> jsonDirs.compute(path[0], (k, json) -> {
                                     if (json == null) json = new JsonObject();
                                     JsonElement item = org.lime.system.json.parse(StandardCharsets.UTF_8.decode(ByteBuffer.wrap(bytes)).toString());
                                     json = base_core._combineJson(json, item, false).getAsJsonObject();
                                     return json;
                                 });
-                                break;
-                            case "js": 
-                                jsDirs.compute(path[0], (k, text) -> {
+                                case "js" -> jsDirs.compute(path[0], (k, text) -> {
                                     if (text == null) text = new StringBuilder();
-                                    text.append(StandardCharsets.UTF_8.decode(ByteBuffer.wrap(bytes)).toString() + "\n");
+                                    text.append(StandardCharsets.UTF_8.decode(ByteBuffer.wrap(bytes))).append("\n");
                                     return text;
                                 });
-                                break;
-                            default:
-                                throw new IllegalArgumentException("Not supported extension '" + ext + "' of file '" + String.join("/", path) + "'");
+                                default ->
+                                        throw new IllegalArgumentException("Not supported extension '" + ext + "' of file '" + String.join("/", path) + "'");
+                            }
                         }
-                    } 
-                    else {
-                        loadList.add("[F] " + path[0] + " / " + String.join("/", path));
-                        files.put(path[0], bytes);
-                    }
-                }));
+                        else {
+                            loadList.add("[F] " + path[0] + " / " + String.join("/", path));
+                            files.put(path[0], bytes);
+                        }
+                    }));
             base_core._logOP(Component.text("Load list: [view]")
                 .hoverEvent(HoverEvent.showText(Component.text(String.join("\n", loadList)))));
             jsonDirs.forEach((key,value) -> files.put(key + ".json", value.toString().getBytes()));
