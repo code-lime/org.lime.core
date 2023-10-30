@@ -80,7 +80,7 @@ public class JavaScript implements ICore {
         int argsLength = methodArgs.length;
         Object[] args = new Object[argsLength];
         for (int i = 0; i < argsLength; i++) {
-            String arg = methodArgs[i];
+            String arg = methodArgs[i].trim();
             args[i] = values != null && values.containsKey(arg)
                     ? values.get(arg)
                     : global.getMember(arg);

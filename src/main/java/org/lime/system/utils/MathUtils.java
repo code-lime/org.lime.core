@@ -7,14 +7,16 @@ import com.mojang.math.Transformation;
 import org.bukkit.Location;
 import org.bukkit.World;
 import org.bukkit.util.Vector;
-import org.joml.Quaternionf;
-import org.joml.Vector3f;
+import org.joml.*;
+import org.joml.Math;
 import org.lime.system.json;
 import org.lime.system.toast.*;
 
+import javax.annotation.Nullable;
+
 public class MathUtils {
     public static double round(double value, int places) {
-        double scale = Math.pow(10, places);
+        double scale = java.lang.Math.pow(10, places);
         return Math.round(value * scale) / scale;
     }
 
@@ -64,6 +66,70 @@ public class MathUtils {
         return padInt(str.getBlockX(), ' ', 5) + separator + padInt(str.getBlockY(), ' ', 3) + separator + padInt(str.getBlockZ(), ' ', 5);
     }
 
+    /*
+Vector3f xAxis = new Vector3f(-sinYaw, 0, cosYaw);
+Vector3f yAxis = new Vector3f(cosYaw, 0, sinYaw);
+Vector3f zAxis = new Vector3f(0, cosYaw, 0);
+
+---
+Vector3f xAxis = new Vector3f(cosYaw, -sinYaw, 0);
+Vector3f yAxis = new Vector3f(sinYaw, cosYaw, 0);
+Vector3f zAxis = new Vector3f(0, 0, cosYaw);
+---
+(1,2,3) -> (2,1,3)
+
+Vector3f xAxis = new Vector3f(
+     cosYaw*sinPitch*sinRoll - sinYaw*cosRoll,
+     cosYaw*cosPitch,
+     cosYaw*sinPitch*cosRoll + sinYaw*sinRoll,
+);
+Vector3f zAxis = new Vector3f(
+    cosPitch*sinRoll,
+    -sinPitch,
+    cosPitch*cosYaw,
+);
+---
+
+    */
+    public static Vector3f directionForward(float yaw, float pitch, float roll) {
+        float sinYaw = Math.sin(yaw);
+        float cosYaw = Math.cos(yaw);
+        float sinPitch = Math.sin(pitch);
+        float cosPitch = Math.cos(pitch);
+        float sinRoll = Math.sin(roll);
+        float cosRoll = Math.cos(roll);
+
+        return new Vector3f(
+                cosYaw*sinPitch*sinRoll - sinYaw*cosRoll,
+                cosYaw*cosPitch,
+                cosYaw*sinPitch*cosRoll + sinYaw*sinRoll
+        );
+    }
+    public static Vector3f directionRight(float yaw, float pitch, float roll) {
+        float sinYaw = Math.sin(yaw);
+        float cosYaw = Math.cos(yaw);
+        float sinPitch = Math.sin(pitch);
+        float cosPitch = Math.cos(pitch);
+        float sinRoll = Math.sin(roll);
+        float cosRoll = Math.cos(roll);
+        return new Vector3f(
+                sinYaw*sinPitch*sinRoll + cosYaw*cosRoll,
+                sinYaw*cosPitch,
+                sinYaw*sinPitch*cosRoll - cosYaw*sinRoll
+        );
+    }
+    public static Vector3f directionUp(float yaw, float pitch, float roll) {
+        float cosYaw = Math.cos(yaw);
+        float sinPitch = Math.sin(pitch);
+        float cosPitch = Math.cos(pitch);
+        float sinRoll = Math.sin(roll);
+        return new Vector3f(
+                cosPitch*sinRoll,
+                -sinPitch,
+                cosPitch*cosYaw
+        );
+    }
+
     public static Vector3f convert(Vector pos) {
         return new Vector3f((float) pos.getX(), (float) pos.getY(), (float) pos.getZ());
     }
@@ -106,9 +172,12 @@ public class MathUtils {
                 .build();
     }
     public static Transformation transformation(Location location) {
+        Quaternionf rotation = new Quaternionf().rotateZYX(0, Math.toRadians(-location.getYaw()), Math.toRadians(location.getPitch()));
+        /*
         Quaternionf rotation = new Quaternionf()
-                .rotationAxis((float)Math.toRadians(location.getPitch()), new Vector3f(1, 0, 0))
-                .rotationAxis((float)Math.toRadians(location.getYaw()), new Vector3f(0, 1, 0));
+                .rotationAxis((float)Math.toRadians(location.getPitch()), new Vector3f(0, 0, 1))
+                .rotationAxis((float)Math.toRadians(-location.getYaw()), new Vector3f(0, 1, 0));
+        */
         return new Transformation(convert(location.toVector()), rotation, null, null);
     }
     public static Transformation transformation(JsonElement json) {
@@ -147,4 +216,44 @@ public class MathUtils {
                 )
                 .build();
     }
+    public static Transformation transform(@Nullable Transformation parent, Transformation child) {
+        if (parent == null) return child;
+        Matrix4f current = child.getMatrix();
+        current.mul(parent.getMatrix());
+        return new Transformation(current);
+    }
+    public static Transformation onlyYaw(Transformation transformation) {
+        Matrix4f matrix4f = transformation.getMatrix();
+        Vector3f from = matrix4f.transformPosition(new Vector3f(0, 0, 0));
+        Vector3f to = matrix4f.transformPosition(new Vector3f(0, 0, 1));
+
+        Vector3f delta = new Vector3f().add(to).sub(from).mul(1, 0, -1);
+        float length = delta.length();
+        if (length == 0) delta = new Vector3f(0, 0, 1);
+        else delta = delta.mul(1 / length);
+
+        Quaternionf quaternion = new Quaternionf().lookAlong(delta, new Vector3f(0, 1, 0));
+        return new Transformation(transformation.getTranslation(), quaternion, transformation.getScale(), null);
+    }
+    public static Vector2f getYawPitch(Transformation transformation) {
+        Matrix4f matrix4f = transformation.getMatrix();
+        Vector3f from = matrix4f.transformPosition(new Vector3f(0, 0, 0));
+        Vector3f to = matrix4f.transformPosition(new Vector3f(0, 0, 1));
+
+        Vector3f delta = new Vector3f().add(to).sub(from);
+
+        Location location = new Location(null, 0, 0, 0).setDirection(new Vector(delta.x, delta.y, delta.z));
+        return new Vector2f(location.getYaw(), location.getPitch());
+    }
 }
+
+
+
+
+
+
+
+
+
+
+

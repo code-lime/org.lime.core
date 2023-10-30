@@ -22,13 +22,13 @@ public abstract class CoreLoader extends JavaPlugin implements ITimer, ICombineJ
     public abstract Stream<CoreElement> elements();
     public abstract Stream<LibraryClassLoader> libraries();
     public abstract CoreElementLoaded add(CoreElement command);
-    public abstract void add(CoreCommand command);
-    public abstract void add(String cmd, Func1<CoreCommand, CoreCommand> builder);
+    public abstract void add(CoreCommand<?> command);
+    public abstract void add(String cmd, Func1<CoreCommand<?>, CoreCommand<?>> builder);
     public abstract void library(File... jars);
     public abstract void library(String... jars);
     protected abstract void rawLibrary(LibraryClassLoader loader);
 
-    protected abstract Map<String, CoreCommand> commands();
+    protected abstract Map<String, CoreCommand<?>> commands();
     protected abstract Optional<IUpdateConfig> config();
 
     private static final LibraryClassLoader nashornLoader;

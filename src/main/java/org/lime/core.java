@@ -24,7 +24,7 @@ public class core extends CoreLoader {
     @Override public String getConfigFile() { return "plugins/" + this.getName().toLowerCase() + "/"; }
 
     private final List<CoreElement> elements = new ArrayList<>();
-    private final HashMap<String, CoreCommand> commands = new HashMap<>();
+    private final HashMap<String, CoreCommand<?>> commands = new HashMap<>();
     private final List<LibraryClassLoader> libraries = new ArrayList<>();
     private final ConcurrentLinkedQueue<IInvokable> tickCalls = new ConcurrentLinkedQueue<>();
 
@@ -42,8 +42,8 @@ public class core extends CoreLoader {
             @Override public Class<?> type() { return element.tClass; }
         };
     }
-    @Override public void add(CoreCommand command) { commands.put(command.cmd, command); }
-    @Override public void add(String cmd, Func1<CoreCommand, CoreCommand> builder) { add(builder.invoke(CoreCommand.create(cmd))); }
+    @Override public void add(CoreCommand<?> command) { commands.put(command.cmd, command); }
+    @Override public void add(String cmd, Func1<CoreCommand<?>, CoreCommand<?>> builder) { add(builder.invoke(CoreCommand.create(cmd))); }
 
     @Override public void library(File... jars) {
         LibraryClassLoader loader = new LibraryClassLoader(this.getClass(), Arrays.asList(jars));
@@ -101,7 +101,7 @@ public class core extends CoreLoader {
     @Override public Stream<CoreElement> elements() { return this.elements.stream(); }
     @Override public Stream<LibraryClassLoader> libraries() { return this.libraries.stream(); }
 
-    @Override protected Map<String, CoreCommand> commands() { return this.commands; }
+    @Override protected Map<String, CoreCommand<?>> commands() { return this.commands; }
     @Override protected Optional<IUpdateConfig> config() {
         return Stream.concat(Stream.of(this), elements.stream().map(v -> v.instance))
                 .map(v -> v instanceof IUpdateConfig config ? config : null)

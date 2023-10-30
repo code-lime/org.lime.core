@@ -9,7 +9,7 @@ import java.lang.reflect.AccessibleObject;
 import java.util.*;
 import java.util.stream.Collectors;
 
-public final class CoreCommand {
+public final class CoreCommand<T extends CommandSender> {
     public final String cmd;
     public final String description;
     public final String usage;
@@ -26,65 +26,43 @@ public final class CoreCommand {
         this.tab = tab;
     }
 
-    public static CoreCommand create(String cmd) {
-        return new CoreCommand(cmd, null, null, null, null, null);
+    public static CoreCommand<CommandSender> create(String cmd) { return new CoreCommand<>(cmd, null, null, null, null, null); }
+
+    public CoreCommand<T> withTab(TabCompleter tab) { return new CoreCommand<>(cmd, executor, check, tab, description, usage); }
+    public CoreCommand<T> withTab(Func2<T, String[], Collection<String>> tab) { return withTab((v0, v1, v2, v3) -> new ArrayList<>(tab.invoke((T)v0, v3))); }
+    public CoreCommand<T> withTab(Func1<T, Collection<String>> tab) { return withTab((v0, v1, v2, v3) -> new ArrayList<>(tab.invoke((T)v0))); }
+    public CoreCommand<T> withTab(Func0<Collection<String>> tab) { return withTab((v0, v1, v2, v3) -> new ArrayList<>(tab.invoke())); }
+    public CoreCommand<T> withTab(Collection<String> tab) { return withTab((v0, v1, v2, v3) -> new ArrayList<>(tab)); }
+    public CoreCommand<T> withTab(String... tab) { return withTab(Arrays.asList(tab)); }
+
+    public CoreCommand<T> withExecutor(CommandExecutor executor) { return new CoreCommand<>(cmd, executor, check, tab, description, usage); }
+    public CoreCommand<T> withExecutor(Func2<T, String[], Boolean> executor) { return withExecutor((v0, v1, v2, v3) -> executor.invoke((T)v0, v3)); }
+    public CoreCommand<T> withExecutor(Func1<T, Boolean> executor) { return withExecutor((v0, v1, v2, v3) -> executor.invoke((T)v0)); }
+    public CoreCommand<T> withExecutor(Func0<Boolean> executor) { return withExecutor((v0, v1, v2, v3) -> executor.invoke()); }
+
+    public CoreCommand<T> withCheck(CommandExecutor check) { return new CoreCommand<>(cmd, executor, check, tab, description, usage); }
+    public CoreCommand<T> withCheck(Func2<T, String[], Boolean> check) { return withCheck((v0, v1, v2, v3) -> check.invoke((T)v0, v3)); }
+    public CoreCommand<T> withCheck(Func1<T, Boolean> check) { return withCheck((v0, v1, v2, v3) -> check.invoke((T)v0)); }
+    public CoreCommand<T> withCheck(Func0<Boolean> check) { return withCheck((v0, v1, v2, v3) -> check.invoke()); }
+
+    public CoreCommand<T> addCheck(CommandExecutor check) { return new CoreCommand<>(cmd, executor, combine(this.check, check), tab, description, usage); }
+    public CoreCommand<T> addCheck(Func2<T, String[], Boolean> check) { return addCheck((v0, v1, v2, v3) -> check.invoke((T)v0, v3)); }
+    public CoreCommand<T> addCheck(Func1<T, Boolean> check) { return addCheck((v0, v1, v2, v3) -> check.invoke((T)v0)); }
+    public CoreCommand<T> addCheck(Func0<Boolean> check) { return addCheck((v0, v1, v2, v3) -> check.invoke()); }
+    public CoreCommand<T> addCheck(String... permissions) {
+        return addCheck((s, v1, v2, v3) -> {
+            for (String perm : permissions) {
+                if (s.hasPermission(perm))
+                    return true;
+            }
+            return false;
+        });
     }
 
-    public CoreCommand withTab(TabCompleter tab) {
-        return new CoreCommand(cmd, executor, check, tab, description, usage);
-    }
+    public <I extends T>CoreCommand<I> withCheckCast(Class<I> tClass) { return (CoreCommand<I>)withCheck(tClass::isInstance); }
 
-    public CoreCommand withTab(Func2<CommandSender, String[], Collection<String>> tab) {
-        return withTab((v0, v1, v2, v3) -> new ArrayList<>(tab.invoke(v0, v3)));
-    }
-
-    public CoreCommand withTab(Func1<CommandSender, Collection<String>> tab) {
-        return withTab((v0, v1, v2, v3) -> new ArrayList<>(tab.invoke(v0)));
-    }
-
-    public CoreCommand withTab(Func0<Collection<String>> tab) {
-        return withTab((v0, v1, v2, v3) -> new ArrayList<>(tab.invoke()));
-    }
-
-    public CoreCommand withTab(Collection<String> tab) {
-        return withTab((v0, v1, v2, v3) -> new ArrayList<>(tab));
-    }
-
-    public CoreCommand withTab(String... tab) {
-        return withTab(Arrays.asList(tab));
-    }
-
-    public CoreCommand withExecutor(CommandExecutor executor) {
-        return new CoreCommand(cmd, executor, check, tab, description, usage);
-    }
-
-    public CoreCommand withExecutor(Func2<CommandSender, String[], Boolean> executor) {
-        return withExecutor((v0, v1, v2, v3) -> executor.invoke(v0, v3));
-    }
-
-    public CoreCommand withExecutor(Func1<CommandSender, Boolean> executor) {
-        return withExecutor((v0, v1, v2, v3) -> executor.invoke(v0));
-    }
-
-    public CoreCommand withExecutor(Func0<Boolean> executor) {
-        return withExecutor((v0, v1, v2, v3) -> executor.invoke());
-    }
-
-    public CoreCommand withCheck(CommandExecutor check) {
-        return new CoreCommand(cmd, executor, check, tab, description, usage);
-    }
-
-    public CoreCommand withCheck(Func2<CommandSender, String[], Boolean> check) {
-        return withCheck((v0, v1, v2, v3) -> check.invoke(v0, v3));
-    }
-
-    public CoreCommand withCheck(Func1<CommandSender, Boolean> check) {
-        return withCheck((v0, v1, v2, v3) -> check.invoke(v0));
-    }
-
-    public CoreCommand withCheck(Func0<Boolean> check) {
-        return withCheck((v0, v1, v2, v3) -> check.invoke());
-    }
+    public CoreCommand<T> withDescription(String description) { return new CoreCommand<>(cmd, executor, check, tab, description, usage); }
+    public CoreCommand<T> withUsage(String usage) { return new CoreCommand<>(cmd, executor, check, tab, description, usage); }
 
     private static CommandExecutor combine(CommandExecutor executor1, CommandExecutor executor2) {
         return executor1 == null
@@ -96,40 +74,6 @@ public final class CoreCommand {
                 ? executor1
                 : (v0, v1, v2, v3) -> executor1.onCommand(v0, v1, v2, v3) && executor2.onCommand(v0, v1, v2, v3)
         );
-    }
-
-    public CoreCommand addCheck(CommandExecutor check) {
-        return new CoreCommand(cmd, executor, combine(this.check, check), tab, description, usage);
-    }
-
-    public CoreCommand addCheck(Func2<CommandSender, String[], Boolean> check) {
-        return addCheck((v0, v1, v2, v3) -> check.invoke(v0, v3));
-    }
-
-    public CoreCommand addCheck(Func1<CommandSender, Boolean> check) {
-        return addCheck((v0, v1, v2, v3) -> check.invoke(v0));
-    }
-
-    public CoreCommand addCheck(Func0<Boolean> check) {
-        return addCheck((v0, v1, v2, v3) -> check.invoke());
-    }
-
-    public CoreCommand addCheck(String... permissions) {
-        return addCheck((s, v1, v2, v3) -> {
-            for (String perm : permissions) {
-                if (s.hasPermission(perm))
-                    return true;
-            }
-            return false;
-        });
-    }
-
-    public CoreCommand withDescription(String description) {
-        return new CoreCommand(cmd, executor, check, tab, description, usage);
-    }
-
-    public CoreCommand withUsage(String usage) {
-        return new CoreCommand(cmd, executor, check, tab, description, usage);
     }
 
     private static <T extends AccessibleObject> T setAccessible(T obj) {

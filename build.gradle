@@ -34,7 +34,7 @@ targetCompatibility = '17'
 
 dependencies {
     compileOnly(
-            files(libPath((_mapped ? "paper-unmapped-" : "spigot-") + _version+".jar")),
+            files(libPath((_mapped ? "paper-unmapped-" : "spigot-") + _version+"-"+_build+".jar")),
             files(libPath("ProtocolLib.jar")),
             //files(libPath("JSEngine-3.0.5.jar")),
             files(libPath("nashorn-core-15.4.jar")),
@@ -364,6 +364,7 @@ copyToLib.doLast {
         Files.copy(Paths.get(projectDir.absolutePath, "build", "src", src_name), copied_src, StandardCopyOption.REPLACE_EXISTING)
     }
     println "End of time: " + java.time.LocalDate.now().toString() + " " + java.time.LocalTime.now().toString()
+    java.awt.Toolkit.getDefaultToolkit().beep();
 }
 
 build {

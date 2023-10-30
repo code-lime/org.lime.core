@@ -12,6 +12,9 @@ public class Execute {
     public static <T0> Func1<T0, Boolean> negative(Func1<T0, Boolean> func) { return (v0) -> !func.invoke(v0); }
     public static <T0,T1> Func2<T0, T1, Boolean> negative(Func2<T0, T1, Boolean> func) { return (v0,v1) -> !func.invoke(v0,v1); }
 
+    private static final Action0 EMPTY = () -> {};
+
+    public static Action0 actionEmpty() { return EMPTY; }
     public static Action0 action(Action0 action) { return action; }
     public static <T0> Action1<T0> action(Action1<T0> action) { return action; }
     public static ActionEx0 actionEx(ActionEx0 action) { return action; }

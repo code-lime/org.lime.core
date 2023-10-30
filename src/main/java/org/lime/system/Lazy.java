@@ -23,4 +23,9 @@ public class Lazy<T> {
     public static <T> Lazy<T> of(Func0<T> creator) {
         return new Lazy<>(creator);
     }
+
+    @Override
+    public String toString() {
+        return String.valueOf(value());
+    }
 }
