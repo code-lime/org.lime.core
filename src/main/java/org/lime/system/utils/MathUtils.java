@@ -163,6 +163,9 @@ Vector3f zAxis = new Vector3f(
             return quaternion;
         } else return new Quaternionf();
     }
+    public static Quaternionf quaternion(float yaw, float pitch) {
+        return new Quaternionf().rotateZYX(0, Math.toRadians(-yaw), Math.toRadians(pitch));
+    }
     public static JsonElement quaternion(Quaternionf quaternion) {
         return json.array()
                 .add(quaternion.x)
