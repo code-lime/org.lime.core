@@ -9,6 +9,9 @@ import org.bukkit.World;
 import org.bukkit.util.Vector;
 import org.joml.*;
 import org.joml.Math;
+import org.lime.docs.IIndexDocs;
+import org.lime.docs.IIndexGroup;
+import org.lime.docs.json.*;
 import org.lime.system.json;
 import org.lime.system.toast.*;
 
@@ -144,7 +147,7 @@ Vector3f zAxis = new Vector3f(
             Quaternionf quaternion = new Quaternionf();
             json.getAsJsonObject()
                     .entrySet()
-                    .forEach(kv -> quaternion.rotateAxis((float) Math.toRadians(kv.getValue().getAsFloat()), convert(getVector(kv.getKey()))));
+                    .forEach(kv -> quaternion.rotateAxis(Math.toRadians(kv.getValue().getAsFloat()), convert(getVector(kv.getKey()))));
             return quaternion;
         } else if (json.isJsonArray()) {
             JsonArray array = json.getAsJsonArray();
@@ -158,7 +161,7 @@ Vector3f zAxis = new Vector3f(
             Quaternionf quaternion = new Quaternionf();
             array.forEach(kv -> {
                 JsonObject step = kv.getAsJsonObject();
-                quaternion.rotateAxis((float) Math.toRadians(step.get("angle").getAsFloat()), convert(getVector(step.get("axis").getAsString())));
+                quaternion.rotateAxis(Math.toRadians(step.get("angle").getAsFloat()), convert(getVector(step.get("axis").getAsString())));
             });
             return quaternion;
         } else return new Quaternionf();
@@ -209,6 +212,7 @@ Vector3f zAxis = new Vector3f(
 
         return transformation(getLocation(null, json.getAsString(), false));
     }
+
     public static JsonObject transformation(Transformation transformation) {
         return json.object()
                 .add("offset", getString(convert(transformation.getTranslation())))
@@ -247,6 +251,81 @@ Vector3f zAxis = new Vector3f(
 
         Location location = new Location(null, 0, 0, 0).setDirection(new Vector(delta.x, delta.y, delta.z));
         return new Vector2f(location.getYaw(), location.getPitch());
+    }
+
+    public static IIndexGroup docsVectorInt(String index) {
+        return JsonGroup.of(index, IJElement.join(
+                IJElement.raw(1),
+                IJElement.text(" "),
+                IJElement.raw(2),
+                IJElement.text(" "),
+                IJElement.raw(3)
+        ), IComment.text("Набор из 3-х целых чисел"));
+    }
+
+    public static IIndexGroup docsVector(String index) {
+        return JsonGroup.of(index, IJElement.join(
+                IJElement.raw(1.5),
+                IJElement.text(" "),
+                IJElement.raw(2.5),
+                IJElement.text(" "),
+                IJElement.raw(3.5)
+        ), IComment.text("Набор из 3-х чисел"));
+    }
+    public static IIndexGroup docsLocation(String index, IIndexDocs vector) {
+        return JsonEnumInfo.of(index, IComment.text("Описание положения, поворота и наклона"))
+                .add(IJElement.link(vector))
+                .add(IJElement.join(
+                        IJElement.link(vector),
+                        IJElement.text(" "),
+                        IJElement.raw(22.5f),
+                        IJElement.text(" "),
+                        IJElement.raw(45.8f)
+                ));
+    }
+    public static IIndexGroup docsQuaternion(String index, IIndexDocs vector) {
+        return JsonEnumInfo.of(index, IComment.text("Описание поворота кветернионом"))
+                .add(IJElement.anyObject(
+                        JProperty.require(IName.link(vector), IJElement.raw(30.0))
+                ), IComment.text("Последовательный набор поворотов вокруг оси на определенный угл"))
+                .add(IJElement.anyList(
+                        JObject.of(
+                                JProperty.require(IName.raw("axis"), IJElement.link(vector), IComment.text("Ось")),
+                                JProperty.require(IName.raw("angle"), IJElement.raw(1.5), IComment.text("Угол поворота вокруг оси"))
+                        )
+                ), IComment.text("Последовательный набор поворотов вокруг оси на определенный угл"))
+                .add(IJElement.list(
+                        IJElement.raw(0.0),
+                        IJElement.raw(0.0),
+                        IJElement.raw(0.0),
+                        IJElement.raw(1.0)
+                ), IComment.join(
+                        IComment.text("Координаты "),
+                        IComment.field("X"),
+                        IComment.text(", "),
+                        IComment.field("Y"),
+                        IComment.text(", "),
+                        IComment.field("Z"),
+                        IComment.text(" и "),
+                        IComment.field("W"),
+                        IComment.text(" кватерниона")
+                ))
+                .add(IJElement.link(vector), IComment.text("Поворот по XYZ. ").append(IComment.warning("Не советую использовать при повороте более чем по 1 оси")));
+    }
+    public static IIndexGroup docsTransformation(String index, IIndexDocs vector, IIndexDocs quaternion, IIndexDocs location) {
+        return JsonEnumInfo.of(index)
+                .add(JObject.of(
+                        JProperty.optional(IName.raw("offset"), IJElement.link(vector), IComment.text("Смещение координатной сетки")),
+                        JProperty.optional(IName.raw("scale"), IJElement.link(vector), IComment.text("Увеличение координатной сетки")),
+                        JProperty.optional(IName.raw("rotation"), IJElement.or(
+                                JObject.of(
+                                        JProperty.optional(IName.raw("left"), IJElement.link(quaternion), IComment.text("Левый поворот")),
+                                        JProperty.optional(IName.raw("right"), IJElement.link(quaternion), IComment.text("Правый поворот"))
+                                ),
+                                IJElement.link(quaternion)
+                        ), IComment.text("Поворот координатной сетки"))
+                ))
+                .add(IJElement.link(location));
     }
 }
 

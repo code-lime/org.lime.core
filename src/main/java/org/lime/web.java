@@ -6,6 +6,7 @@ import org.lime.system.json;
 import org.lime.system.list;
 import org.lime.system.toast.*;
 
+import java.io.InputStream;
 import java.math.BigInteger;
 import java.net.URI;
 import java.net.URISyntaxException;
@@ -13,9 +14,12 @@ import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.net.http.HttpClient.Version;
+import java.nio.ByteBuffer;
 import java.nio.charset.StandardCharsets;
 import java.time.Duration;
 import java.util.*;
+import java.util.concurrent.CompletionStage;
+import java.util.concurrent.Flow;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
@@ -52,35 +56,53 @@ public class web {
             public builder setHeader(String name, String value) { base.setHeader(name, value); return this; }
 
             public <T> executor<T> custom(HttpResponse.BodyHandler<T> handler) { return of(base, handler); }
+            public executor<InputStream> stream() { return custom(HttpResponse.BodyHandlers.ofInputStream()); }
             public executor<byte[]> data() { return custom(HttpResponse.BodyHandlers.ofByteArray()); }
             public executor<Void> none() { return custom(HttpResponse.BodyHandlers.discarding()); }
             public executor<String> text() { return custom(HttpResponse.BodyHandlers.ofString()); }
             public executor<Stream<String>> lines() { return custom(HttpResponse.BodyHandlers.ofLines()); }
             public executor<JsonElement> json() { return text().map(json::parse); }
 
-            private static <T> Toast2<T, Integer> of(HttpResponse<T> response) {
-                return Toast.of(response.body(), response.statusCode());
+            private static <T> Toast3<T, Integer, Map<String, List<String>>> of(HttpResponse<T> response) {
+                return Toast.of(response.body(), response.statusCode(), response.headers().map());
             }
             private static <T> executor<T> of(HttpRequest.Builder base, HttpResponse.BodyHandler<T> handler) {
                 return new executor<>() {
-                    @Override public Toast2<T, Integer> execute() {
-                        try { return of(HttpClient.newBuilder().version(Version.HTTP_1_1).followRedirects(HttpClient.Redirect.ALWAYS).build().send(base.build(), handler)); }
+                    @Override public Toast3<T, Integer, Map<String, List<String>>> executeHeaders() {
+                        try {
+                            return of(HttpClient.newBuilder()
+                                .version(Version.HTTP_1_1)
+                                .followRedirects(HttpClient.Redirect.ALWAYS)
+                                .build()
+                                .send(base.build(), handler));
+                        }
                         catch (Exception e) { throw new IllegalArgumentException(e); }
                     }
-                    @Override public void executeAsync(Action2<T, Integer> callback) {
-                        core.instance._invokeAsync(this::execute, data -> callback.invoke(data.val0, data.val1));
+                    @Override public void executeHeadersAsync(Action3<T, Integer, Map<String, List<String>>> callback) {
+                        core.instance._invokeAsync(this::executeHeaders, data -> callback.invoke(data.val0, data.val1, data.val2));
                     }
                 };
             }
 
             public interface executor<T> {
-                Toast2<T, Integer> execute();
-                void executeAsync(Action2<T, Integer> callback);
+                Toast3<T, Integer, Map<String, List<String>>> executeHeaders();
+                void executeHeadersAsync(Action3<T, Integer, Map<String, List<String>>> callback);
+
+                default Toast2<T, Integer> execute() {
+                    return executeHeaders().invokeGet((a,b,c) -> Toast.of(a,b));
+                }
+                default void executeAsync(Action2<T, Integer> callback) {
+                    executeHeadersAsync((a,b,c) -> callback.invoke(a,b));
+                }
 
                 default <R> executor<R> map(Func1<T, R> map) {
                     return new executor<>() {
-                        @Override public Toast2<R, Integer> execute() { return executor.this.execute().map(map, v -> v); }
-                        @Override public void executeAsync(Action2<R, Integer> callback) { executor.this.executeAsync((k, v) -> callback.invoke(map.invoke(k), v)); }
+                        @Override public Toast3<R, Integer, Map<String, List<String>>> executeHeaders() {
+                            return executor.this.executeHeaders().map(map, v -> v, v -> v);
+                        }
+                        @Override public void executeHeadersAsync(Action3<R, Integer, Map<String, List<String>>> callback) {
+                            executor.this.executeHeadersAsync((a,b,c) -> callback.invoke(map.invoke(a), b, c));
+                        }
                     };
                 }
             }

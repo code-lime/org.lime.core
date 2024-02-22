@@ -5,7 +5,7 @@ import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.event.ClickEvent;
 import net.kyori.adventure.text.event.HoverEvent;
 import net.kyori.adventure.text.format.NamedTextColor;
-import net.kyori.adventure.text.serializer.legacy.LegacyComponentSerializer;
+import net.kyori.adventure.text.serializer.plain.PlainTextComponentSerializer;
 import org.bukkit.Bukkit;
 import org.bukkit.ChatColor;
 import org.bukkit.entity.Player;
@@ -78,9 +78,9 @@ public interface ILogger {
         });
     }
     default void _logOP(Component log) {
-        String legacy_log = LegacyComponentSerializer.legacySection().serialize(log);
-        _logToFile("log_admin", "[{time}] " + legacy_log);
-        _log(legacy_log);
+        String plain_log = PlainTextComponentSerializer.plainText().serialize(log);
+        _logToFile("log_admin", "[{time}] " + plain_log);
+        _log(plain_log);
         Bukkit.getOnlinePlayers().forEach(p -> {
             if (!p.isOp()) return;
             p.sendMessage(Component.text("["+getLogPrefix()+"] ").color(NamedTextColor.YELLOW).append(Component.empty().append(log).color(NamedTextColor.WHITE)));

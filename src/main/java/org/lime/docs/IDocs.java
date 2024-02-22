@@ -1,6 +1,6 @@
 package org.lime.docs;
 
-import org.lime.system.toast.*;
+import org.lime.system.execute.Func0;
 
 import java.util.List;
 import java.util.stream.Stream;
@@ -8,6 +8,9 @@ import java.util.stream.Stream;
 public interface IDocs {
     Stream<String> lines();
 
+    static IDocs remote(Func0<IDocs> docs) {
+        return () -> docs.invoke().lines();
+    }
     static IDocs style() {
         List<String> lines = List.of(
                 "<style>",
@@ -17,10 +20,13 @@ public interface IDocs {
                 "bool { color: #569CD6 }",
                 "warning { color: #FFFF00 }",
                 "any { color: Gray }",
+                "empty { font-size: 0px }",
                 "</style>"
         );
         return lines::stream;
     }
+
+    /*
     static IDocs indexing(Stream<IIndexDocs> docsList) {
         return () -> {
             Toast1<Integer> number = Toast.of(0);
@@ -30,6 +36,7 @@ public interface IDocs {
             });
         };
     }
+    */
 }
 
 

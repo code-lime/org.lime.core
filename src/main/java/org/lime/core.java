@@ -83,12 +83,17 @@ public class core extends CoreLoader {
                     class_name = class_name.substring(0, class_name.length() - 6).replace('/', '.');
                     try {
                         Class<?> tClass = loader.loadClass(class_name);
-                        Method method = tClass.getDeclaredMethod("create");
+                        Method method = reflection.access(tClass.getDeclaredMethod("create"));
                         if (!Modifier.isStatic(method.getModifiers())) return;
                         if (method.getReturnType() != CoreElement.class) return;
                         if (elements.stream().anyMatch(v -> v.tClass == tClass)) return;
                         other.add(add((CoreElement)method.invoke(null)));
-                    } catch (Throwable ignored) { }
+                    } catch (NoSuchMethodException ignored) {
+
+                    } catch (Throwable e) {
+                        core.instance._logOP("ERROR LOAD: " + class_name);
+                        core.instance._logStackTrace(e);
+                    }
                 });
             }
             catch (Exception e) {

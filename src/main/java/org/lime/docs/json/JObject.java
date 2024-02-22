@@ -2,8 +2,8 @@ package org.lime.docs.json;
 
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.Streams;
+import org.lime.docs.IIndexDocs;
 
-import java.util.Collection;
 import java.util.Iterator;
 import java.util.List;
 import java.util.stream.IntStream;
@@ -27,13 +27,13 @@ public record JObject(
     public JObject add(IJProperty... property) { return new JObject(this, List.of(property), false); }
     public JObject addFirst(IJProperty... property) { return new JObject(this, List.of(property), true); }
 
-    @Override public Stream<String> lines() {
+    @Override public Stream<String> lines(IIndexDocs current) {
         int count = properties.size();
         return count == 0 ? Stream.of("{}") : Streams.concat(
                 Stream.of("{"),
                 IntStream.range(0, count)
                     .boxed()
-                    .flatMap(i -> properties.get(i).lines(i == count - 1))
+                    .flatMap(i -> properties.get(i).lines(current, i == count - 1))
                     .map(v -> "\t" + v),
                 Stream.of("}")
         );

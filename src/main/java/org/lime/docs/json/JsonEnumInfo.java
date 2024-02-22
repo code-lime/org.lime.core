@@ -3,9 +3,9 @@ package org.lime.docs.json;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.Streams;
-import org.lime.system.toast.*;
-import org.lime.docs.IIndexDocs;
-import org.lime.docs.IIndexGroup;
+import org.lime.docs.BaseGroup;
+import org.lime.system.toast.Toast;
+import org.lime.system.toast.Toast2;
 
 import javax.annotation.Nullable;
 import java.util.Arrays;
@@ -14,70 +14,72 @@ import java.util.Optional;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
-public final class JsonEnumInfo implements IIndexGroup {
-    private final String title;
-    private final String index;
-    private final ImmutableMap<IJElement, Optional<IComment>> items;
-
-    @Override public String title() { return title; }
-    @Override public String index() {return index; }
-    public ImmutableMap<IJElement, Optional<IComment>> items() { return items; }
-
-    private IIndexDocs parent = null;
-    @Override @Nullable public IIndexDocs parent() { return parent; }
-    @Override public void setParent(@Nullable IIndexGroup parent) { this.parent = parent; }
-
-    public JsonEnumInfo(String title, String index, ImmutableMap<IJElement, Optional<IComment>> items) {
-        this.title = title;
-        this.index = index;
-        this.items = items;
+public final class JsonEnumInfo extends BaseGroup<ImmutableMap<IJElement, Optional<IComment>>> {
+    public JsonEnumInfo(String title, String index, ImmutableMap<IJElement, Optional<IComment>> element, ImmutableList<IComment> comments) {
+        super(title, index, element, comments);
     }
-    public JsonEnumInfo(JsonEnumInfo old, IJElement item, Optional<IComment> comment) {
+    public JsonEnumInfo(JsonEnumInfo old, IJElement item, @Nullable IComment comment) {
         this(old.title(), old.index(), ImmutableMap.<IJElement, Optional<IComment>>builder()
-                .putAll(old.items())
-                .put(item, comment)
-                .build()
-        );
+                .putAll(old.element())
+                .put(item, Optional.ofNullable(comment))
+                .build(), old.comments());
     }
 
-    public static JsonEnumInfo of(String title, String index, ImmutableMap<IJElement, Optional<IComment>> items) { return new JsonEnumInfo(title, index, items); }
-    public static JsonEnumInfo of(String title, String index, ImmutableList<IJElement> items) { return new JsonEnumInfo(title, index, items.stream().collect(ImmutableMap.toImmutableMap(k -> k, k -> Optional.empty()))); }
-    public static JsonEnumInfo of(String title, String index) { return new JsonEnumInfo(title, index, ImmutableMap.of()); }
-    public static <T extends Enum<T>>JsonEnumInfo of(String title, String index, Class<T> tEnum) {
-        return of(title, index, Arrays.stream(tEnum.getEnumConstants())
-                .map(Enum::name)
-                .map(IJElement::raw)
-                .collect(ImmutableList.toImmutableList())
-        );
+    private static <T extends Enum<T>>Toast2<IJElement, Optional<IComment>> getElementOf(T value) {
+        IJElement element = null;
+        IComment comment = null;
+        if (value instanceof IEnumDocs docs) {
+            element = docs.docsElement();
+            comment = docs.docsComment();
+        }
+        if (element == null) element = IJElement.raw(value.name());
+        return Toast.of(element, Optional.ofNullable(comment));
     }
 
-    public static JsonEnumInfo of(String title, ImmutableMap<IJElement, Optional<IComment>> items) { return of(title, title.toLowerCase(), items); }
-    public static JsonEnumInfo of(String title, ImmutableList<IJElement> items) { return of(title, title.toLowerCase(), items); }
-    public static JsonEnumInfo of(String title) { return of(title, title.toLowerCase()); }
-    public static <T extends Enum<T>>JsonEnumInfo of(String title, Class<T> tEnum) { return of(title, title.toLowerCase(), tEnum); }
+    public static JsonEnumInfo of(String title, String index, ImmutableMap<IJElement, Optional<IComment>> items, IComment... comments) {
+        return new JsonEnumInfo(title, index, items, ImmutableList.copyOf(comments));
+    }
+    public static JsonEnumInfo of(String title, String index, ImmutableList<IJElement> items, IComment... comments) {
+        return new JsonEnumInfo(title, index, items.stream().collect(ImmutableMap.toImmutableMap(k -> k, k -> Optional.empty())), ImmutableList.copyOf(comments));
+    }
+    public static JsonEnumInfo of(String title, String index, IComment... comments) { return new JsonEnumInfo(title, index, ImmutableMap.of(), ImmutableList.copyOf(comments)); }
+    public static <T extends Enum<T>>JsonEnumInfo of(String title, String index, Class<T> tEnum, IComment... comments) {
+        return of(title, index, Arrays.stream(tEnum.getEnumConstants()), comments);
+    }
+    public static <T extends Enum<T>>JsonEnumInfo of(String title, String index, Stream<T> values, IComment... comments) {
+        return of(title, index, values
+                        .map(JsonEnumInfo::getElementOf)
+                        .collect(ImmutableMap.toImmutableMap(k -> k.val0, v -> v.val1)),
+                comments);
+    }
 
-    public JsonEnumInfo add(IJElement item) { return add(item, Optional.empty()); }
-    public JsonEnumInfo add(IJElement item, Optional<IComment> comment) { return new JsonEnumInfo(this, item, comment); }
+    public static JsonEnumInfo of(String title, ImmutableMap<IJElement, Optional<IComment>> items, IComment... comments) { return of(title, title.toLowerCase(), items, comments); }
+    public static JsonEnumInfo of(String title, ImmutableList<IJElement> items, IComment... comments) { return of(title, title.toLowerCase(), items, comments); }
+    public static JsonEnumInfo of(String title, IComment... comments) { return of(title, title.toLowerCase(), comments); }
+    public static <T extends Enum<T>>JsonEnumInfo of(String title, Class<T> tEnum, IComment... comments) { return of(title, title.toLowerCase(), tEnum, comments); }
+    public static <T extends Enum<T>>JsonEnumInfo of(String title, Stream<T> values, IComment... comments) { return of(title, title.toLowerCase(), values, comments); }
 
-    @Override public Stream<String> context() {
+    public JsonEnumInfo add(IJElement item) { return add(item, null); }
+    public JsonEnumInfo add(IJElement item, @Nullable IComment comment) { return new JsonEnumInfo(this, item, comment); }
+
+    @Override public Stream<String> elementContext() {
         return Streams.concat(
                 Stream.of("<pre><code>Список возможных значений:"),
-                items.entrySet().stream().flatMap(kv -> item(kv.getKey(), kv.getValue())),
+                element().entrySet().stream().flatMap(kv -> item(kv.getKey(), kv.getValue())),
                 Stream.of("</code></pre>")
         );
     }
 
     private Stream<String> item(IJElement item, Optional<IComment> comment) {
-        Toast1<Integer> i = Toast.of(-1);
-        List<String> lines = item.lines().collect(Collectors.toList());
+        List<String> lines = item.lines(this).collect(Collectors.toList());
         int size = lines.size();
         return switch (size) {
-            case 0 -> throw new IllegalArgumentException("LINES IS ZERO IN ENUM INFO " + title);
-            case 1 -> Stream.of("<warning> - </warning>" + lines.get(0) + comment.map(IComment::build).map(v -> " " + v).orElse(""));
+            case 0 -> throw new IllegalArgumentException("LINES IS ZERO IN ENUM INFO " + title());
+            case 1 -> Stream.of("<warning>- </warning>" + lines.get(0) + comment.map(v -> v.build(this)).map(v -> " " + v).orElse(""));
             default -> {
                 String first = lines.remove(0);
                 yield Streams.concat(
-                        Stream.of("<warning> - </warning>" + first + comment.map(IComment::build).map(v -> " " + v).orElse("")),
+                        Stream.of("<warning>- </warning>" + first + comment.map(v -> v.build(this)).map(v -> " " + v).orElse("")),
                         lines.stream());
             }
         };

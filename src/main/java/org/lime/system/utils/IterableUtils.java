@@ -12,6 +12,7 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.Consumer;
 import java.util.function.Function;
 import java.util.function.Predicate;
+import java.util.stream.IntStream;
 import java.util.stream.Stream;
 import java.util.stream.StreamSupport;
 
@@ -86,4 +87,10 @@ public class IterableUtils {
         }
     }
 
+    public static <T>Stream<Toast2<Integer, T>> streamIndexed(T[] array) {
+        return IntStream.range(0, array.length).mapToObj(i -> Toast.of(i, array[i]));
+    }
+    public static <T>Stream<Toast2<Integer, T>> streamIndexed(List<T> list) {
+        return IntStream.range(0, list.size()).mapToObj(i -> Toast.of(i, list.get(i)));
+    }
 }

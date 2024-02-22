@@ -3,7 +3,7 @@ package org.lime.docs;
 import java.util.stream.Stream;
 
 public interface IParentGroup extends IIndexGroup {
-    Stream<IGroup> childs();
+    Stream<? extends IGroup> childs();
 
     @Override default Stream<String> lines() {
         return Stream.concat(
@@ -25,7 +25,7 @@ public interface IParentGroup extends IIndexGroup {
                                         if (end) break;
                                         v = v.substring(1);
                                     }
-                                    if (v.startsWith("#")) v = " #" + v;
+                                    if (!v.startsWith("# "+RAW_HREF_PREFIX) && v.startsWith("#")) v = " #" + v;
                                     return ">".repeat(level + 1) + v;
                                 })
                         ))

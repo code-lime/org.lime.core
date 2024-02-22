@@ -140,7 +140,7 @@ public class autodownload implements IUpdateConfig, ICore {
                                     json = base_core._combineJson(json, item, false).getAsJsonObject();
                                     return json;
                                 });
-                                case "js" -> jsDirs.compute(path[0], (k, text) -> {
+                                case "js", "txt" -> jsDirs.compute(path[0], (k, text) -> {
                                     if (text == null) text = new StringBuilder();
                                     text.append(StandardCharsets.UTF_8.decode(ByteBuffer.wrap(bytes))).append("\n");
                                     return text;
