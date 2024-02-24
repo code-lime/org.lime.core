@@ -1,5 +1,9 @@
 package org.lime.system;
 
+import com.caoccao.javet.values.V8Value;
+import com.caoccao.javet.values.reference.IV8ValueObject;
+import com.caoccao.javet.values.reference.V8ValueArray;
+import com.caoccao.javet.values.reference.V8ValueObject;
 import com.google.gson.*;
 import com.google.gson.stream.JsonReader;
 import com.google.gson.stream.JsonWriter;
@@ -13,7 +17,6 @@ import org.lime.system.execute.Func1;
 import org.lime.system.toast.Toast;
 import org.lime.system.toast.Toast2;
 import org.lime.system.utils.IterableUtils;
-import org.openjdk.nashorn.api.scripting.JSObject;
 
 import javax.annotation.Nullable;
 import java.io.IOException;
@@ -43,13 +46,13 @@ public class json {
         public static builder<?> byObject(Object value) {
             if (value == null) return builder.element.create();
             else if (value instanceof builder<?> dat) return dat;
-            else if (value instanceof JSObject dat && dat.isArray()) return byObject(dat.values());
             else if (value instanceof String dat) return builder.element.create(dat);
             else if (value instanceof Number dat) return builder.element.create(dat);
             else if (value instanceof Boolean dat) return builder.element.create(dat);
             else if (value instanceof Character dat) return builder.element.create(dat);
             else if (value instanceof Enum<?> dat) return builder.element.create(dat.name());
             else if (value instanceof JsonElement dat) return builder.element.create(dat);
+            else if (rawJson.check(value)) return rawJson.get(value);
             else if (value instanceof Map<?, ?> dat) return object().add(dat, String::valueOf, v -> v);
             else if (value instanceof Iterable<?> dat) return array().add(dat, v -> v);
             else if (value.getClass().isArray()) return byObject(toList(value));

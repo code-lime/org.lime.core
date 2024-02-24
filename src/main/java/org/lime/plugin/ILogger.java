@@ -148,7 +148,7 @@ public interface ILogger {
     default void _logStackTrace(Throwable exception) {
         Throwable target = exception;
         while (target != null) {
-            _logOP(ChatColor.RED + target.getMessage());
+            _logOP(ChatColor.RED + target.getClass().getName() + ": " + target.getMessage());
             _logStackTrace(target.getStackTrace());
             target = target.getCause();
         }

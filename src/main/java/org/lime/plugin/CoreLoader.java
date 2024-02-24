@@ -7,11 +7,10 @@ import org.bukkit.permissions.ServerOperator;
 import org.bukkit.plugin.Plugin;
 import org.bukkit.plugin.PluginManager;
 import org.bukkit.plugin.java.JavaPlugin;
-import org.lime.LibraryClassLoader;
-import org.lime._system;
 import org.lime.core;
-import org.lime.system.Regex;
+import org.lime.dependency.LibraryClassLoader;
 import org.lime.system.execute.*;
+import patch.Patcher;
 
 import java.io.File;
 import java.util.*;
@@ -31,16 +30,9 @@ public abstract class CoreLoader extends JavaPlugin implements ITimer, ICombineJ
     protected abstract Map<String, CoreCommand<?>> commands();
     protected abstract Optional<IUpdateConfig> config();
 
-    private static final LibraryClassLoader nashornLoader;
     static {
         System.out.println("CoreLoader.Starting...");
-        File nashorn = IConfig.getLibraryFile("nashorn-core-15.4.jar");
-        if (nashorn.exists()) {
-            nashornLoader = new LibraryClassLoader(core.class, List.of(nashorn));
-            nashornLoader.load();
-        } else {
-            nashornLoader = null;
-        }
+        //org.lime.dependency.loader.load(core.class, IConfig.getLibraryFile("javet-3.0.4.jar"));
         System.out.println("CoreLoader.OK!");
     }
 
@@ -50,6 +42,8 @@ public abstract class CoreLoader extends JavaPlugin implements ITimer, ICombineJ
         }
 
         if (core.instance == null) {
+            Patcher.patch();
+
             core.instance = _core;
             init_core();
             return;
@@ -96,7 +90,6 @@ public abstract class CoreLoader extends JavaPlugin implements ITimer, ICombineJ
     }
 
     private void init_core() {
-        rawLibrary(nashornLoader);
         add("update.data", cmd -> cmd
                 .withCheck(ServerOperator::isOp)
                 .withTab((sender, args) -> {

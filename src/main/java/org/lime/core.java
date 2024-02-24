@@ -2,10 +2,13 @@ package org.lime;
 
 import com.google.common.collect.Streams;
 
+import org.bukkit.Bukkit;
 import org.bukkit.plugin.java.PluginClassLoader;
+import org.lime.dependency.LibraryClassLoader;
 import org.lime.invokable.IInvokable;
 import org.lime.plugin.*;
 import org.lime.system.execute.Func1;
+import patch.core.MutatePatcher;
 
 import java.io.*;
 import java.lang.reflect.Method;
@@ -18,6 +21,14 @@ import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 public class core extends CoreLoader {
+    static {
+        /*ILogger logger = () -> "RAW";
+        logger._logStackTrace();
+*/
+        MutatePatcher.register();
+    }
+
+    public static final boolean isInitLoader = Bukkit.getWorlds().isEmpty();
     public static core instance;
 
     @Override public String getLogPrefix() { return "LIME:" + this.getName().toUpperCase(); }
