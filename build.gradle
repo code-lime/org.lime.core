@@ -37,7 +37,12 @@ dependencies {
             files(libPath((_mapped ? "paper-unmapped-" : "spigot-") + _version+"-"+_build+".jar")),
             files(libPath("ProtocolLib.jar")),
             //files(libPath("JSEngine-3.0.5.jar")),
-            files(libPath("nashorn-core-15.4.jar")),
+            files(libPath("graaljs/graal-sdk-23.0.3.jar")),
+            files(libPath("graaljs/icu4j-72.1.jar")),
+            files(libPath("graaljs/js-23.0.3.jar")),
+            files(libPath("graaljs/js-scriptengine-23.0.3.jar")),
+            files(libPath("graaljs/regex-23.0.3.jar")),
+            files(libPath("graaljs/truffle-api-23.0.3.jar")),
     )
 }
 

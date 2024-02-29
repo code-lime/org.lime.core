@@ -2,27 +2,30 @@ package org.lime;
 
 import com.google.common.collect.Streams;
 import com.google.gson.JsonElement;
+import com.oracle.truffle.js.scriptengine.GraalJSScriptEngine;
 import org.bukkit.scheduler.BukkitTask;
-import org.lime.plugin.ICore;
+import org.graalvm.polyglot.Context;
+import org.graalvm.polyglot.HostAccess;
 import org.lime.plugin.CoreElement;
+import org.lime.plugin.ICore;
 import org.lime.system.execute.Action1;
 import org.lime.system.json;
-import org.openjdk.nashorn.api.scripting.JSObject;
-import org.openjdk.nashorn.api.scripting.NashornScriptEngine;
-import org.openjdk.nashorn.api.scripting.NashornScriptEngineFactory;
-import org.openjdk.nashorn.api.scripting.ScriptObjectMirror;
-import javax.annotation.Nullable;
-import javax.script.*;
 
+import javax.annotation.Nullable;
+import javax.script.Bindings;
+import javax.script.ScriptContext;
 import java.lang.reflect.Array;
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentLinkedQueue;
+import java.util.function.Function;
 import java.util.regex.Pattern;
 
 public class JavaScript implements ICore {
-    private static NashornScriptEngine engine;
-    private static NashornScriptEngineFactory factory = new NashornScriptEngineFactory();
+    private static GraalJSScriptEngine engine;
+    private static Context context;
+    private static Map<?,?> global;
+    private final static long mainThread = Thread.currentThread().threadId();
 
     public static CoreElement create() { return new JavaScript()._create(); }
     private CoreElement _create() {
@@ -44,48 +47,59 @@ public class JavaScript implements ICore {
 
     private static final String FUNCTION_PREFIX = "FUNCTION ";
     private static final int FUNCTION_PREFIX_LENGTH = FUNCTION_PREFIX.length();
-    private Object invokeFunction(JSObject global, String methodPath) throws Exception {
+    private Object invokeFunction(Map<?, ?> global, String methodPath) throws Exception {
         return invokeFunction(global, methodPath, null);
     }
-    private Object invokeFunction(JSObject global, String methodPath, @Nullable Object[] args) throws Exception {
+    private Object invokeFunction(Map<?, ?> global, String methodPath, @Nullable Object[] args) throws Exception {
         if (!methodPath.contains("."))
             return args == null ? engine.invokeFunction(methodPath) : engine.invokeFunction(methodPath, args);
-        JSObject function = global;
+        Map<?, ?> partElement = global;
         for (String part : methodPath.split(Pattern.quote(".")))
-            function = (JSObject)function.getMember(part);
-        return args == null ? function.call(null) : function.call(null, args);
+            partElement = (Map<?, ?>)partElement.get(part);
+        Function<Object[], Object> function = (Function<Object[], Object>) partElement;
+        return args == null ? function.apply(new Object[0]) : function.apply(args);
     }
     private Object eval(String script) throws Exception {
         return eval(script, null);
     }
     private Object eval(String script, @Nullable Map<String, Object> values) throws Exception {
-        if (!script.startsWith(FUNCTION_PREFIX)) {
-            if (values == null || values.isEmpty()) return engine.eval(script);
-            return engine.eval(script, new ArgsBinding(values, engine.getBindings(ScriptContext.ENGINE_SCOPE)));
+        boolean isAsync = mainThread != Thread.currentThread().threadId();
+        try {
+            if (isAsync)
+                context.enter();
+            if (!script.startsWith(FUNCTION_PREFIX)) {
+                if (values == null || values.isEmpty()) return engine.eval(script);
+                return engine.eval(script, new ArgsBinding(values, engine.getBindings(ScriptContext.ENGINE_SCOPE)));
+            }
+            script = script.substring(FUNCTION_PREFIX_LENGTH).replace(" ", "");
+
+            int startFunc = script.indexOf('(');
+            if (startFunc == -1) return engine.invokeFunction(script);
+
+            int endFunc = script.indexOf(')');
+
+            String methodName = script.substring(0, startFunc);
+            String methodArgsLine = script.substring(startFunc + 1, endFunc);
+
+            //engine.getBindings(ScriptContext.ENGINE_SCOPE).forEach((k,v) -> System.out.println(k + ": " + v));
+
+            //JSObject global = (JSObject)engine.get(GraalJSScriptEngine.NASHORN_GLOBAL);
+            if (methodArgsLine.length() == 0) return invokeFunction(global, methodName);
+
+            String[] methodArgs = script.substring(startFunc + 1, endFunc).split(",");
+            int argsLength = methodArgs.length;
+            Object[] args = new Object[argsLength];
+            for (int i = 0; i < argsLength; i++) {
+                String arg = methodArgs[i].trim();
+                args[i] = values != null && values.containsKey(arg)
+                        ? values.get(arg)
+                        : global.get(arg);
+            }
+            return invokeFunction(global, methodName, args);
+        } finally {
+            if (isAsync)
+                context.leave();
         }
-        script = script.substring(FUNCTION_PREFIX_LENGTH).replace(" ", "");
-
-        int startFunc = script.indexOf('(');
-        if (startFunc == -1) return engine.invokeFunction(script);
-
-        int endFunc = script.indexOf(')');
-
-        String methodName = script.substring(0, startFunc);
-        String methodArgsLine = script.substring(startFunc + 1, endFunc);
-
-        JSObject global = (JSObject)engine.get(NashornScriptEngine.NASHORN_GLOBAL);
-        if (methodArgsLine.length() == 0) return invokeFunction(global, methodName);
-
-        String[] methodArgs = script.substring(startFunc + 1, endFunc).split(",");
-        int argsLength = methodArgs.length;
-        Object[] args = new Object[argsLength];
-        for (int i = 0; i < argsLength; i++) {
-            String arg = methodArgs[i].trim();
-            args[i] = values != null && values.containsKey(arg)
-                    ? values.get(arg)
-                    : global.getMember(arg);
-        }
-        return invokeFunction(global, methodName, args);
     }
 
     public void init() {
@@ -111,11 +125,17 @@ public class JavaScript implements ICore {
         }
         instances.values().forEach(v -> v.inits.forEach(BukkitTask::cancel));
 
-        engine = (NashornScriptEngine)factory.getScriptEngine();
-        engine.getContext().setBindings(new SimpleBindings(new ConcurrentHashMap<>()), ScriptContext.ENGINE_SCOPE);
+        engine = GraalJSScriptEngine.create(null, Context.newBuilder()
+                .allowHostAccess(HostAccess.ALL)
+                .allowHostClassLookup(v -> true)
+                .logHandler(System.out));
+        context = engine.getPolyglotContext();
+
+        //engine.getContext().setBindings(new SimpleBindings(new ConcurrentHashMap<>()), ScriptContext.ENGINE_SCOPE);
         base_core._logOP("JavaScriptEngine: " + engine.getClass().getName());
         String loadModule = "???";
         try {
+            global = (Map<?, ?>)engine.eval("this");
             for (Map.Entry<String, String> kv : _modules.entrySet()) {
                 loadModule = kv.getKey();
                 eval(kv.getValue());
@@ -190,9 +210,12 @@ public class JavaScript implements ICore {
     public Optional<JsonElement> getJsJson(String js, Map<String, Object> values) {
         try
         {
+            return Optional.of(json.by(eval(js, values)).build());
+            /*
             return invoke("JSON.stringify(value)", Collections.singletonMap("value", eval(js, values)))
                 .map(value -> value instanceof String str ? str : value.toString())
                 .map(json::parse);
+            */
         }
         catch (Exception e) {
             base_core._logOP("JS ERROR");
@@ -207,7 +230,7 @@ public class JavaScript implements ICore {
         {
             Object value = eval(js);
             if (value == null) callback.invoke(null);
-            else if (value instanceof ScriptObjectMirror som && som.isFunction()) som.call(null, (Action1<Object>) v -> callback.invoke(v instanceof String str ? str : v.toString()));
+            else if (value instanceof Function) ((Function<Object[], Object>)value).apply(new Object[] { (Action1<Object>) v -> callback.invoke(v instanceof String str ? str : v.toString()) });
             else callback.invoke(value instanceof String str ? str : value.toString());
         }
         catch (Exception e) {

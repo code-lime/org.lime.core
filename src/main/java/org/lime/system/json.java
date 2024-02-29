@@ -13,7 +13,6 @@ import org.lime.system.execute.Func1;
 import org.lime.system.toast.Toast;
 import org.lime.system.toast.Toast2;
 import org.lime.system.utils.IterableUtils;
-import org.openjdk.nashorn.api.scripting.JSObject;
 
 import javax.annotation.Nullable;
 import java.io.IOException;
@@ -43,7 +42,6 @@ public class json {
         public static builder<?> byObject(Object value) {
             if (value == null) return builder.element.create();
             else if (value instanceof builder<?> dat) return dat;
-            else if (value instanceof JSObject dat && dat.isArray()) return byObject(dat.values());
             else if (value instanceof String dat) return builder.element.create(dat);
             else if (value instanceof Number dat) return builder.element.create(dat);
             else if (value instanceof Boolean dat) return builder.element.create(dat);

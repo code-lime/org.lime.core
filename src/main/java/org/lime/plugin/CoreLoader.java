@@ -8,9 +8,7 @@ import org.bukkit.plugin.Plugin;
 import org.bukkit.plugin.PluginManager;
 import org.bukkit.plugin.java.JavaPlugin;
 import org.lime.LibraryClassLoader;
-import org.lime._system;
 import org.lime.core;
-import org.lime.system.Regex;
 import org.lime.system.execute.*;
 
 import java.io.File;
@@ -31,16 +29,22 @@ public abstract class CoreLoader extends JavaPlugin implements ITimer, ICombineJ
     protected abstract Map<String, CoreCommand<?>> commands();
     protected abstract Optional<IUpdateConfig> config();
 
-    private static final LibraryClassLoader nashornLoader;
+    private static final LibraryClassLoader coreLoader;
     static {
         System.out.println("CoreLoader.Starting...");
-        File nashorn = IConfig.getLibraryFile("nashorn-core-15.4.jar");
-        if (nashorn.exists()) {
-            nashornLoader = new LibraryClassLoader(core.class, List.of(nashorn));
-            nashornLoader.load();
-        } else {
-            nashornLoader = null;
-        }
+        var libs = Stream.of(
+                "graal-sdk-23.0.3.jar",
+                "icu4j-72.1.jar",
+                "js-23.0.3.jar",
+                "js-scriptengine-23.0.3.jar",
+                "regex-23.0.3.jar",
+                "truffle-api-23.0.3.jar")
+                .map(v -> "graaljs/" + v)
+                .map(IConfig::getLibraryFile)
+                .toList();
+        coreLoader = new LibraryClassLoader(core.class, libs);
+        coreLoader.load();
+
         System.out.println("CoreLoader.OK!");
     }
 
@@ -96,7 +100,7 @@ public abstract class CoreLoader extends JavaPlugin implements ITimer, ICombineJ
     }
 
     private void init_core() {
-        rawLibrary(nashornLoader);
+        rawLibrary(coreLoader);
         add("update.data", cmd -> cmd
                 .withCheck(ServerOperator::isOp)
                 .withTab((sender, args) -> {
