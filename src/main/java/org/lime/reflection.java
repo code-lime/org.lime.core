@@ -239,6 +239,10 @@ public class reflection {
             reflection.nonFinal(field);
             return this;
         }
+        public field<T> access() {
+            reflection.access(field);
+            return this;
+        }
         public void set(Object instance, T value) {
             try { field.set(instance, value); }
             catch (IllegalAccessException e) { throw new IllegalArgumentException(e); }
@@ -311,10 +315,10 @@ public class reflection {
         }
 
         public void set(String name, Object value) {
-            field.of(tClass, name).nonFinal().set(this.value, value instanceof dynamic<?> dynamic ? dynamic : value);
+            field.of(tClass, name).nonFinal().access().set(this.value, value instanceof dynamic<?> dynamic ? dynamic : value);
         }
         public void setMojang(String name, Object value) {
-            field.ofMojang(tClass, name).nonFinal().set(this.value, value instanceof dynamic<?> dynamic ? dynamic : value);
+            field.ofMojang(tClass, name).nonFinal().access().set(this.value, value instanceof dynamic<?> dynamic ? dynamic : value);
         }
 
         @Override public String toString() {
