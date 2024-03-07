@@ -45,185 +45,154 @@ import java.util.logging.Level;
 import java.util.regex.Pattern;
 
 public class JavaScript implements ICore {
-    private static class ContextMultithreading implements AutoCloseable {
-        private record ContextEngine(long id, GraalJSScriptEngine engine, Context context, Bindings bindings, Map<?,?> global) { }
-        private record ValueCache(Object raw, long time) {
-            public ValueCache(Object raw) {
-                this(raw, System.currentTimeMillis());
-            }
-        }
-        public static class ContextFrame implements AutoCloseable {
-            private final ContextEngine contextEngine;
-            private final ConcurrentHashMap<String, ValueCache> globalValues;
-            private ContextFrame(ContextEngine contextEngine, ConcurrentHashMap<String, ValueCache> globalValues) {
-                this.contextEngine = contextEngine;
-                this.globalValues = globalValues;
-            }
+    private static class LanguageAccessorProxy extends Accessor.LanguageSupport {
+        public Accessor.LanguageSupport base;
 
-            public GraalJSScriptEngine engine() {
-                return contextEngine.engine();
-            }
-            public Context context() {
-                return contextEngine.context();
-            }
-            public Map<?,?> global() {
-                return contextEngine.global();
-            }
-
-            public void open() {
-                Bindings bindings = contextEngine.bindings();
-                Toast1<Integer> counter = Toast.of(0);
-                globalValues.forEach((key, value) -> bindings.compute(key, (k, v) -> {
-                    if (v == null || !Objects.equals(v, value.raw))
-                    {
-                        counter.val0++;
-                        return value.raw;
-                    }
-                    return v;
-                }));
-            }
-            @Override public void close() {
-                Bindings bindings = contextEngine.bindings();
-                Toast1<Integer> counter = Toast.of(0);
-                bindings.forEach((key, value) -> globalValues.compute(key, (k, v) -> {
-                    if (v == null || !Objects.equals(v.raw, value)) {
-                        counter.val0++;
-                        return new ValueCache(value);
-                    }
-                    return v;
-                }));
-            }
+        public static LanguageAccessorProxy create(Accessor.LanguageSupport base) {
+            LanguageAccessorProxy proxy = unsafe.createInstance(LanguageAccessorProxy.class);
+            proxy.base = base;
+            return proxy;
         }
 
-        private static class LanguageAccessorProxy extends Accessor.LanguageSupport {
-            public Accessor.LanguageSupport base;
-
-            public static LanguageAccessorProxy create(Accessor.LanguageSupport base) {
-                LanguageAccessorProxy proxy = unsafe.createInstance(LanguageAccessorProxy.class);
-                proxy.base = base;
-                return proxy;
-            }
-
-            @Override public void initializeLanguage(TruffleLanguage<?> impl, LanguageInfo language, Object polyglotLanguage, Object polyglotLanguageInstance) { base.initializeLanguage(impl,language, polyglotLanguage, polyglotLanguageInstance); }
-            @Override public TruffleLanguage.Env createEnv(Object polyglotLanguageContext, TruffleLanguage<?> language, OutputStream stdOut, OutputStream stdErr, InputStream stdIn, Map<String, Object> config, OptionValues options, String[] applicationArguments) { return base.createEnv(polyglotLanguageContext, language, stdOut, stdErr, stdIn, config, options, applicationArguments); }
-            @Override public boolean areOptionsCompatible(TruffleLanguage<?> language, OptionValues firstContextOptions, OptionValues newContextOptions) { return base.areOptionsCompatible(language, firstContextOptions, newContextOptions); }
-            @Override public Object createEnvContext(TruffleLanguage.Env localEnv, List<Object> servicesCollector) { return base.createEnvContext(localEnv, servicesCollector); }
-            @Override public TruffleContext createTruffleContext(Object impl, boolean creator) { return base.createTruffleContext(impl, creator); }
-            @Override public void postInitEnv(TruffleLanguage.Env env) { base.postInitEnv(env); }
-            @Override public Object evalInContext(Source source, Node node, MaterializedFrame frame) { return base.evalInContext(source, node, frame); }
-            @Override public void dispose(TruffleLanguage.Env env) { base.dispose(env); }
-            @Override public LanguageInfo getLanguageInfo(TruffleLanguage.Env env) { return base.getLanguageInfo(env); }
-            @Override public LanguageInfo getLanguageInfo(TruffleLanguage<?> language) { return base.getLanguageInfo(language); }
-            @Override public Object getPolyglotLanguageInstance(TruffleLanguage<?> language) { return base.getPolyglotLanguageInstance(language); }
-            @Override public CallTarget parse(TruffleLanguage.Env env, Source code, Node context, String... argumentNames) { return base.parse(env, code, context, argumentNames); }
-            @Override public ExecutableNode parseInline(TruffleLanguage.Env env, Source code, Node context, MaterializedFrame frame) { return base.parseInline(env, code, context, frame); }
-            @Override public boolean isVisible(TruffleLanguage.Env env, Object value) { return base.isVisible(env, value); }
-            @Override public Object getContext(TruffleLanguage.Env env) { return base.getContext(env); }
-            @Override public Object getPolyglotLanguageContext(TruffleLanguage.Env env) { return base.getPolyglotLanguageContext(env); }
-            @Override public TruffleLanguage<?> getSPI(TruffleLanguage.Env env) { return base.getSPI(env); }
-            @Override public InstrumentInfo createInstrument(Object polyglotInstrument, String id, String name, String version) { return base.createInstrument(polyglotInstrument, id, name, version); }
-            @Override public Object getPolyglotInstrument(InstrumentInfo info) { return base.getPolyglotInstrument(info); }
-            @Override public boolean isContextInitialized(TruffleLanguage.Env env) { return base.isContextInitialized(env); }
-            @Override public OptionDescriptors describeOptions(TruffleLanguage<?> language, String requiredGroup) { return base.describeOptions(language, requiredGroup); }
-            @Override public void onThrowable(Node callNode, RootCallTarget root, Throwable e, Frame frame) { base.onThrowable(callNode, root, e, frame); }
-            @Override public boolean isThreadAccessAllowed(TruffleLanguage.Env env, Thread current, boolean singleThread) {
-                return true;//base.isThreadAccessAllowed(env, current, singleThread);
-            }
-            @Override public void initializeThread(TruffleLanguage.Env env, Thread current) { base.initializeThread(env, current); }
-            @Override public void initializeMultiThreading(TruffleLanguage.Env env) { base.initializeMultiThreading(env); }
-            @Override public void disposeThread(TruffleLanguage.Env env, Thread thread) { base.disposeThread(env, thread); }
-            @Override public void finalizeContext(TruffleLanguage.Env localEnv) { base.finalizeContext(localEnv); }
-            @Override public void exitContext(TruffleLanguage.Env localEnv, TruffleLanguage.ExitMode exitMode, int exitCode) { base.exitContext(localEnv, exitMode, exitCode); }
-            @Override public TruffleLanguage.Env patchEnvContext(TruffleLanguage.Env env, OutputStream stdOut, OutputStream stdErr, InputStream stdIn, Map<String, Object> config, OptionValues options, String[] applicationArguments) { return base.patchEnvContext(env, stdOut, stdErr, stdIn, config, options, applicationArguments); }
-            @Override public void initializeMultiContext(TruffleLanguage<?> language) { base.initializeMultiContext(language); }
-            @Override public boolean isTruffleStackTrace(Throwable t) { return base.isTruffleStackTrace(t); }
-            @Override public StackTraceElement[] getInternalStackTraceElements(Throwable t) { return base.getInternalStackTraceElements(t); }
-            @Override public Throwable getOrCreateLazyStackTrace(Throwable t) { return base.getOrCreateLazyStackTrace(t); }
-            @Override public void configureLoggers(Object polyglotContext, Map<String, Level> logLevels, Object... loggers) { base.configureLoggers(polyglotContext, logLevels, loggers); }
-            @Override public Object getDefaultLoggers() { return base.getDefaultLoggers(); }
-            @Override public Object createEngineLoggers(Object spi) { return base.createEngineLoggers(spi); }
-            @Override public Object getLoggersSPI(Object loggerCache) { return base.getLoggersSPI(loggerCache); }
-            @Override public void closeEngineLoggers(Object loggers) { base.closeEngineLoggers(loggers); }
-            @Override public TruffleLogger getLogger(String id, String loggerName, Object loggers) { return base.getLogger(id, loggerName, loggers); }
-            @Override public Object getLoggerCache(TruffleLogger logger) { return base.getLoggerCache(logger); }
-            @Override public TruffleLanguage<?> getLanguage(TruffleLanguage.Env env) { return base.getLanguage(env); }
-            @Override public Object createFileSystemContext(Object engineObject, FileSystem fileSystem) { return base.createFileSystemContext(engineObject, fileSystem); }
-            @Override public String detectMimeType(TruffleFile file, Set<String> validMimeTypes) { return base.detectMimeType(file, validMimeTypes); }
-            @Override public Charset detectEncoding(TruffleFile file, String mimeType) { return base.detectEncoding(file, mimeType); }
-            @Override public TruffleFile getTruffleFile(String path, Object fileSystemContext) { return base.getTruffleFile(path, fileSystemContext); }
-            @Override public boolean isSocketIOAllowed(Object fileSystemContext) { return base.isSocketIOAllowed(fileSystemContext); }
-            @Override public TruffleFile getTruffleFile(Object context, String path) { return base.getTruffleFile(context, path); }
-            @Override public TruffleFile getTruffleFile(Object context, URI uri) { return base.getTruffleFile(context, uri); }
-            @Override public FileSystem getFileSystem(TruffleFile truffleFile) { return base.getFileSystem(truffleFile); }
-            @Override public Path getPath(TruffleFile truffleFile) { return base.getPath(truffleFile); }
-            @Override public Object getLanguageView(TruffleLanguage.Env env, Object value) { return base.getLanguageView(env, value); }
-            @Override public Object getFileSystemContext(TruffleFile file) { return base.getFileSystemContext(file); }
-            @Override public Object getFileSystemEngineObject(Object fileSystemContext) { return base.getFileSystemEngineObject(fileSystemContext); }
-            @Override public Object getPolyglotContext(TruffleContext context) { return base.getPolyglotContext(context); }
-            @Override public Object invokeContextLocalFactory(Object factory, Object contextImpl) { return base.invokeContextLocalFactory(factory, contextImpl); }
-            @Override public Object invokeContextThreadLocalFactory(Object factory, Object contextImpl, Thread thread) { return base.invokeContextThreadLocalFactory(factory, contextImpl, thread); }
-            @Override public Object getScope(TruffleLanguage.Env env) { return base.getScope(env); }
-            @Override public boolean isSynchronousTLAction(ThreadLocalAction action) { return base.isSynchronousTLAction(action); }
-            @Override public boolean isSideEffectingTLAction(ThreadLocalAction action) { return base.isSideEffectingTLAction(action); }
-            @Override public boolean isRecurringTLAction(ThreadLocalAction action) { return base.isRecurringTLAction(action); }
-            @Override public void performTLAction(ThreadLocalAction action, ThreadLocalAction.Access access) { base.performTLAction(action, access); }
-            @Override public OptionDescriptors createOptionDescriptorsUnion(OptionDescriptors... descriptors) { return base.createOptionDescriptorsUnion(descriptors); }
+        @Override public void initializeLanguage(TruffleLanguage<?> impl, LanguageInfo language, Object polyglotLanguage, Object polyglotLanguageInstance) { base.initializeLanguage(impl,language, polyglotLanguage, polyglotLanguageInstance); }
+        @Override public TruffleLanguage.Env createEnv(Object polyglotLanguageContext, TruffleLanguage<?> language, OutputStream stdOut, OutputStream stdErr, InputStream stdIn, Map<String, Object> config, OptionValues options, String[] applicationArguments) { return base.createEnv(polyglotLanguageContext, language, stdOut, stdErr, stdIn, config, options, applicationArguments); }
+        @Override public boolean areOptionsCompatible(TruffleLanguage<?> language, OptionValues firstContextOptions, OptionValues newContextOptions) { return base.areOptionsCompatible(language, firstContextOptions, newContextOptions); }
+        @Override public Object createEnvContext(TruffleLanguage.Env localEnv, List<Object> servicesCollector) { return base.createEnvContext(localEnv, servicesCollector); }
+        @Override public TruffleContext createTruffleContext(Object impl, boolean creator) { return base.createTruffleContext(impl, creator); }
+        @Override public void postInitEnv(TruffleLanguage.Env env) { base.postInitEnv(env); }
+        @Override public Object evalInContext(Source source, Node node, MaterializedFrame frame) { return base.evalInContext(source, node, frame); }
+        @Override public void dispose(TruffleLanguage.Env env) { base.dispose(env); }
+        @Override public LanguageInfo getLanguageInfo(TruffleLanguage.Env env) { return base.getLanguageInfo(env); }
+        @Override public LanguageInfo getLanguageInfo(TruffleLanguage<?> language) { return base.getLanguageInfo(language); }
+        @Override public Object getPolyglotLanguageInstance(TruffleLanguage<?> language) { return base.getPolyglotLanguageInstance(language); }
+        @Override public CallTarget parse(TruffleLanguage.Env env, Source code, Node context, String... argumentNames) { return base.parse(env, code, context, argumentNames); }
+        @Override public ExecutableNode parseInline(TruffleLanguage.Env env, Source code, Node context, MaterializedFrame frame) { return base.parseInline(env, code, context, frame); }
+        @Override public boolean isVisible(TruffleLanguage.Env env, Object value) { return base.isVisible(env, value); }
+        @Override public Object getContext(TruffleLanguage.Env env) { return base.getContext(env); }
+        @Override public Object getPolyglotLanguageContext(TruffleLanguage.Env env) { return base.getPolyglotLanguageContext(env); }
+        @Override public TruffleLanguage<?> getSPI(TruffleLanguage.Env env) { return base.getSPI(env); }
+        @Override public InstrumentInfo createInstrument(Object polyglotInstrument, String id, String name, String version) { return base.createInstrument(polyglotInstrument, id, name, version); }
+        @Override public Object getPolyglotInstrument(InstrumentInfo info) { return base.getPolyglotInstrument(info); }
+        @Override public boolean isContextInitialized(TruffleLanguage.Env env) { return base.isContextInitialized(env); }
+        @Override public OptionDescriptors describeOptions(TruffleLanguage<?> language, String requiredGroup) { return base.describeOptions(language, requiredGroup); }
+        @Override public void onThrowable(Node callNode, RootCallTarget root, Throwable e, Frame frame) { base.onThrowable(callNode, root, e, frame); }
+        @Override public boolean isThreadAccessAllowed(TruffleLanguage.Env env, Thread current, boolean singleThread) {
+            return true;//base.isThreadAccessAllowed(env, current, singleThread);
         }
-
-        static {
-            try {
-                Field field = reflection.get(Class.forName("com.oracle.truffle.polyglot.EngineAccessor"), "LANGUAGE");
-                field = reflection.nonFinal(reflection.access(field));
-                Accessor.LanguageSupport base = (Accessor.LanguageSupport)field.get(null);
-                field.set(null, LanguageAccessorProxy.create(base));
-            } catch (Exception e) {
-                throw new IllegalArgumentException(e);
-            }
+        @Override public void initializeThread(TruffleLanguage.Env env, Thread current) { base.initializeThread(env, current); }
+        @Override public void initializeMultiThreading(TruffleLanguage.Env env) { base.initializeMultiThreading(env); }
+        @Override public void disposeThread(TruffleLanguage.Env env, Thread thread) { base.disposeThread(env, thread); }
+        @Override public void finalizeContext(TruffleLanguage.Env localEnv) { base.finalizeContext(localEnv); }
+        @Override public void exitContext(TruffleLanguage.Env localEnv, TruffleLanguage.ExitMode exitMode, int exitCode) { base.exitContext(localEnv, exitMode, exitCode); }
+        @Override public TruffleLanguage.Env patchEnvContext(TruffleLanguage.Env env, OutputStream stdOut, OutputStream stdErr, InputStream stdIn, Map<String, Object> config, OptionValues options, String[] applicationArguments) { return base.patchEnvContext(env, stdOut, stdErr, stdIn, config, options, applicationArguments); }
+        @Override public void initializeMultiContext(TruffleLanguage<?> language) { base.initializeMultiContext(language); }
+        @Override public boolean isTruffleStackTrace(Throwable t) { return base.isTruffleStackTrace(t); }
+        @Override public StackTraceElement[] getInternalStackTraceElements(Throwable t) { return base.getInternalStackTraceElements(t); }
+        @Override public Throwable getOrCreateLazyStackTrace(Throwable t) { return base.getOrCreateLazyStackTrace(t); }
+        @Override public void configureLoggers(Object polyglotContext, Map<String, Level> logLevels, Object... loggers) { base.configureLoggers(polyglotContext, logLevels, loggers); }
+        @Override public Object getDefaultLoggers() { return base.getDefaultLoggers(); }
+        @Override public Object createEngineLoggers(Object spi) { return base.createEngineLoggers(spi); }
+        @Override public Object getLoggersSPI(Object loggerCache) { return base.getLoggersSPI(loggerCache); }
+        @Override public void closeEngineLoggers(Object loggers) { base.closeEngineLoggers(loggers); }
+        @Override public TruffleLogger getLogger(String id, String loggerName, Object loggers) { return base.getLogger(id, loggerName, loggers); }
+        @Override public Object getLoggerCache(TruffleLogger logger) { return base.getLoggerCache(logger); }
+        @Override public TruffleLanguage<?> getLanguage(TruffleLanguage.Env env) { return base.getLanguage(env); }
+        @Override public Object createFileSystemContext(Object engineObject, FileSystem fileSystem) { return base.createFileSystemContext(engineObject, fileSystem); }
+        @Override public String detectMimeType(TruffleFile file, Set<String> validMimeTypes) { return base.detectMimeType(file, validMimeTypes); }
+        @Override public Charset detectEncoding(TruffleFile file, String mimeType) { return base.detectEncoding(file, mimeType); }
+        @Override public TruffleFile getTruffleFile(String path, Object fileSystemContext) { return base.getTruffleFile(path, fileSystemContext); }
+        @Override public boolean isSocketIOAllowed(Object fileSystemContext) { return base.isSocketIOAllowed(fileSystemContext); }
+        @Override public TruffleFile getTruffleFile(Object context, String path) { return base.getTruffleFile(context, path); }
+        @Override public TruffleFile getTruffleFile(Object context, URI uri) { return base.getTruffleFile(context, uri); }
+        @Override public FileSystem getFileSystem(TruffleFile truffleFile) { return base.getFileSystem(truffleFile); }
+        @Override public Path getPath(TruffleFile truffleFile) { return base.getPath(truffleFile); }
+        @Override public Object getLanguageView(TruffleLanguage.Env env, Object value) { return base.getLanguageView(env, value); }
+        @Override public Object getFileSystemContext(TruffleFile file) { return base.getFileSystemContext(file); }
+        @Override public Object getFileSystemEngineObject(Object fileSystemContext) { return base.getFileSystemEngineObject(fileSystemContext); }
+        @Override public Object getPolyglotContext(TruffleContext context) { return base.getPolyglotContext(context); }
+        @Override public Object invokeContextLocalFactory(Object factory, Object contextImpl) { return base.invokeContextLocalFactory(factory, contextImpl); }
+        @Override public Object invokeContextThreadLocalFactory(Object factory, Object contextImpl, Thread thread) { return base.invokeContextThreadLocalFactory(factory, contextImpl, thread); }
+        @Override public Object getScope(TruffleLanguage.Env env) { return base.getScope(env); }
+        @Override public boolean isSynchronousTLAction(ThreadLocalAction action) { return base.isSynchronousTLAction(action); }
+        @Override public boolean isSideEffectingTLAction(ThreadLocalAction action) { return base.isSideEffectingTLAction(action); }
+        @Override public boolean isRecurringTLAction(ThreadLocalAction action) { return base.isRecurringTLAction(action); }
+        @Override public void performTLAction(ThreadLocalAction action, ThreadLocalAction.Access access) { base.performTLAction(action, access); }
+        @Override public OptionDescriptors createOptionDescriptorsUnion(OptionDescriptors... descriptors) { return base.createOptionDescriptorsUnion(descriptors); }
+    }
+    static {
+        try {
+            Field field = reflection.get(Class.forName("com.oracle.truffle.polyglot.EngineAccessor"), "LANGUAGE");
+            field = reflection.nonFinal(reflection.access(field));
+            Accessor.LanguageSupport base = (Accessor.LanguageSupport)field.get(null);
+            field.set(null, LanguageAccessorProxy.create(base));
+        } catch (Exception e) {
+            throw new IllegalArgumentException(e);
         }
+    }
 
-        private final ConcurrentHashMap<String, ValueCache> globalValues = new ConcurrentHashMap<>();
-        private final ConcurrentHashMap<Long, ContextEngine> threads = new ConcurrentHashMap<>();
+    private interface IContextFrame extends AutoCloseable {
+        GraalJSScriptEngine engine();
+        Context context();
+        Map<?,?> global();
 
-        private ContextEngine getContextEngine() {
-            return threads.computeIfAbsent(Thread.currentThread().threadId(), id -> {
+        void open();
+        @Override void close();
+    }
+    private interface IContextFactory extends AutoCloseable {
+        IContextFrame frame();
+        void clear();
+        @Override void close();
+    }
+    private static class ContextMultithreading implements IContextFactory {
+        private record ContextEngine(long id, GraalJSScriptEngine engine, Context context, Bindings bindings, Map<?, ?> global) {
+            public static ContextEngine create(long id) {
                 try {
                     GraalJSScriptEngine engine = GraalJSScriptEngine.create(
                             Engine.newBuilder()
-                            .option("engine.WarnInterpreterOnly", "false")
-                            .build(),
+                                    .option("engine.WarnInterpreterOnly", "false")
+                                    .build(),
                             Context.newBuilder()
-                            .allowHostAccess(HostAccess.ALL)
-                            .allowHostClassLookup(v -> true)
-                            .logHandler(System.out));
+                                    .allowHostAccess(HostAccess.ALL)
+                                    .allowHostClassLookup(v -> true)
+                                    .logHandler(System.out));
                     Context context = engine.getPolyglotContext();
                     Map<?,?> global = (Map<?, ?>)engine.eval("this");
                     return new ContextEngine(id, engine, context, engine.getContext().getBindings(ScriptContext.ENGINE_SCOPE), global);
                 } catch (Exception e) {
                     throw new IllegalArgumentException(e);
                 }
-            });
+            }
+        }
+        private record ContextFrame(ContextEngine contextEngine) implements IContextFrame {
+            @Override public GraalJSScriptEngine engine() { return contextEngine.engine(); }
+            @Override public Context context() { return contextEngine.context(); }
+            @Override public Map<?, ?> global() { return contextEngine.global(); }
+            @Override public void open() { }
+            @Override public void close() { }
         }
 
-        public ContextFrame frame() {
-            ContextFrame frame = new ContextFrame(getContextEngine(), globalValues);
+        private final ConcurrentHashMap<Long, ContextEngine> threads = new ConcurrentHashMap<>();
+        private final ContextEngine engine = ContextEngine.create(0L);
+
+        private ContextEngine getContextEngine() { return engine; }
+
+        @Override public IContextFrame frame() {
+            ContextFrame frame = new ContextFrame(getContextEngine());
             frame.open();
             return frame;
         }
-
-        public void clear() {
+        @Override public void clear() {
             threads.entrySet().removeIf(kv -> {
                 kv.getValue().context().close(true);
                 return true;
             });
-            globalValues.clear();
         }
-
         @Override public void close() {
             threads.forEach((k,v) -> v.context.close());
         }
     }
 
-    private static ContextMultithreading context;
+    private static IContextFactory context;
 
     public static CoreElement create() { return new JavaScript()._create(); }
     private CoreElement _create() {
@@ -261,7 +230,7 @@ public class JavaScript implements ICore {
     private Object eval(String script) throws Exception {
         return eval(script, null);
     }
-    private Object eval(String script, @Nullable Map<String, Object> values) throws Exception {
+    private synchronized Object eval(String script, @Nullable Map<String, Object> values) throws Exception {
         try (var frame = context.frame()) {
             GraalJSScriptEngine engine = frame.engine();
             var global = frame.global();
