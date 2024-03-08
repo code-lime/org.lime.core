@@ -4,3 +4,7 @@ main: org.lime.core
 api-version: 1.13
 authors: [Lime]
 softdepend: [ProtocolLib]
+#raw-libraries:
+#  - javet-3.0.4-proxy-access.jar
+#libraries:
+#  - com.caoccao.javet:javet:3.0.4
