@@ -10,6 +10,7 @@ import org.bukkit.plugin.java.JavaPlugin;
 import org.lime.LibraryClassLoader;
 import org.lime.core;
 import org.lime.system.execute.*;
+import patch.Patcher;
 
 import java.io.File;
 import java.util.*;
@@ -54,6 +55,8 @@ public abstract class CoreLoader extends JavaPlugin implements ITimer, ICombineJ
         }
 
         if (core.instance == null) {
+            Patcher.patch();
+
             core.instance = _core;
             init_core();
             return;
