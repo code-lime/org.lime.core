@@ -75,6 +75,30 @@ public class MutatePatcher extends BasePluginPatcher {
                                 setProgress("Append.OptionSet");
                             }
                         }));
+        versionArchive
+                .patchMethod(IMethodFilter.of(PlayerList.class, IMethodInfo.STATIC_CONSTRUCTOR, false),
+                        MethodPatcher.mutate(v -> new ProgressMethodVisitor(v, v) {
+                            @Override protected List<String> createProgressList() {
+                                return modifyFields.keySet().stream().map(v -> "ModifyField." + v).toList();
+                            }
+
+                            private static final Map<String, ICallable> modifyFields = Map.of(
+                                    "OPLIST_FILE", Execute.func(() -> PlayerList.OPLIST_FILE),
+                                    "WHITELIST_FILE", Execute.func(() -> PlayerList.WHITELIST_FILE),
+                                    "IPBANLIST_FILE", Execute.func(() -> PlayerList.IPBANLIST_FILE),
+                                    "USERBANLIST_FILE", Execute.func(() -> PlayerList.USERBANLIST_FILE)
+                            );
+
+                            @Override public void visitFieldInsn(int opcode, String owner, String name, String descriptor) {
+                                modifyFields.forEach((id, field) -> {
+                                    if (Native.isField(field, owner, name, descriptor)) {
+                                        Native.writeMethod(Execute.<File, File>func(OptionSetUtils::getUniverseFile), super::visitMethodInsn);
+                                        setProgress("ModifyField." + id);
+                                    }
+                                });
+                                super.visitFieldInsn(opcode, owner, name, descriptor);
+                            }
+                        }));
 
         String mapAnyAnySignature = signatureType(Type.getInternalName(Map.class), "*", "*");
 
