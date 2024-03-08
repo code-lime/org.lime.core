@@ -2,7 +2,7 @@ package org.lime.system.execute;
 
 import java.util.Optional;
 
-public interface FuncEx0<TResult> {
+public interface FuncEx0<TResult> extends ICallable {
     TResult invoke() throws Throwable;
 
     default Func0<TResult> throwable() {
@@ -24,4 +24,5 @@ public interface FuncEx0<TResult> {
             }
         };
     }
+    @Override default Object call(Object[] args) { return throwable().call(args); }
 }

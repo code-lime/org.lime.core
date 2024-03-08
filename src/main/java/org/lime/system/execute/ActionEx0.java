@@ -1,6 +1,6 @@
 package org.lime.system.execute;
 
-public interface ActionEx0 {
+public interface ActionEx0 extends ICallable {
     void invoke() throws Throwable;
     default Action0 throwable() {
         return () -> { try { this.invoke(); } catch (Throwable e) { throw new IllegalArgumentException(e); } };
@@ -8,4 +8,5 @@ public interface ActionEx0 {
     default Func0<Boolean> optional() {
         return () -> { try { this.invoke(); return true; } catch (Throwable e) { return false; } };
     }
+    @Override default Object call(Object[] args) { return throwable().call(args); }
 }
