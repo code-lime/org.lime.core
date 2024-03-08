@@ -2,16 +2,22 @@ package patch.core;
 
 import io.papermc.paper.plugin.provider.type.spigot.SpigotPluginProvider;
 import net.minecraft.paper.java.CacheLibraryLoader;
+import net.minecraft.paper.java.OptionSetUtils;
 import net.minecraft.paper.java.RawPluginMeta;
+import net.minecraft.server.Main;
+import net.minecraft.server.players.PlayerList;
 import org.bukkit.plugin.PluginDescriptionFile;
 import org.bukkit.plugin.java.LibraryLoader;
 import org.lime.core;
 import org.lime.system.execute.Execute;
+import org.lime.system.execute.ICallable;
 import org.objectweb.asm.Label;
 import org.objectweb.asm.Opcodes;
 import org.objectweb.asm.Type;
 import patch.*;
 
+import java.io.File;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 
@@ -50,6 +56,23 @@ public class MutatePatcher extends BasePluginPatcher {
                                     setProgressDuplicate("Replace.Method");
                                 }
                                 super.visitMethodInsn(opcode, owner, name, descriptor, isInterface);
+                            }
+                        }));
+        versionArchive
+                .patchMethod(IMethodFilter.of(Execute.actionEx(Main::main)),
+                        MethodPatcher.mutate(v -> new ProgressMethodVisitor(v, v) {
+                            @Override protected List<String> createProgressList() {
+                                return List.of("Append.OptionSet");
+                            }
+
+                            private int index = 0;
+                            @Override public void visitLineNumber(int line, Label start) {
+                                super.visitLineNumber(line, start);
+                                if (index != 0) return;
+                                index++;
+                                super.visitVarInsn(Opcodes.ALOAD, 0);
+                                Native.writeMethod(Execute.action(OptionSetUtils::setOptions), super::visitMethodInsn);
+                                setProgress("Append.OptionSet");
                             }
                         }));
 
