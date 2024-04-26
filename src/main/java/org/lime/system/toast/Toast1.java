@@ -15,6 +15,7 @@ public class Toast1<T0> extends IToast {
     @Override public Object get(int index) { switch (index) { case 0: return val0; } return null; }
     @Override public void set(int index, Object value) { switch (index) { case 0: val0 = (T0)value; break; } }
     @Override public Object edit(int index, Func1<Object, Object> func) { Object ret; set(index, ret = func.invoke(get(index))); return ret; }
+    public void set(Toast1<T0> other) { this.val0 = other.val0; }
     public <A0>Toast1<A0> map(Func1<T0, A0> map0) { return Toast.of(map0.invoke(val0)); }
     public void invoke(Action1<T0> action) { action.invoke(val0); }
     public <T>T invokeGet(Func1<T0, T> func) { return func.invoke(val0); }

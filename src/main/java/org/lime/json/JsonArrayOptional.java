@@ -1,6 +1,8 @@
 package org.lime.json;
 
 import com.google.gson.JsonArray;
+
+import javax.annotation.Nonnull;
 import java.math.BigDecimal;
 import java.math.BigInteger;
 import java.util.*;
@@ -27,14 +29,16 @@ public class JsonArrayOptional extends JsonElementOptional implements Collection
     public boolean add(JsonElementOptional element) { return this.elements.add(element == null ? JsonNullOptional.INSTANCE : element); }
 
     @Override public boolean remove(Object value) { return this.elements.remove(value); }
-    @Override public boolean containsAll(Collection<?> collection) { return this.elements.containsAll(collection); }
-    @Override public boolean addAll(Collection<? extends JsonElementOptional> collection) {
+    @Override public boolean containsAll(@Nonnull Collection<?> collection) {
+        return this.elements.containsAll(collection);
+    }
+    @Override public boolean addAll(@Nonnull Collection<? extends JsonElementOptional> collection) {
         boolean isAdded = false;
         for (JsonElementOptional item : collection) isAdded = add(item) || isAdded;
         return isAdded;
     }
-    @Override public boolean removeAll(Collection<?> collection) { return this.elements.removeAll(collection); }
-    @Override public boolean retainAll(Collection<?> collection) { return this.elements.retainAll(collection); }
+    @Override public boolean removeAll(@Nonnull Collection<?> collection) { return this.elements.removeAll(collection); }
+    @Override public boolean retainAll(@Nonnull Collection<?> collection) { return this.elements.retainAll(collection); }
     @Override public void clear() { this.elements.clear(); }
 
     public void addAll(JsonArrayOptional array) { this.elements.addAll(array.elements); }
@@ -85,7 +89,7 @@ public class JsonArrayOptional extends JsonElementOptional implements Collection
     public Optional<Boolean> getAsBoolean() { return getAs().flatMap(JsonElementOptional::getAsBoolean); }
 
     @Override public List<Object> createObject() {
-        return this.stream().map(v -> v.createObject()).collect(Collectors.toList());
+        return this.stream().map(JsonElementOptional::createObject).collect(Collectors.toList());
     }
 
     public boolean equals(Object o) { return o == this || o instanceof JsonArrayOptional json && json.elements.equals(this.elements); }

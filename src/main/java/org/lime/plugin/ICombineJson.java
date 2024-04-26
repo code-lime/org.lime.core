@@ -77,6 +77,15 @@ public interface ICombineJson extends ILogger, IConfig {
             });
             _json.remove("DEFAULT_REPLACE_FILE");
         }
+        _json = org.lime.system.json.modifyObjectByKey(_json, (key, value, obj) -> {
+            if (key.isEmpty() || !value.isJsonPrimitive() || !key.replace("_", "").isEmpty())
+                return false;
+            JsonElement replaceJson = replaceJsonList.getOrDefault(value.getAsString(), null);
+            if (replaceJson == null)
+                return false;
+            _combineJson(obj, replaceJson);
+            return true;
+        });
         _json = org.lime.system.json.editStringToObject(_json, text -> {
             JsonElement replaceJson = replaceJsonList.getOrDefault(text, null);
             return replaceJson == null ? new JsonPrimitive(text) : replaceJson;

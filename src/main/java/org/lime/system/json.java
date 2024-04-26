@@ -8,8 +8,7 @@ import net.kyori.adventure.text.JoinConfiguration;
 import net.kyori.adventure.text.event.ClickEvent;
 import net.kyori.adventure.text.event.HoverEvent;
 import net.kyori.adventure.text.format.TextColor;
-import org.lime.system.execute.Func0;
-import org.lime.system.execute.Func1;
+import org.lime.system.execute.*;
 import org.lime.system.toast.Toast;
 import org.lime.system.toast.Toast2;
 import org.lime.system.utils.IterableUtils;
@@ -21,7 +20,6 @@ import java.io.StringWriter;
 import java.lang.reflect.Array;
 import java.util.*;
 import java.util.stream.Collectors;
-import java.util.stream.Stream;
 
 @SuppressWarnings("deprecation")
 public class json {
@@ -216,6 +214,8 @@ public class json {
         }
 
         public abstract T build();
+
+        @Override public String toString() { return build().toString(); }
     }
 
     public static builder.object object() { return new builder.object(); }
@@ -404,4 +404,38 @@ public class json {
         else if (jsonElement.isJsonArray()) return editStringToObject(jsonElement.getAsJsonArray(), edit);
         else throw new UnsupportedOperationException("Unsupported element: " + jsonElement);
     }
+
+    public static JsonObject modifyObjectByKey(JsonObject jsonObject, Func3<String, JsonElement, JsonObject, Boolean> edit) {
+        JsonObject result = new JsonObject();
+        jsonObject.entrySet().forEach(kv -> {
+            if (!edit.invoke(kv.getKey(), kv.getValue(), result))
+                result.add(kv.getKey(), modifyObjectByKey(kv.getValue(), edit));
+        });
+        return result;
+    }
+    public static JsonArray modifyObjectByKey(JsonArray jsonArray, Func3<String, JsonElement, JsonObject, Boolean> edit) {
+        JsonArray result = new JsonArray();
+        jsonArray.forEach(e -> result.add(modifyObjectByKey(e, edit)));
+        return result;
+    }
+    public static JsonElement modifyObjectByKey(JsonElement jsonElement, Func3<String, JsonElement, JsonObject, Boolean> edit) {
+        if (jsonElement.isJsonNull()) return jsonElement;
+        else if (jsonElement.isJsonPrimitive()) return jsonElement;
+        else if (jsonElement.isJsonObject()) return modifyObjectByKey(jsonElement.getAsJsonObject(), edit);
+        else if (jsonElement.isJsonArray()) return modifyObjectByKey(jsonElement.getAsJsonArray(), edit);
+        else throw new UnsupportedOperationException("Unsupported element: " + jsonElement);
+    }
 }
+
+
+
+
+
+
+
+
+
+
+
+
+

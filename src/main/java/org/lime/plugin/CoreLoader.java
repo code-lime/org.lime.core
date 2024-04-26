@@ -9,6 +9,7 @@ import org.bukkit.plugin.PluginManager;
 import org.bukkit.plugin.java.JavaPlugin;
 import org.lime.LibraryClassLoader;
 import org.lime.core;
+import org.lime.modules.PluginImporter;
 import org.lime.system.execute.*;
 import patch.Patcher;
 
@@ -104,6 +105,7 @@ public abstract class CoreLoader extends JavaPlugin implements ITimer, ICombineJ
 
     private void init_core() {
         rawLibrary(coreLoader);
+        PluginImporter.register(this);
         add("update.data", cmd -> cmd
                 .withCheck(ServerOperator::isOp)
                 .withTab((sender, args) -> {

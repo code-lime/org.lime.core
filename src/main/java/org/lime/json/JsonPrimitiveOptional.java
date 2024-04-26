@@ -1,7 +1,6 @@
 package org.lime.json;
 
 import com.google.gson.JsonPrimitive;
-import org.lime._system;
 import org.lime.system.utils.EnumUtils;
 
 import java.math.BigDecimal;
@@ -26,18 +25,30 @@ public class JsonPrimitiveOptional extends JsonElementOptional {
     public boolean isNumber() { return base.isNumber(); }
     public Optional<Number> getAsNumber() { return base.isNumber() ? Optional.of(base.getAsNumber()) : Optional.empty(); }
     public boolean isString() { return base.isString(); }
-    public Optional<String> getAsString() { return base.isString() ? Optional.of(base.getAsString()) : Optional.empty(); }
+    public Optional<String> getAsString() { return Optional.of(base.getAsString()); }
     public <T extends Enum<T>>Optional<T> getAsEnum(Class<T> tClass) { return getAsString().flatMap(v -> EnumUtils.tryParse(tClass, v)); }
 
-    public Optional<Object> getAsObject() { return Optional.<Object>empty().or(this::getAsBoolean).or(this::getAsNumber).or(this::getAsString); }
-    public Optional<Double> getAsDouble() { return getAsNumber().map(v -> v.doubleValue()); }
-    public Optional<Float> getAsFloat() { return getAsNumber().map(v -> v.floatValue()); }
-    public Optional<BigDecimal> getAsBigDecimal() { return base.isNumber() ? Optional.of(base.getAsBigDecimal()) : Optional.empty(); }
-    public Optional<BigInteger> getAsBigInteger() { return base.isNumber() ? Optional.of(base.getAsBigInteger()) : Optional.empty(); }
-    public Optional<Long> getAsLong() { return getAsNumber().map(v -> v.longValue()); }
-    public Optional<Short> getAsShort() { return getAsNumber().map(v -> v.shortValue()); }
-    public Optional<Integer> getAsInt() { return getAsNumber().map(v -> v.intValue()); }
-    public Optional<Byte> getAsByte() { return getAsNumber().map(v -> v.byteValue()); }
+    public Optional<Object> getAsObject() { return Optional.empty().or(this::getAsBoolean).or(this::getAsNumber).or(this::getAsString); }
+    public Optional<Double> getAsDouble() { return getAsNumber().map(Number::doubleValue); }
+    public Optional<Float> getAsFloat() { return getAsNumber().map(Number::floatValue); }
+    public Optional<BigDecimal> getAsBigDecimal() {
+        try {
+            return base.isNumber() ? Optional.of(base.getAsBigDecimal()) : Optional.empty();
+        } catch (Exception e) {
+            return Optional.empty();
+        }
+    }
+    public Optional<BigInteger> getAsBigInteger() {
+        try {
+            return base.isNumber() ? Optional.of(base.getAsBigInteger()) : Optional.empty();
+        } catch (Exception e) {
+            return Optional.empty();
+        }
+    }
+    public Optional<Long> getAsLong() { return getAsNumber().map(Number::longValue); }
+    public Optional<Short> getAsShort() { return getAsNumber().map(Number::shortValue); }
+    public Optional<Integer> getAsInt() { return getAsNumber().map(Number::intValue); }
+    public Optional<Byte> getAsByte() { return getAsNumber().map(Number::byteValue); }
     public Optional<Character> getAsCharacter() { return getAsString().filter(v -> v.length() > 0).map(v -> v.charAt(0)); }
 
     @Override public Object createObject() { return getAsObject().orElse(null); }

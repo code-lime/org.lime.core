@@ -5,6 +5,13 @@ import com.google.gson.JsonElement;
 import java.util.Optional;
 
 public class EnumUtils {
+    public static <T>T forceParseEnum(Class<T> tClass, String name) {
+        for (T each : tClass.getEnumConstants())
+            if (((Enum<?>)each).name().compareToIgnoreCase(name) == 0)
+                return each;
+        throw new IllegalArgumentException("No enum constant " + tClass.getCanonicalName() + "." + name);
+    }
+
     public static <T extends java.lang.Enum<T>>T parseEnum(Class<T> tClass, JsonElement json) {
         try { return json == null || json.isJsonNull() ? null : T.valueOf(tClass, json.getAsString()); } catch (Exception ignore) { return null; }
     }

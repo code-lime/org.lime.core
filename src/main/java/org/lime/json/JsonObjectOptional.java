@@ -3,6 +3,7 @@ package org.lime.json;
 import com.google.gson.*;
 import com.google.gson.internal.LinkedTreeMap;
 
+import javax.annotation.Nonnull;
 import java.math.BigDecimal;
 import java.math.BigInteger;
 import java.util.*;
@@ -23,7 +24,7 @@ public class JsonObjectOptional extends JsonElementOptional implements Map<Strin
     }
 
     public void add(String property, JsonElementOptional value) { this.members.put(property, value == null ? JsonNullOptional.INSTANCE : value); }
-    public JsonElementOptional remove(String property) { return (JsonElementOptional)this.members.remove(property); }
+    public JsonElementOptional remove(String property) { return this.members.remove(property); }
 
     public void addProperty(String property, String value) { this.add(property, value == null ? JsonNullOptional.INSTANCE : new JsonPrimitiveOptional(value)); }
     public void addProperty(String property, Number value) { this.add(property, value == null ? JsonNullOptional.INSTANCE : new JsonPrimitiveOptional(value)); }
@@ -38,7 +39,7 @@ public class JsonObjectOptional extends JsonElementOptional implements Map<Strin
     @Override public JsonElementOptional get(Object key) { return this.members.get(key); }
     @Override public JsonElementOptional put(String key, JsonElementOptional value) { return this.members.put(key, value == null ? JsonNullOptional.INSTANCE : value); }
     @Override public JsonElementOptional remove(Object key) { return this.members.remove(key); }
-    @Override public void putAll(Map<? extends String, ? extends JsonElementOptional> map) { map.forEach(this::add); }
+    @Override public void putAll(@Nonnull Map<? extends String, ? extends JsonElementOptional> map) { map.forEach(this::add); }
     @Override public void clear() { this.members.clear(); }
     @Override public Set<String> keySet() { return this.members.keySet(); }
     @Override public Collection<JsonElementOptional> values() { return this.members.values(); }

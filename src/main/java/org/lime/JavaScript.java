@@ -2,6 +2,7 @@ package org.lime;
 
 import com.google.common.collect.Streams;
 import com.google.gson.JsonElement;
+import com.google.gson.internal.reflect.ReflectionHelper;
 import com.oracle.truffle.api.*;
 import com.oracle.truffle.api.frame.Frame;
 import com.oracle.truffle.api.frame.MaterializedFrame;
@@ -34,6 +35,7 @@ import java.io.InputStream;
 import java.io.OutputStream;
 import java.lang.reflect.Array;
 import java.lang.reflect.Field;
+import java.lang.reflect.Modifier;
 import java.net.URI;
 import java.nio.charset.Charset;
 import java.nio.file.Path;
@@ -122,9 +124,15 @@ public class JavaScript implements ICore {
     static {
         try {
             Field field = reflection.get(Class.forName("com.oracle.truffle.polyglot.EngineAccessor"), "LANGUAGE");
-            field = reflection.nonFinal(reflection.access(field));
+            core.instance._logOP("A: " + Modifier.toString(field.getModifiers()));
+            field = reflection.nonFinal(field);
+            core.instance._logOP("B: " + Modifier.toString(field.getModifiers()));
             Accessor.LanguageSupport base = (Accessor.LanguageSupport)field.get(null);
+            core.instance._logOP("C: " + base);
+            field = reflection.access(field);
             field.set(null, LanguageAccessorProxy.create(base));
+            core.instance._logOP("D");
+
         } catch (Exception e) {
             throw new IllegalArgumentException(e);
         }
@@ -297,7 +305,7 @@ public class JavaScript implements ICore {
         instances.values().forEach(v -> v.inits.forEach(BukkitTask::cancel));
 
         if (context != null) context.clear();
-        else context = new ContextMultithreading();
+        context = new ContextMultithreading();
 
         try (var frame = context.frame()) {
             var engine = frame.engine();

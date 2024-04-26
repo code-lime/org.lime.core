@@ -1,25 +1,31 @@
-package org.lime;
+package org.lime.modules;
 
 import com.google.common.io.Files;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
-
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.event.HoverEvent;
+import org.apache.commons.io.FileUtils;
+import org.apache.commons.io.FilenameUtils;
+import org.lime.core;
+import org.lime.plugin.CoreElement;
+import org.lime.plugin.ICore;
+import org.lime.plugin.IUpdateConfig;
+import org.lime.system.execute.Action0;
+import org.lime.system.json;
+import org.lime.system.toast.Toast;
+import org.lime.system.toast.Toast2;
+import org.lime.web;
+import org.lime.zip;
 
+import java.io.File;
 import java.nio.ByteBuffer;
 import java.nio.charset.StandardCharsets;
+import java.nio.file.Path;
 import java.util.*;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
-
-import org.apache.commons.io.FilenameUtils;
-import org.lime.plugin.ICore;
-import org.lime.plugin.IUpdateConfig;
-import org.lime.plugin.CoreElement;
-import org.lime.system.execute.Action0;
-import org.lime.system.json;
-import org.lime.system.toast.*;
+import java.util.stream.Stream;
 
 public class autodownload implements IUpdateConfig, ICore {
     public static CoreElement create() { return new autodownload()._create(); }
@@ -28,7 +34,7 @@ public class autodownload implements IUpdateConfig, ICore {
                 .withInstance(this)
                 .addEmpty("autodownload-on", () -> enable(true))
                 .addEmpty("autodownload-off", () -> enable(false));
-    };
+    }
 
     public boolean enable = false;
     public String ref = null;
@@ -95,19 +101,50 @@ public class autodownload implements IUpdateConfig, ICore {
         base_core._invokeAsync(() -> downloadConfigFiles(fileList), callback);
     }
 
-    private void downloadConfigFiles(Collection<String> fileList) {
+    private Stream<File> getFilesWithoutGit(File folder) {
+        return Optional.ofNullable(folder.listFiles())
+                .stream()
+                .flatMap(Arrays::stream)
+                .flatMap(v -> v.isDirectory() ? v.getName().equals(".git") ? Stream.empty() : getFilesWithoutGit(v) : Stream.of(v));
+    }
+
+    private Map<String, byte[]> downloadRawFiles(final Toast2<byte[], Integer> downloaded) {
+        if (url.startsWith("folder://")) {
+            base_core._logOP("Reading...");
+            File folder = new File(url.substring(9));
+            Path folderPath = folder.toPath();
+            Map<String, byte[]> map = new HashMap<>();
+            //var gitignore = new GitIgnore(folder);
+            getFilesWithoutGit(folder)
+                    .forEach(file -> {
+                        String path = String.valueOf(folderPath.relativize(file.toPath()));
+                        /*if (gitignore.isExcluded(file)) return;*/
+                        String fileName = "tmp/" + path;
+                        try {
+                            map.put(fileName, FileUtils.readFileToByteArray(file));
+                        } catch (Exception e) {
+                            throw new IllegalArgumentException(e);
+                        }
+                    });
+            return map;
+        }
         base_core._logOP("Downloading...");
         web.method.builder builder = web.method.GET.create(url);
         headers.forEach(builder::header);
-        Toast2<byte[], Integer> downloaded = builder.data().execute();
+        downloaded.set(builder.data().execute());
         base_core._logOP("Opening...");
+        return zip.unzip(downloaded.val0);
+    }
+
+    private void downloadConfigFiles(Collection<String> fileList) {
+        Toast2<byte[], Integer> downloaded = Toast.of(new byte[0], -1);
         Map<String, byte[]> files;
         try {
-            Map<String, byte[]> _files = zip.unzip(downloaded.val0);
+            Map<String, byte[]> _files = downloadRawFiles(downloaded);
             files = new HashMap<>();
             Map<String, JsonObject> jsonDirs = new HashMap<>();
             Map<String, StringBuilder> jsDirs = new HashMap<>();
-            
+
             List<String> loadList = new ArrayList<>();
 
             Set<String> refs = _files.keySet()
@@ -120,15 +157,23 @@ public class autodownload implements IUpdateConfig, ICore {
                     .collect(Collectors.toSet());
 
             String currentRef = refs.contains(ref) ? ref : ".default";
+            String currentRefPath = "ref/" + currentRef + "/";
+            base_core._logOP("Current: " + currentRefPath);
 
-            _files.entrySet()
+            Map<String, byte[]> _resultFiles = new HashMap<>(_files);
+            _resultFiles.keySet().removeIf(v -> String.join("", this.path.split(v)).startsWith("ref/"));
+            _files.forEach((k,v) -> {
+                String key = String.join("", this.path.split(k));
+                if (key.startsWith("ref/") && key.startsWith(currentRefPath)) {
+                    _resultFiles.put(k.replace("/" + currentRefPath, "/"), v);
+                }
+            });
+            _resultFiles.entrySet()
                     .stream()
                     .map(kv -> Toast.of(String.join("", path.split(kv.getKey())), kv.getValue()))
                     .filter(kv -> ignore.stream().noneMatch(pattern -> pattern.matcher(kv.val0).find()))
                     .map(kv -> Toast.of(kv.val0.split("/"), kv.val1))
                     .sorted(Comparator.comparing(kv -> kv.val0[kv.val0.length - 1]))
-                    .filter(kv -> !kv.val0[0].equals("ref") || kv.val0.length >= 3 && kv.val0[1].equals(currentRef))
-                    .map(kv -> kv.val0[0].equals("ref") ? Toast.of(Arrays.stream(kv.val0).skip(2).toArray(String[]::new), kv.val1) : kv)
                     .forEach(kv -> kv.invoke((path, bytes) -> {
                         if (path.length > 1) {
                             String ext = FilenameUtils.getExtension(path[path.length - 1]);
@@ -136,7 +181,7 @@ public class autodownload implements IUpdateConfig, ICore {
                             switch (ext) {
                                 case "json" -> jsonDirs.compute(path[0], (k, json) -> {
                                     if (json == null) json = new JsonObject();
-                                    JsonElement item = org.lime.system.json.parse(StandardCharsets.UTF_8.decode(ByteBuffer.wrap(bytes)).toString());
+                                    JsonObject item = org.lime.system.json.parse(StandardCharsets.UTF_8.decode(ByteBuffer.wrap(bytes)).toString()).getAsJsonObject();
                                     json = base_core._combineJson(json, item, false).getAsJsonObject();
                                     return json;
                                 });
@@ -154,6 +199,42 @@ public class autodownload implements IUpdateConfig, ICore {
                             files.put(path[0], bytes);
                         }
                     }));
+/*
+            _files.entrySet()
+                    .stream()
+                    .map(kv -> Toast.of(String.join("", path.split(kv.getKey())), kv.getValue()))
+                    .filter(kv -> ignore.stream().noneMatch(pattern -> pattern.matcher(kv.val0).find()))
+                    .map(kv -> Toast.of(kv.val0.split("/"), kv.val1))
+                    .sorted(Comparator.comparing(kv -> kv.val0[kv.val0.length - 1]))
+                    .filter(kv -> !kv.val0[0].equals("ref") || kv.val0.length >= 3 && kv.val0[1].equals(currentRef))
+                    .map(kv -> kv.val0[0].equals("ref") ? Toast.of(Arrays.stream(kv.val0).skip(2).toArray(String[]::new), kv.val1) : kv)
+                    .forEach(kv -> kv.invoke((path, bytes) -> {
+                        if (path.length > 1) {
+                            String ext = FilenameUtils.getExtension(path[path.length - 1]);
+                            loadList.add("[D] " + path[0] + " / " + String.join("/", path));
+                            switch (ext) {
+                                case "json" -> jsonDirs.compute(path[0], (k, json) -> {
+                                    if (json == null) json = new JsonObject();
+                                    JsonObject item = org.lime.system.json.parse(StandardCharsets.UTF_8.decode(ByteBuffer.wrap(bytes)).toString()).getAsJsonObject();
+                                    json = base_core._combineJson(json, item, false).getAsJsonObject();
+                                    return json;
+                                });
+                                case "js", "txt" -> jsDirs.compute(path[0], (k, text) -> {
+                                    if (text == null) text = new StringBuilder();
+                                    text.append(StandardCharsets.UTF_8.decode(ByteBuffer.wrap(bytes))).append("\n");
+                                    return text;
+                                });
+                                default ->
+                                        throw new IllegalArgumentException("Not supported extension '" + ext + "' of file '" + String.join("/", path) + "'");
+                            }
+                        }
+                        else {
+                            loadList.add("[F] " + path[0] + " / " + String.join("/", path));
+                            files.put(path[0], bytes);
+                        }
+                    }));
+*/
+            //
             base_core._logOP(Component.text("Load list: [view]")
                 .hoverEvent(HoverEvent.showText(Component.text(String.join("\n", loadList)))));
             jsonDirs.forEach((key,value) -> files.put(key + ".json", value.toString().getBytes()));
@@ -168,6 +249,8 @@ public class autodownload implements IUpdateConfig, ICore {
         for (Map.Entry<String, JsonElement> kv : json.parse(new String(files.get("link.json"))).getAsJsonObject().entrySet()) {
             if (!(fileList == null || fileList.contains(kv.getKey()) || (!kv.getKey().endsWith(".json") && fileList.contains(kv.getKey() + ".json")))) continue;
             byte[] bytes = files.get(kv.getValue().getAsString());
+            if (bytes == null)
+                throw new IllegalArgumentException("File '"+kv.getValue().getAsString() + "' not found");
             base_core._logOP(" - " + kv.getValue().getAsString() + " : " + bytes.length + "B");
             String[] file = kv.getKey().split("\\.");
             if (file.length == 1) base_core._writeAllConfig(file[0], StandardCharsets.UTF_8.decode(ByteBuffer.wrap(bytes)).toString());

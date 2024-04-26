@@ -40,6 +40,7 @@ public final class ClassPatcher<T> {
     }
 
     public JarArchive patch() {
+        List<PatchException> exceptions = new ArrayList<>();
         JarArchive result = archive.patch(tClass, (jar, writer) -> new ClassVisitor(Opcodes.ASM9, writer) {
             private final Map<IMethodFilter<T>, MethodPatcher> filters = new HashMap<>(patchMethods);
             @Override public void visit(int version, int access, String name, String signature, String superName, String[] interfaces) {
@@ -63,15 +64,20 @@ public final class ClassPatcher<T> {
                     progressVisitor.visitCode();
                 });
                 super.visitEnd();
-                filters.forEach((filter, patcher) -> Native.log("!!!WARNING!!! METHOD '"+filter.toInfo()+"' NOT FOUNDED FOR PATCH!"));
+                throwNotFoundCheck();
+            }
+            private void throwNotFoundCheck() {
+                filters.forEach((filter, patcher) -> {
+                    throw new PatchException("METHOD '" + filter.toInfo() + "' NOT FOUNDED FOR PATCH!", jar, filter);
+                });
             }
             private boolean isSuper = false;
             @Override public MethodVisitor visitMethod(int access, String name, String descriptor, String signature, String[] exceptions) {
                 if (!isSuper) {
                     for (Map.Entry<IMethodFilter<T>, MethodPatcher> kv : patchMethods.entrySet()) {
                         IMethodFilter<T> filter = kv.getKey();
-                        filters.remove(filter);
                         if (filter.test(access, name, descriptor, signature, exceptions)) {
+                            filters.remove(filter);
                             Native.log("Patch method " + filter.toInfo() + "...");
                             isSuper = true;
                             ProgressMethodVisitor progressVisitor = kv.getValue().patch(jar, filter, this, access, name, descriptor, signature, exceptions);
@@ -83,97 +89,13 @@ public final class ClassPatcher<T> {
                 }
                 return super.visitMethod(access, name, descriptor, signature, exceptions);
             }
-        });
+        }, exceptions);
         throwProgressCheck();
+        exceptions.forEach(exception -> {
+            throw exception;
+        });
         return result;
-        /*new ClassVisitor(Opcodes.ASM9, writer) {
-            @Override public void visit(int version, int access, String name, String signature, String superName, String[] interfaces) {
-                List<String> _interfaces = Lists.newArrayList(interfaces);
-                _interfaces.add("net/minecraft/world/food/IFoodNative");
-                super.visit(version, access, name, signature, superName, _interfaces.toArray(new String[0]));
-            }
-
-            @Override public void visitEnd() {
-                super.visitField(Opcodes.ACC_PRIVATE, "nativeData", Type.getDescriptor(NBTTagCompound.class).toString(), "", null).visitEnd();
-                new MethodVisitor(Opcodes.ASM9, super.visitMethod(Opcodes.ACC_PUBLIC, "nativeData", Type.getMethodDescriptor(Type.getType(NBTTagCompound.class)), "", new String[0])) {
-                    @Override public void visitCode() {
-                        super.visitCode();
-                        super.visitIntInsn(Opcodes.ALOAD, 0);
-                        super.visitFieldInsn(Opcodes.GETFIELD, "net/minecraft/world/food/FoodMetaData", "nativeData", Type.getDescriptor(NBTTagCompound.class));
-                        super.visitInsn(Opcodes.ARETURN);
-                        super.visitMaxs(0, 0);
-                        super.visitEnd();
-                        log("Patch FoodMetaData...GETTER nativeData...OK!");
-                    }
-                }.visitCode();
-                new MethodVisitor(Opcodes.ASM9, super.visitMethod(Opcodes.ACC_PUBLIC, "nativeData", Type.getMethodDescriptor(Type.VOID_TYPE, Type.getType(NBTTagCompound.class)), "", new String[0])) {
-                    @Override public void visitCode() {
-                        super.visitCode();
-                        super.visitIntInsn(Opcodes.ALOAD, 0);
-                        super.visitIntInsn(Opcodes.ALOAD, 1);
-                        super.visitFieldInsn(Opcodes.PUTFIELD, "net/minecraft/world/food/FoodMetaData", "nativeData", Type.getDescriptor(NBTTagCompound.class));
-                        super.visitInsn(Opcodes.RETURN);
-                        super.visitMaxs(0, 0);
-                        super.visitEnd();
-                        log("Patch FoodMetaData...SETTER nativeData...OK!");
-                    }
-                }.visitCode();
-
-                super.visitEnd();
-            }
-
-            @Override public MethodVisitor visitMethod(int access, String name, String descriptor, String signature, String[] exceptions) {
-                //log("   Founded method '" + name + "' with descriptor '" + descriptor + "'");
-                //log("   Try compare '"+Type.getType(descriptor)+"' with '" + Type.getMethodType(Type.VOID_TYPE, Type.getType(NBTTagCompound.class)) + "'");
-                if (ofMojang(FoodMetaData.class, "readAdditionalSaveData", descriptor, true).equals(name) && Type.getType(descriptor).equals(Type.getMethodType(Type.VOID_TYPE, Type.getType(NBTTagCompound.class)))) {
-                    log("   Modify method: void readAdditionalSaveData(NBTTagCompound)");
-                    return new MethodVisitor(Opcodes.ASM9, super.visitMethod(access, name, descriptor, signature, exceptions)) {
-                        int index = 0;
-                        @Override public void visitLineNumber(int line, Label start) {
-                            super.visitLineNumber(line, start);
-                            if (index == 0) {
-                                index++;
-                                super.visitVarInsn(Opcodes.ALOAD, 0);
-                                super.visitVarInsn(Opcodes.ALOAD, 1);
-                                super.visitMethodInsn(
-                                        Opcodes.INVOKESTATIC,
-                                        "net/minecraft/world/food/IFoodNative",
-                                        "readNativeSaveData",
-                                        Type.getMethodDescriptor(Type.VOID_TYPE, replaceDescriptor(Type.getType(FoodMetaData.class), "FoodMetaData", "IFoodNative"), Type.getType(NBTTagCompound.class)),
-                                        true
-                                );
-                                log("Patch FoodMetaData...ReadAdditional...OK!");
-                            }
-                        }
-                    };
-                }
-                else if (ofMojang(FoodMetaData.class, "addAdditionalSaveData", descriptor, true).equals(name) && Type.getType(descriptor).equals(Type.getMethodType(Type.VOID_TYPE, Type.getType(NBTTagCompound.class)))) {
-                    log("   Modify method: void addAdditionalSaveData(NBTTagCompound)");
-                    return new MethodVisitor(Opcodes.ASM9, super.visitMethod(access, name, descriptor, signature, exceptions)) {
-                        int index = 0;
-                        @Override public void visitLineNumber(int line, Label start) {
-                            super.visitLineNumber(line, start);
-                            if (index == 0) {
-                                index++;
-                                super.visitVarInsn(Opcodes.ALOAD, 0);
-                                super.visitVarInsn(Opcodes.ALOAD, 1);
-                                super.visitMethodInsn(
-                                        Opcodes.INVOKESTATIC,
-                                        "net/minecraft/world/food/IFoodNative",
-                                        "addNativeSaveData",
-                                        Type.getMethodDescriptor(Type.VOID_TYPE, replaceDescriptor(Type.getType(FoodMetaData.class), "FoodMetaData", "IFoodNative"), Type.getType(NBTTagCompound.class)),
-                                        true
-                                );
-                                log("Patch FoodMetaData...AddAdditional...OK!");
-                            }
-                        }
-                    };
-                }
-                else return super.visitMethod(access, name, descriptor, signature, exceptions);
-            }
-        }*/
     }
-
     public void throwProgressCheck() {
         progressVisitors.forEach(ProgressMethodVisitor::throwProgressCheck);
     }

@@ -45,32 +45,35 @@ public class reflection {
     }
     public static Field nonFinal(Field field) {
         int mods = field.getModifiers();
-        if (Modifier.isFinal(mods)) {
-            try {
-                /*
-                Field modifiersField = Field.class.getDeclaredField("modifiers");
-                modifiersField.setAccessible(true);
-                modifiersField.setInt(field, field.getModifiers() & ~Modifier.FINAL);
-                */
-                Method getDeclaredFields0 = Class.class.getDeclaredMethod("getDeclaredFields0", boolean.class);
-                getDeclaredFields0.setAccessible(true);
-                Field[] fields = (Field[]) getDeclaredFields0.invoke(Field.class, false);
-                Field modifiers = null;
-                for (Field each : fields) {
-                    if ("modifiers".equals(each.getName())) {
-                        modifiers = each;
-                        break;
-                    }
+        //if (Modifier.isFinal(mods)) {
+        try {
+            /*
+            Field modifiersField = Field.class.getDeclaredField("modifiers");
+            modifiersField.setAccessible(true);
+            modifiersField.setInt(field, field.getModifiers() & ~Modifier.FINAL);
+            */
+            Method getDeclaredFields0 = Class.class.getDeclaredMethod("getDeclaredFields0", boolean.class);
+            getDeclaredFields0.setAccessible(true);
+            Field[] fields = (Field[]) getDeclaredFields0.invoke(Field.class, false);
+            Field modifiers = null;
+            for (Field each : fields) {
+                if ("modifiers".equals(each.getName())) {
+                    modifiers = each;
+                    break;
                 }
-                assert modifiers != null;
-                modifiers.setAccessible(true);
-                modifiers.setInt(field, field.getModifiers() & ~Modifier.FINAL);
-            } catch (Exception e) {
-                throw new IllegalArgumentException(e);
             }
+            assert modifiers != null;
+            modifiers.setAccessible(true);
+            mods &= ~Modifier.FINAL;
+            mods |= Modifier.PUBLIC;
+            modifiers.setInt(field, mods);
+            return field;
+        } catch (Exception e) {
+            throw new IllegalArgumentException(e);
         }
+        //}
         //if (Modifier.isFinal(mods)) MODIFIERS.set(field, mods & ~Modifier.FINAL);
-        return field;
+        //return field;
     }
     public static <T extends AccessibleObject>T access(T val) {
         if (System.getSecurityManager() == null) {

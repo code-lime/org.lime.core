@@ -28,10 +28,8 @@ public interface IMethodFilter<T> extends IMethodInfo {
         return new IMethodFilter<T>() {
             @Override public Class<T> tClass() { return tClass; }
             @Override public boolean test(int access, String name, String descriptor, String signature, String[] exceptions) {
-                return (isMojang
-                        ? Native.getMojangName(tClass, methodName, descriptor, true)
-                        : methodName
-                ).equals(name) && Type.getType(descriptor).equals(methodDescriptor);
+                String resultName = isMojang ? Native.getMojangName(tClass, name, descriptor, true) : name;
+                return resultName.equals(methodName) && Type.getType(descriptor).equals(methodDescriptor);
             }
             @Override public String toInfo() { return tClass.getSimpleName() + "." + methodName + methodDescriptor; }
         };
@@ -40,10 +38,8 @@ public interface IMethodFilter<T> extends IMethodInfo {
         return new IMethodFilter<T>() {
             @Override public Class<T> tClass() { return tClass; }
             @Override public boolean test(int access, String name, String descriptor, String signature, String[] exceptions) {
-                return (isMojang
-                        ? Native.getMojangName(tClass, methodName, descriptor, true)
-                        : methodName
-                ).equals(name);
+                String resultName = isMojang ? Native.getMojangName(tClass, name, descriptor, true) : name;
+                return resultName.equals(methodName);
             }
             @Override public String toInfo() { return tClass.getSimpleName() + "." + methodName + "(*)*"; }
         };

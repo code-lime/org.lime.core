@@ -65,7 +65,7 @@ public class JarArchive {
         for (IMethodFilter<T> filter : filters) archive = archive.of(filter.tClass()).patchMethod(filter, patcher).patch();
         return archive;
     }
-    public <T>JarArchive patch(Class<T> tClass, Func2<JarArchive, ClassWriter, ClassVisitor> visitor) {
+    public <T>JarArchive patch(Class<T> tClass, Func2<JarArchive, ClassWriter, ClassVisitor> visitor, List<PatchException> exceptions) {
         String className = Native.classFile(tClass);
         Optional.ofNullable(this.entries.get(className))
                 .ifPresentOrElse(bytes -> {
@@ -77,7 +77,7 @@ public class JarArchive {
                         byte[] newBytes = writer.toByteArray();
                         this.entries.put(className, newBytes);
                         if (Arrays.compare(bytes, newBytes) == 0) {
-                            Native.log("PATCH " + className + " NOT MODIFY ANY!");
+                            exceptions.add(new PatchException("Patch '"+className+"' is not change any!", this, className));
                         }
                     });
                     Native.log("Patch " + className + " saved!");

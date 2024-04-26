@@ -38,6 +38,7 @@ function createToast(index) {
         "    @Override public Object get(int index) { switch (index) { "+create(index, function(i) { return "case "+i+": return val"+i+";"; }, " ")+" } return null; }",
         "    @Override public void set(int index, Object value) { switch (index) { "+create(index, function(i) { return "case "+i+": val"+i+" = (T"+i+")value; break;"; }, " ")+" } }",
         "    @Override public Object edit(int index, Func1<Object, Object> func) { Object ret; set(index, ret = func.invoke(get(index))); return ret; }",
+        "    public void set(Toast"+index+"<"+type+"> other) { "+create(index, function(i) { return "this.val"+i+" = other.val"+i+";"; }, " ")+" }",
         "    public <"+atype+">Toast"+index+"<"+atype+"> map("+create(index, function(i) { return "Func1<T"+i+", A"+i+"> map"+i; }, ", ")+") { return Toast.of("+create(index, function(i) { return "map"+i+".invoke(val"+i+")"; }, ", ")+"); }",
         "    public void invoke(Action"+index+"<"+type+"> action) { action.invoke("+args+"); }",
         "    public <T>T invokeGet(Func"+index+"<"+type+", T> func) { return func.invoke("+args+"); }",

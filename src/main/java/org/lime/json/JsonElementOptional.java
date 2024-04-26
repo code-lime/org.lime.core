@@ -1,6 +1,7 @@
 package org.lime.json;
 
 import com.google.gson.*;
+
 import java.math.BigDecimal;
 import java.math.BigInteger;
 import java.util.Optional;
@@ -41,7 +42,7 @@ public abstract class JsonElementOptional {
     public static JsonElementOptional of(JsonElement base) {
         if (base instanceof JsonObject json) return JsonObjectOptional.of(json);
         else if (base instanceof JsonArray json) return JsonArrayOptional.of(json);
-        else if (base instanceof JsonNull json || base == null) return JsonNullOptional.of();
+        else if (base instanceof JsonNull || base == null) return JsonNullOptional.of();
         else if (base instanceof JsonPrimitive json) return JsonPrimitiveOptional.of(json);
         throw new IllegalArgumentException("Class '" + base.getClass() + "' not supported!");
     }
