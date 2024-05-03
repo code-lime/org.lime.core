@@ -2,7 +2,6 @@ package org.lime;
 
 import com.google.common.collect.Streams;
 import com.google.gson.JsonElement;
-import com.google.gson.internal.reflect.ReflectionHelper;
 import com.oracle.truffle.api.*;
 import com.oracle.truffle.api.frame.Frame;
 import com.oracle.truffle.api.frame.MaterializedFrame;
@@ -18,19 +17,15 @@ import org.graalvm.options.OptionValues;
 import org.graalvm.polyglot.Context;
 import org.graalvm.polyglot.Engine;
 import org.graalvm.polyglot.HostAccess;
-import org.graalvm.polyglot.PolyglotException;
 import org.graalvm.polyglot.io.FileSystem;
 import org.lime.plugin.CoreElement;
 import org.lime.plugin.ICore;
 import org.lime.system.execute.Action1;
 import org.lime.system.json;
-import org.lime.system.toast.Toast;
-import org.lime.system.toast.Toast1;
 
 import javax.annotation.Nullable;
 import javax.script.Bindings;
 import javax.script.ScriptContext;
-import javax.script.SimpleBindings;
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.lang.reflect.Array;
@@ -309,6 +304,7 @@ public class JavaScript implements ICore {
 
         try (var frame = context.frame()) {
             var engine = frame.engine();
+            instances.forEach(engine::put);
             //engine.getContext().setBindings(new SimpleBindings(new ConcurrentHashMap<>()), ScriptContext.ENGINE_SCOPE);
             base_core._logOP("JavaScriptEngine: " + engine.getClass().getName());
             String loadModule = "???";
@@ -324,7 +320,6 @@ public class JavaScript implements ICore {
             }
             try {
                 eval(String.join("\n", _js));
-                instances.forEach(engine::put);
                 eval("init()");
             }
             catch (Exception e) {
