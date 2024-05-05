@@ -5,6 +5,7 @@ import org.lime.docs.IIndexDocs;
 
 import java.util.Collection;
 import java.util.List;
+import java.util.Objects;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
@@ -16,6 +17,7 @@ public interface IComment {
 
     static IComment link(IIndexDocs index) { return index::link; }
     static IComment linkCurrent() { return current -> current.link(current); }
+    static IComment linkParent() { return current -> Objects.requireNonNull((IIndexDocs)current.parent()).link(current); }
     static IComment text(String text) { return current -> text; }
     private static IComment raw(String text, String style) { return current -> "<"+style+">"+text+"</"+style+">"; }
     static IComment raw(JsonPrimitive primitive) { return raw(primitive.getAsString(), primitive.isBoolean() ? "bool" : "string"); }
