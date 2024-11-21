@@ -5,7 +5,11 @@ import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;
 import java.lang.annotation.Target;
 
-@Retention(RetentionPolicy.RUNTIME)
+/**
+ * @author Lukas Alt
+ * @since 07.05.2023
+ */
 @Target(ElementType.METHOD)
-public @interface Removed {
+@Retention(RetentionPolicy.RUNTIME)
+public @interface UtilityMethod {
 }
