@@ -1,10 +1,12 @@
 name: LimeCore
-version: 1.0
-main: org.lime.core
+version: ${version}
+main: org.lime.LimeCore
 api-version: 1.13
 authors: [Lime]
 softdepend: [ProtocolLib]
 #raw-libraries:
 #  - javet-3.0.4-proxy-access.jar
-#libraries:
-#  - com.caoccao.javet:javet:3.0.4
+libraries:
+  - org.graalvm.js:js:pom:${versionGraalVm}
+  - org.graalvm.js:js-scriptengine:${versionGraalVm}
+  - org.graalvm.truffle:truffle-api:${versionGraalVm}
