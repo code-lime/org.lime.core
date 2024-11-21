@@ -2,7 +2,7 @@ package org.lime.docs.path;
 
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.Streams;
-import org.lime.core;
+import org.lime.LimeCore;
 import org.lime.docs.*;
 import org.lime.system.execute.Func2;
 
@@ -85,7 +85,7 @@ public final class DocsFile extends BaseDocsPath implements IDocs, IHrefLink {
     @Override public boolean save(Path folder) {
         File folderFile = folder.toFile();
         if (!folderFile.exists() && !folderFile.mkdirs()) {
-            core.instance._logOP("ERROR SAVE TO: " + folder + " ("+folderFile.exists()+")");
+            LimeCore.instance._logOP("ERROR SAVE TO: " + folder + " ("+folderFile.exists()+")");
             return false;
         }
         try {

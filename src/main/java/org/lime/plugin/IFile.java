@@ -3,6 +3,7 @@ package org.lime.plugin;
 import java.io.File;
 import java.io.IOException;
 import java.nio.file.Files;
+import java.nio.file.Path;
 import java.nio.file.Paths;
 
 public interface IFile extends ILogger {
@@ -15,20 +16,20 @@ public interface IFile extends ILogger {
             return Files.readString(Paths.get(path)).replace("\r", "");
             //return FileUtils.readFileToString(new File(path), StandardCharsets.UTF_8).replace("\r", "");
         } catch (IOException e) {
-            _log("An error occurred.");
-            _log(e.getMessage());
+            _logStackTrace(e);
             return null;
         }
     }
     default String _readAllText(File file) { return _readAllText(file.getAbsolutePath()); }
     default void _writeAllText(String path, String text) {
         try {
-            Files.writeString(Paths.get(path), text);
+            Path _path = Paths.get(path);
+            Path dir = _path.getParent();
+            if (dir != null && !Files.exists(dir))
+                Files.createDirectories(dir);
+            Files.writeString(_path, text);
         } catch (IOException e) {
-            _log("An error occurred.");
-            _log(e.getMessage());
-        } catch (Exception e) {
-            _log(e.getMessage());
+            _logStackTrace(e);
         }
     }
     default void _deleteText(String path) {
@@ -36,7 +37,7 @@ public interface IFile extends ILogger {
             File myObj = new File(path);
             myObj.delete();
         } catch (Exception e) {
-            _log(e.getMessage());
+            _logStackTrace(e);
         }
     }
 }

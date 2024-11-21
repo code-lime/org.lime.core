@@ -404,7 +404,7 @@ function createAF(index) {
     var _args = createOffset(1, index, function(i) { return "val" + i; }, ", ");
     var invoke = create(index, function(i) { return "(T"+i+")args["+i+"]"; }, ", ");
     var tt = "T0";
-    for (var i = 1; i < index; i++) tt = "Toast2<"+tt+","+"T"+i+">";
+    for (var i = 1; i < index; i++) tt = "Tuple2<"+tt+","+"T"+i+">";
     var functions = [
         "    public static <"+type+">Action"+index+"<"+type+"> action(Action"+index+"<"+type+"> action) { return action; }",
         "    public static <"+type+", TResult>Func"+index+"<"+type+", TResult> func(Func"+index+"<"+type+", TResult> func) { return func; }",
@@ -414,7 +414,7 @@ function createAF(index) {
     files["Action"+index+".java"] = [
         "package org.lime.system.execute;",
         "",
-        "import org.lime.system.toast.*;",
+        "import org.lime.system.tuple.*;",
         "import java.lang.reflect.Method;",
         "import java.lang.reflect.Modifier;",
         "",

@@ -2,9 +2,9 @@ package org.lime;
 
 import com.google.gson.JsonElement;
 import org.lime.system.execute.*;
-import org.lime.system.json;
-import org.lime.system.list;
-import org.lime.system.toast.*;
+import org.lime.json.builder.Json;
+import org.lime.system.ListBuilder;
+import org.lime.system.tuple.*;
 
 import java.io.InputStream;
 import java.math.BigInteger;
@@ -14,12 +14,9 @@ import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.net.http.HttpClient.Version;
-import java.nio.ByteBuffer;
 import java.nio.charset.StandardCharsets;
 import java.time.Duration;
 import java.util.*;
-import java.util.concurrent.CompletionStage;
-import java.util.concurrent.Flow;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
@@ -61,14 +58,14 @@ public class web {
             public executor<Void> none() { return custom(HttpResponse.BodyHandlers.discarding()); }
             public executor<String> text() { return custom(HttpResponse.BodyHandlers.ofString()); }
             public executor<Stream<String>> lines() { return custom(HttpResponse.BodyHandlers.ofLines()); }
-            public executor<JsonElement> json() { return text().map(json::parse); }
+            public executor<JsonElement> json() { return text().map(Json::parse); }
 
-            private static <T> Toast3<T, Integer, Map<String, List<String>>> of(HttpResponse<T> response) {
-                return Toast.of(response.body(), response.statusCode(), response.headers().map());
+            private static <T> Tuple3<T, Integer, Map<String, List<String>>> of(HttpResponse<T> response) {
+                return Tuple.of(response.body(), response.statusCode(), response.headers().map());
             }
             private static <T> executor<T> of(HttpRequest.Builder base, HttpResponse.BodyHandler<T> handler) {
                 return new executor<>() {
-                    @Override public Toast3<T, Integer, Map<String, List<String>>> executeHeaders() {
+                    @Override public Tuple3<T, Integer, Map<String, List<String>>> executeHeaders() {
                         try {
                             return of(HttpClient.newBuilder()
                                 .version(Version.HTTP_1_1)
@@ -79,17 +76,17 @@ public class web {
                         catch (Exception e) { throw new IllegalArgumentException(e); }
                     }
                     @Override public void executeHeadersAsync(Action3<T, Integer, Map<String, List<String>>> callback) {
-                        core.instance._invokeAsync(this::executeHeaders, data -> callback.invoke(data.val0, data.val1, data.val2));
+                        LimeCore.instance._invokeAsync(this::executeHeaders, data -> callback.invoke(data.val0, data.val1, data.val2));
                     }
                 };
             }
 
             public interface executor<T> {
-                Toast3<T, Integer, Map<String, List<String>>> executeHeaders();
+                Tuple3<T, Integer, Map<String, List<String>>> executeHeaders();
                 void executeHeadersAsync(Action3<T, Integer, Map<String, List<String>>> callback);
 
-                default Toast2<T, Integer> execute() {
-                    return executeHeaders().invokeGet((a,b,c) -> Toast.of(a,b));
+                default Tuple2<T, Integer> execute() {
+                    return executeHeaders().invokeGet((a,b,c) -> Tuple.of(a,b));
                 }
                 default void executeAsync(Action2<T, Integer> callback) {
                     executeHeadersAsync((a,b,c) -> callback.invoke(a,b));
@@ -97,7 +94,7 @@ public class web {
 
                 default <R> executor<R> map(Func1<T, R> map) {
                     return new executor<>() {
-                        @Override public Toast3<R, Integer, Map<String, List<String>>> executeHeaders() {
+                        @Override public Tuple3<R, Integer, Map<String, List<String>>> executeHeaders() {
                             return executor.this.executeHeaders().map(map, v -> v, v -> v);
                         }
                         @Override public void executeHeadersAsync(Action3<R, Integer, Map<String, List<String>>> callback) {
@@ -130,7 +127,7 @@ public class web {
                 }
 
                 private List<String> _head(String key, String boundary) {
-                    return list.<String>of()
+                    return ListBuilder.<String>of()
                             .add("--" + boundary)
                             .add("Content-Disposition: form-data; name=\""+key+"\"")
                             .add(headers.entrySet(), kv -> kv.getKey() + ": " + kv.getValue())

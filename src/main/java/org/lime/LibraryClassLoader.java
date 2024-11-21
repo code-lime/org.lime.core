@@ -133,7 +133,7 @@ public class LibraryClassLoader extends URLClassLoader {
      * */
     public synchronized Class<?> loadOnce(String tClass) {
         String key = this.files.stream().map(v -> v.getName()).collect(Collectors.joining(" & "));
-        core.instance._logOP("Attempting to load the " + key + " files and class "+tClass+"...");
+        LimeCore.instance._logOP("Attempting to load the " + key + " files and class "+tClass+"...");
 
         if (this.loaded) throw new IllegalStateException("Files " + key + " already loaded");
         List<JarInfo> jars = new ArrayList<>();
@@ -170,7 +170,7 @@ public class LibraryClassLoader extends URLClassLoader {
                     this.classes.put(c.getName(), c);
 
                     //this.loadToPluginClassLoader();
-                    core.instance._logOP("The " + key + " file has been loaded (" + this.classes.size() + " classes loaded)");
+                    LimeCore.instance._logOP("The " + key + " file has been loaded (" + this.classes.size() + " classes loaded)");
                     return c;
                 } catch (ClassNotFoundException ignored) {}
             }

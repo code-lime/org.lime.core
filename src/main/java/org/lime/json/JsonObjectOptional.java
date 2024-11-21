@@ -23,13 +23,16 @@ public class JsonObjectOptional extends JsonElementOptional implements Map<Strin
         return json;
     }
 
-    public void add(String property, JsonElementOptional value) { this.members.put(property, value == null ? JsonNullOptional.INSTANCE : value); }
+    public JsonObjectOptional add(String property, JsonElementOptional value) {
+        this.members.put(property, value == null ? JsonNullOptional.INSTANCE : value);
+        return this;
+    }
     public JsonElementOptional remove(String property) { return this.members.remove(property); }
 
-    public void addProperty(String property, String value) { this.add(property, value == null ? JsonNullOptional.INSTANCE : new JsonPrimitiveOptional(value)); }
-    public void addProperty(String property, Number value) { this.add(property, value == null ? JsonNullOptional.INSTANCE : new JsonPrimitiveOptional(value)); }
-    public void addProperty(String property, Boolean value) { this.add(property, value == null ? JsonNullOptional.INSTANCE : new JsonPrimitiveOptional(value)); }
-    public void addProperty(String property, Character value) { this.add(property, value == null ? JsonNullOptional.INSTANCE : new JsonPrimitiveOptional(value)); }
+    public JsonObjectOptional addProperty(String property, String value) { return this.add(property, value == null ? JsonNullOptional.INSTANCE : new JsonPrimitiveOptional(value)); }
+    public JsonObjectOptional addProperty(String property, Number value) { return this.add(property, value == null ? JsonNullOptional.INSTANCE : new JsonPrimitiveOptional(value)); }
+    public JsonObjectOptional addProperty(String property, Boolean value) { return this.add(property, value == null ? JsonNullOptional.INSTANCE : new JsonPrimitiveOptional(value)); }
+    public JsonObjectOptional addProperty(String property, Character value) { return this.add(property, value == null ? JsonNullOptional.INSTANCE : new JsonPrimitiveOptional(value)); }
 
     @Override public Set<Map.Entry<String, JsonElementOptional>> entrySet() { return this.members.entrySet(); }
     @Override public int size() { return this.members.size(); }

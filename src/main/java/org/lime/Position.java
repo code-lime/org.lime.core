@@ -4,7 +4,7 @@ import org.bukkit.Location;
 import org.bukkit.World;
 import org.bukkit.block.Block;
 import org.bukkit.util.Vector;
-import org.lime.system.toast.*;
+import org.lime.system.tuple.*;
 
 import java.util.Objects;
 
@@ -49,7 +49,7 @@ public class Position implements Cloneable {
     public Position del(int x, int y, int z) {
         return new Position(world, this.x - x, this.y - y, this.z - z);
     }
-    public Position offset(Toast3<Integer, Integer, Integer> offset) {
+    public Position offset(Tuple3<Integer, Integer, Integer> offset) {
         return add(offset.val0, offset.val1, offset.val2);
     }
 
@@ -60,7 +60,7 @@ public class Position implements Cloneable {
     public Location getLocation(int x, int y, int z) {
         return new Location(world, this.x + x, this.y + y, this.z + z);
     }
-    public Location getLocation(Toast3<Integer, Integer, Integer> offset) {
+    public Location getLocation(Tuple3<Integer, Integer, Integer> offset) {
         return getLocation(offset.val0, offset.val1, offset.val2);
     }
     public Location getLocation(double x, double y, double z) {
@@ -80,6 +80,9 @@ public class Position implements Cloneable {
         if (obj instanceof Position) return equals((Position)obj);
         if (obj instanceof Location) return equals(new Position((Location)obj));
         return false;
+    }
+    @Override public Position clone() {
+        return new Position(world, x, y, z);
     }
 
     public boolean equals(Position obj) {

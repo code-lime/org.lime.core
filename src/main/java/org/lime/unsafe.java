@@ -1,21 +1,16 @@
 package org.lime;
 
-import io.papermc.paper.util.ObfHelper;
-import net.fabricmc.mappingio.MappingReader;
-import net.fabricmc.mappingio.format.MappingFormat;
-import net.fabricmc.mappingio.tree.MappingTree;
-import net.fabricmc.mappingio.tree.MemoryMappingTree;
+import io.papermc.paper.util.MappingEnvironment;
+import net.neoforged.srgutils.IMappingFile;
 import org.objectweb.asm.Type;
 import sun.misc.Unsafe;
 
 import java.io.Closeable;
 import java.io.InputStream;
-import java.io.InputStreamReader;
 import java.lang.invoke.MethodHandles;
 import java.lang.invoke.VarHandle;
 import java.lang.reflect.Field;
 import java.lang.reflect.Modifier;
-import java.nio.charset.StandardCharsets;
 import java.util.*;
 import java.util.stream.Collectors;
 
@@ -44,24 +39,25 @@ public class unsafe {
         return field;
     }
 
-    private record MemberInfo(String name, String desc, boolean isMethod) { }
+    private record MemberInfo(String name, String desc, boolean isMethod) {}
     private static Closeable loadDeobf() throws Throwable {
-        InputStream mappingsInputStream = ObfHelper.class.getClassLoader().getResourceAsStream("META-INF/mappings/reobf.tiny");
-        MemoryMappingTree tree = new MemoryMappingTree();
+        InputStream mappingsInputStream = MappingEnvironment.mappingsStreamIfPresent();
         if (mappingsInputStream == null) return () -> {};
-        MappingReader.read(new InputStreamReader(mappingsInputStream, StandardCharsets.UTF_8), MappingFormat.TINY_2, tree);
-        for (MappingTree.ClassMapping classMapping : tree.getClasses()) {
+        IMappingFile tree = IMappingFile.load(mappingsInputStream);
+        for (IMappingFile.IClass classMapping : tree.getClasses()) {
             Map<MemberInfo, String> mojang_to_mapped_members = new HashMap<>();
             Map<MemberInfo, String> mapped_to_mojang_members = new HashMap<>();
-            for (MappingTree.MemberMapping member : classMapping.getMethods()) {
-                mojang_to_mapped_members.put(new MemberInfo(member.getName(ObfHelper.MOJANG_PLUS_YARN_NAMESPACE), member.getDesc(ObfHelper.SPIGOT_NAMESPACE), true), member.getName(ObfHelper.SPIGOT_NAMESPACE));
-                mapped_to_mojang_members.put(new MemberInfo(member.getName(ObfHelper.SPIGOT_NAMESPACE), member.getDesc(ObfHelper.SPIGOT_NAMESPACE), true), member.getName(ObfHelper.MOJANG_PLUS_YARN_NAMESPACE));
+            /*MOJANG+YARN - ORIGINAL*/
+            /*SPIGOT - MAPPED*/
+            for (IMappingFile.IMethod member : classMapping.getMethods()) {
+                mojang_to_mapped_members.put(new MemberInfo(member.getOriginal(), member.getMappedDescriptor(), true), member.getMapped());
+                mapped_to_mojang_members.put(new MemberInfo(member.getMapped(), member.getMappedDescriptor(), true), member.getOriginal());
             }
-            for (MappingTree.MemberMapping member : classMapping.getFields()) {
-                mojang_to_mapped_members.put(new MemberInfo(member.getName(ObfHelper.MOJANG_PLUS_YARN_NAMESPACE), member.getDesc(ObfHelper.SPIGOT_NAMESPACE), false), member.getName(ObfHelper.SPIGOT_NAMESPACE));
-                mapped_to_mojang_members.put(new MemberInfo(member.getName(ObfHelper.SPIGOT_NAMESPACE), member.getDesc(ObfHelper.SPIGOT_NAMESPACE), false), member.getName(ObfHelper.MOJANG_PLUS_YARN_NAMESPACE));
+            for (IMappingFile.IField member : classMapping.getFields()) {
+                mojang_to_mapped_members.put(new MemberInfo(member.getOriginal(), member.getMappedDescriptor(), false), member.getMapped());
+                mapped_to_mojang_members.put(new MemberInfo(member.getMapped(), member.getMappedDescriptor(), false), member.getOriginal());
             }
-            String class_key = classMapping.getName(ObfHelper.SPIGOT_NAMESPACE).replace('/', '.');
+            String class_key = classMapping.getMapped().replace('/', '.');
             mojang_to_mapped.put(class_key, mojang_to_mapped_members);
             mapped_to_mojang.put(class_key, mapped_to_mojang_members);
         }

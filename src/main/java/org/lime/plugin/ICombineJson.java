@@ -5,12 +5,12 @@ import com.google.gson.JsonArray;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonPrimitive;
-import org.lime.JavaScript;
+import org.lime.modules.JavaScript;
 import org.lime.json.JsonObjectOptional;
-import org.lime.system.json;
-import org.lime.system.toast.Toast;
-import org.lime.system.toast.Toast1;
-import org.lime.system.toast.Toast2;
+import org.lime.json.builder.Json;
+import org.lime.system.tuple.Tuple;
+import org.lime.system.tuple.Tuple1;
+import org.lime.system.tuple.Tuple2;
 
 import java.util.*;
 import java.util.regex.Matcher;
@@ -53,18 +53,18 @@ public interface ICombineJson extends ILogger, IConfig {
     default JsonObject _combineParent(JsonObject _json, boolean category, boolean array_join) {
         HashMap<String, JsonObject> parentObjects = new HashMap<>();
         JsonObject _new = new JsonObject();
-        List<Toast2<String, String>> replaceList = new ArrayList<>();
+        List<Tuple2<String, String>> replaceList = new ArrayList<>();
         HashMap<String, JsonElement> replaceJsonList = new HashMap<>();
         if (_json.has("DEFAULT_REPLACE")) {
             _json.get("DEFAULT_REPLACE").getAsJsonObject().entrySet().forEach(kv -> {
-                if (kv.getValue().isJsonArray()) replaceList.add(Toast.of(kv.getKey(), Streams.stream(kv.getValue().getAsJsonArray().iterator()).map(JsonElement::getAsString).collect(Collectors.joining("\\n"))));
-                else replaceList.add(Toast.of(kv.getKey(), kv.getValue().getAsString()));
+                if (kv.getValue().isJsonArray()) replaceList.add(Tuple.of(kv.getKey(), Streams.stream(kv.getValue().getAsJsonArray().iterator()).map(JsonElement::getAsString).collect(Collectors.joining("\\n"))));
+                else replaceList.add(Tuple.of(kv.getKey(), kv.getValue().getAsString()));
             });
             _json.remove("DEFAULT_REPLACE");
         }
         if (_json.has("DEFAULT_REPLACE_JSON")) {
             _json.get("DEFAULT_REPLACE_JSON").getAsJsonObject().entrySet().forEach(kv -> {
-                replaceJsonList.put(kv.getKey(), json.deepCopy(kv.getValue()));
+                replaceJsonList.put(kv.getKey(), Json.deepCopy(kv.getValue()));
             });
             _json.remove("DEFAULT_REPLACE_JSON");
         }
@@ -73,11 +73,11 @@ public interface ICombineJson extends ILogger, IConfig {
                 String file = kv.getValue().getAsString();
                 List<String> dat = new ArrayList<>(Arrays.asList(file.split("\\.")));
                 if (dat.size() == 1) dat.add("json");
-                replaceList.add(Toast.of(kv.getKey(), _readAllConfig(dat.get(0), "." + dat.get(1))));
+                replaceList.add(Tuple.of(kv.getKey(), _readAllConfig(dat.get(0), "." + dat.get(1))));
             });
             _json.remove("DEFAULT_REPLACE_FILE");
         }
-        _json = org.lime.system.json.modifyObjectByKey(_json, (key, value, obj) -> {
+        _json = Json.modifyObjectByKey(_json, (key, value, obj) -> {
             if (key.isEmpty() || !value.isJsonPrimitive() || !key.replace("_", "").isEmpty())
                 return false;
             JsonElement replaceJson = replaceJsonList.getOrDefault(value.getAsString(), null);
@@ -86,19 +86,19 @@ public interface ICombineJson extends ILogger, IConfig {
             _combineJson(obj, replaceJson);
             return true;
         });
-        _json = org.lime.system.json.editStringToObject(_json, text -> {
+        _json = Json.editStringToObject(_json, text -> {
             JsonElement replaceJson = replaceJsonList.getOrDefault(text, null);
             return replaceJson == null ? new JsonPrimitive(text) : replaceJson;
         });
-        _json = org.lime.system.json.editStringToObject(_json, text -> {
-            for (Toast2<String, String> replace : replaceList)
+        _json = Json.editStringToObject(_json, text -> {
+            for (Tuple2<String, String> replace : replaceList)
                 text = text.replaceAll(
                         Pattern.quote("{" + replace.val0 + "}"),
                         Matcher.quoteReplacement(replace.val1));
             return new JsonPrimitive(text);
         });
         _json = _executeJS(_json);
-        this._writeAllConfig("tmp.parent", org.lime.system.json.format(_json));
+        this._writeAllConfig("tmp.parent", Json.format(_json));
         _json.entrySet().forEach(kv -> {
             if (category) {
                 kv.getValue().getAsJsonObject().entrySet().forEach(_kv -> {
@@ -177,7 +177,7 @@ public interface ICombineJson extends ILogger, IConfig {
     private JsonObject _executeJS(JsonObject _json) {
         if (_json.has("GENERATE_JS_APPEND")) {
             JavaScript js = js();
-            Toast1<JsonObject> append = Toast.of(new JsonObject());
+            Tuple1<JsonObject> append = Tuple.of(new JsonObject());
             _json.getAsJsonArray("GENERATE_JS_APPEND").forEach(_js -> {
                 if (_js.isJsonPrimitive())
                     _executePartOfJS(js, _js)
@@ -199,7 +199,7 @@ public interface ICombineJson extends ILogger, IConfig {
                                             : result));
                     });
             });
-            _json = _combineJson(json.deepCopy(_json), append.val0, false).getAsJsonObject();
+            _json = _combineJson(Json.deepCopy(_json), append.val0, false).getAsJsonObject();
             _json.remove("GENERATE_JS_APPEND");
         }
         _json.entrySet().forEach(kv -> {

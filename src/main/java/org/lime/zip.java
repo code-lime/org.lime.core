@@ -3,9 +3,8 @@ package org.lime;
 import com.google.common.collect.Streams;
 import org.lime.system.execute.Action2;
 import org.lime.system.execute.ActionEx2;
-import org.lime.system.toast.Toast;
-import org.lime.system.toast.Toast1;
-import org.lime.system.toast.Toast2;
+import org.lime.system.tuple.Tuple;
+import org.lime.system.tuple.Tuple1;
 
 import java.io.*;
 import java.util.*;
@@ -86,14 +85,14 @@ public class zip {
     public static Stream<ZipStreamEntry> unzipStream(InputStream input) {
         ZipInputStream stream = new ZipInputStream(input);
         return Streams.stream(new Iterator<>() {
-            private Toast1<ZipEntry> entry;
+            private Tuple1<ZipEntry> entry;
 
             private void updateNext() {
                 try {
                     if (entry != null && entry.val0 != null)
                         stream.closeEntry();
                     do {
-                        entry = Toast.of(stream.getNextEntry());
+                        entry = Tuple.of(stream.getNextEntry());
                     } while (entry.val0 != null && entry.val0.isDirectory());
                 } catch (Exception e) {
                     throw new IllegalArgumentException(e);

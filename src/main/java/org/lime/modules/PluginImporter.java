@@ -4,9 +4,9 @@ import com.google.gson.JsonObject;
 import org.apache.commons.io.FileUtils;
 import org.bukkit.Bukkit;
 import org.bukkit.permissions.ServerOperator;
-import org.lime.core;
+import org.lime.LimeCore;
 import org.lime.plugin.CoreLoader;
-import org.lime.system.json;
+import org.lime.json.builder.Json;
 
 import java.io.File;
 import java.io.IOException;
@@ -26,22 +26,22 @@ public class PluginImporter {
                     return true;
                 }));
 
-        if (!core.instance._existConfig("importer"))
-            core.instance._writeAllConfig("importer", json.format(json.object()
+        if (!LimeCore.instance._existConfig("importer"))
+            LimeCore.instance._writeAllConfig("importer", Json.format(Json.object()
                     .add("enable", isEnable)
                     .add("folder", folder)
                     .build()));
     }
 
     private static void load(boolean isReload) {
-        JsonObject v = json.parse(core.instance._readAllConfig("importer")).getAsJsonObject();
+        JsonObject v = Json.parse(LimeCore.instance._readAllConfig("importer")).getAsJsonObject();
         boolean isEnable = v.get("enable").getAsBoolean();
         if (!isEnable) return;
         String folder = v.get("folder").getAsString();
         try {
             File src = new File(folder).getAbsoluteFile();
             File dest = new File("plugins").getAbsoluteFile();
-            core.instance._logOP("Copy: " + src + " -> " + dest);
+            LimeCore.instance._logOP("Copy: " + src + " -> " + dest);
             FileUtils.copyDirectory(src, dest);
 
             if (isReload) {

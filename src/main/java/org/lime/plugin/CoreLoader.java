@@ -8,7 +8,8 @@ import org.bukkit.plugin.Plugin;
 import org.bukkit.plugin.PluginManager;
 import org.bukkit.plugin.java.JavaPlugin;
 import org.lime.LibraryClassLoader;
-import org.lime.core;
+import org.lime.LimeCore;
+import org.lime.reflection.Reflection;
 import org.lime.modules.PluginImporter;
 import org.lime.system.execute.*;
 import patch.Patcher;
@@ -30,7 +31,7 @@ public abstract class CoreLoader extends JavaPlugin implements ITimer, ICombineJ
 
     protected abstract Map<String, CoreCommand<?>> commands();
     protected abstract Optional<IUpdateConfig> config();
-
+/*
     private static final LibraryClassLoader coreLoader;
     static {
         System.out.println("CoreLoader.Starting...");
@@ -49,17 +50,22 @@ public abstract class CoreLoader extends JavaPlugin implements ITimer, ICombineJ
 
         System.out.println("CoreLoader.OK!");
     }
-
+*/
     @Override public void onEnable() {
-        if (!(this instanceof core _core)) {
-            throw new IllegalArgumentException("Not support '"+this.getClass()+"'! Supported only `"+core.class+"`");
+        if (!(this instanceof LimeCore _core)) {
+            throw new IllegalArgumentException("Not support '"+this.getClass()+"'! Supported only `"+ LimeCore.class+"`");
         }
 
-        if (core.instance == null) {
-            Patcher.patch();
+        if (LimeCore.instance == null) {
+            try {
+                Patcher.patch();
 
-            core.instance = _core;
-            init_core();
+                LimeCore.instance = _core;
+                init_core();
+            } catch (Exception e) {
+                _logStackTrace(e);
+                throw e;
+            }
             return;
         }
 
@@ -104,16 +110,16 @@ public abstract class CoreLoader extends JavaPlugin implements ITimer, ICombineJ
     }
 
     private void init_core() {
-        rawLibrary(coreLoader);
+        //rawLibrary(coreLoader);
         PluginImporter.register(this);
         add("update.data", cmd -> cmd
                 .withCheck(ServerOperator::isOp)
                 .withTab((sender, args) -> {
                     switch (args.length) {
-                        case 1: return Arrays.stream(Bukkit.getPluginManager().getPlugins()).filter(plugin -> plugin instanceof core).map(Plugin::getName).collect(Collectors.toList());
+                        case 1: return Arrays.stream(Bukkit.getPluginManager().getPlugins()).filter(plugin -> plugin instanceof LimeCore).map(Plugin::getName).collect(Collectors.toList());
                         default: {
                             Plugin plugin = Bukkit.getPluginManager().getPlugin(args[0]);
-                            if (!(plugin instanceof core corePlugin)) break;
+                            if (!(plugin instanceof LimeCore corePlugin)) break;
                             return corePlugin.elements().flatMap(v -> v.config.stream().flatMap(_v -> _v.getFiles().stream())).collect(Collectors.toList());
                         }
                     }
@@ -122,7 +128,7 @@ public abstract class CoreLoader extends JavaPlugin implements ITimer, ICombineJ
                 .withExecutor((sender, args) -> {
                     if (args.length < 2) return false;
                     Plugin plugin = Bukkit.getPluginManager().getPlugin(args[0]);
-                    if (!(plugin instanceof core _corePlugin)) return false;
+                    if (!(plugin instanceof LimeCore _corePlugin)) return false;
                     Collection<String> files = Arrays.stream(args).skip(1).collect(Collectors.toList());
                     Set<String> _files = new HashSet<>();
                     files.forEach(file -> _corePlugin.elements().forEach(element -> element.config.forEach(data -> {
@@ -191,7 +197,7 @@ public abstract class CoreLoader extends JavaPlugin implements ITimer, ICombineJ
             Plugin plugin = Bukkit.getPluginManager().getPlugin(args[0]);
             if (!(plugin instanceof core)) return false;
             core _core = (core)plugin;
-            List<system.Toast2<String, element>> elements = _CoreElements;
+            List<system.Tuple2<String, element>> elements = _CoreElements;
             Collection<String> files = Arrays.stream(args).skip(1).collect(Collectors.toList());
             Set<String> _files = new HashSet<>();
             files.forEach(file -> elements.forEach(element -> element.val1.config.forEach(data -> {
@@ -217,7 +223,7 @@ public abstract class CoreLoader extends JavaPlugin implements ITimer, ICombineJ
 
         commands().forEach((command, cmd) -> Bukkit.getCommandMap().register(this.getName(), cmd.build(this)));
         //_repeat(_system::tryClearCompare, 60);
-        org.lime.reflection.init();
+        Reflection.init();
     }
     protected abstract void init();
     protected abstract void invokableTick();

@@ -1,6 +1,6 @@
 package org.lime.system.utils;
 
-import org.lime.system.toast.Toast2;
+import org.lime.system.tuple.Tuple2;
 
 import java.util.Collection;
 import java.util.Collections;
@@ -15,7 +15,7 @@ public class RandomUtils {
         int _max = Math.max(min, max);
         return rnd.nextInt((_max - _min) + 1) + _min;
     }
-    public static int rand(Toast2<Integer, Integer> minmax) { return rand(minmax.val0, minmax.val1); }
+    public static int rand(Tuple2<Integer, Integer> minmax) { return rand(minmax.val0, minmax.val1); }
     public static double rand(double min, double max) {
         double _min = Math.min(min, max);
         double _max = Math.max(min, max);

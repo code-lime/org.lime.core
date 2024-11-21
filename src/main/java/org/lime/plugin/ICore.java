@@ -1,23 +1,22 @@
 package org.lime.plugin;
 
-import org.lime.core;
-import org.lime.plugin.CoreElement;
+import org.lime.LimeCore;
 
 public interface ICore {
-    void core(core base_core);
+    void core(LimeCore base_core);
 
-    core core();
+    LimeCore core();
 
     public static class Abstract implements ICore {
-        public core base_core;
+        public LimeCore base_core;
 
         @Override
-        public void core(core base_core) {
+        public void core(LimeCore base_core) {
             this.base_core = base_core;
         }
 
         @Override
-        public core core() {
+        public LimeCore core() {
             return this.base_core;
         }
     }

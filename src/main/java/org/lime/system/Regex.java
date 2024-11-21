@@ -3,8 +3,8 @@ package org.lime.system;
 import com.google.common.collect.Streams;
 import org.lime.system.execute.Execute;
 import org.lime.system.execute.Func1;
-import org.lime.system.toast.Toast;
-import org.lime.system.toast.Toast2;
+import org.lime.system.tuple.Tuple;
+import org.lime.system.tuple.Tuple2;
 
 import java.util.Iterator;
 import java.util.NoSuchElementException;
@@ -17,7 +17,7 @@ import java.util.stream.Stream;
 
 public class Regex {
     private static final ConcurrentHashMap<String, Pattern> patterns = new ConcurrentHashMap<>();
-    private static final ConcurrentHashMap<Toast2<String, String>, Iterable<MatchResult>> iterables = new ConcurrentHashMap<>();
+    private static final ConcurrentHashMap<Tuple2<String, String>, Iterable<MatchResult>> iterables = new ConcurrentHashMap<>();
     private static void tryClearCompare() {
         if (iterables.size() > 1000) iterables.clear();
     }
@@ -54,7 +54,7 @@ public class Regex {
         });
     }
     public static Iterable<MatchResult> iterableRegex(String input, String regex) {
-        return iterables.compute(Toast.of(input, regex), (k, v) -> {
+        return iterables.compute(Tuple.of(input, regex), (k, v) -> {
             if (v != null) return v;
             Pattern pattern = patterns.getOrDefault(regex, null);
             if (pattern == null) patterns.put(regex, pattern = compileRegex(regex));

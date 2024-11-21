@@ -29,7 +29,7 @@ public interface IDocs {
     /*
     static IDocs indexing(Stream<IIndexDocs> docsList) {
         return () -> {
-            Toast1<Integer> number = Toast.of(0);
+            Tuple1<Integer> number = Tuple.of(0);
             return docsList.map(v -> {
                 number.val0++;
                 return number.val0 + ". " + v.link();

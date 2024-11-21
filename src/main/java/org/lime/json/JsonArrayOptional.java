@@ -22,11 +22,17 @@ public class JsonArrayOptional extends JsonElementOptional implements Collection
         return array;
     }
 
-    public void add(Boolean bool) { this.elements.add(bool == null ? JsonNullOptional.INSTANCE : new JsonPrimitiveOptional(bool)); }
-    public void add(Character character) { this.elements.add(character == null ? JsonNullOptional.INSTANCE : new JsonPrimitiveOptional(character)); }
-    public void add(Number number) { this.elements.add(number == null ? JsonNullOptional.INSTANCE : new JsonPrimitiveOptional(number)); }
-    public void add(String string) { this.elements.add(string == null ? JsonNullOptional.INSTANCE : new JsonPrimitiveOptional(string)); }
-    public boolean add(JsonElementOptional element) { return this.elements.add(element == null ? JsonNullOptional.INSTANCE : element); }
+    public JsonArrayOptional add(Boolean bool) { return this.addElement(bool == null ? JsonNullOptional.INSTANCE : new JsonPrimitiveOptional(bool)); }
+    public JsonArrayOptional add(Character character) { return this.addElement(character == null ? JsonNullOptional.INSTANCE : new JsonPrimitiveOptional(character)); }
+    public JsonArrayOptional add(Number number) { return this.addElement(number == null ? JsonNullOptional.INSTANCE : new JsonPrimitiveOptional(number)); }
+    public JsonArrayOptional add(String string) { return this.addElement(string == null ? JsonNullOptional.INSTANCE : new JsonPrimitiveOptional(string)); }
+    public JsonArrayOptional addElement(JsonElementOptional element) {
+        add(element == null ? JsonNullOptional.INSTANCE : element);
+        return this;
+    }
+    public boolean add(JsonElementOptional element) {
+        return this.elements.add(element == null ? JsonNullOptional.INSTANCE : element);
+    }
 
     @Override public boolean remove(Object value) { return this.elements.remove(value); }
     @Override public boolean containsAll(@Nonnull Collection<?> collection) {

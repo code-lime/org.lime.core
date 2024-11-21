@@ -3,9 +3,9 @@ package org.lime.system.utils;
 import org.lime.system.execute.Action1;
 import org.lime.system.execute.Action2;
 import org.lime.system.execute.Func0;
-import org.lime.system.toast.Toast;
-import org.lime.system.toast.Toast2;
-import org.lime.system.toast.Toast3;
+import org.lime.system.tuple.Tuple;
+import org.lime.system.tuple.Tuple2;
+import org.lime.system.tuple.Tuple3;
 
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
@@ -20,13 +20,13 @@ public class IterableUtils {
     public static <T>T getOrDefault(List<T> list, int index, T def) {
         return index < list.size() ? list.get(index) : def;
     }
-    public static <T, TAny, TRet>void waitAllAnyAsyns(Collection<Toast2<T, TAny>> list, Action2<T, Action1<TRet>> func, Action1<List<Toast3<T, TAny, TRet>>> callback) {
-        var locked = Toast.lock(0);
-        List<Toast3<T, TAny, TRet>> ret = new ArrayList<>();
-        for (Toast2<T, TAny> item : list) {
+    public static <T, TAny, TRet>void waitAllAnyAsyns(Collection<Tuple2<T, TAny>> list, Action2<T, Action1<TRet>> func, Action1<List<Tuple3<T, TAny, TRet>>> callback) {
+        var locked = Tuple.lock(0);
+        List<Tuple3<T, TAny, TRet>> ret = new ArrayList<>();
+        for (Tuple2<T, TAny> item : list) {
             locked.edit0(v -> v + 1);
             int index = ret.size();
-            ret.add(Toast.of(item.val0, item.val1, null));
+            ret.add(Tuple.of(item.val0, item.val1, null));
             func.invoke(item.val0, v -> {
                 ret.get(index).val2 = v;
                 if (locked.edit0(j -> j - 1) > 0) return;
@@ -87,10 +87,10 @@ public class IterableUtils {
         }
     }
 
-    public static <T>Stream<Toast2<Integer, T>> streamIndexed(T[] array) {
-        return IntStream.range(0, array.length).mapToObj(i -> Toast.of(i, array[i]));
+    public static <T>Stream<Tuple2<Integer, T>> streamIndexed(T[] array) {
+        return IntStream.range(0, array.length).mapToObj(i -> Tuple.of(i, array[i]));
     }
-    public static <T>Stream<Toast2<Integer, T>> streamIndexed(List<T> list) {
-        return IntStream.range(0, list.size()).mapToObj(i -> Toast.of(i, list.get(i)));
+    public static <T>Stream<Tuple2<Integer, T>> streamIndexed(List<T> list) {
+        return IntStream.range(0, list.size()).mapToObj(i -> Tuple.of(i, list.get(i)));
     }
 }

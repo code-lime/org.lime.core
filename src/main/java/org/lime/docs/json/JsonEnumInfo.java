@@ -4,8 +4,8 @@ import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.Streams;
 import org.lime.docs.BaseGroup;
-import org.lime.system.toast.Toast;
-import org.lime.system.toast.Toast2;
+import org.lime.system.tuple.Tuple;
+import org.lime.system.tuple.Tuple2;
 
 import javax.annotation.Nullable;
 import java.util.Arrays;
@@ -25,7 +25,7 @@ public final class JsonEnumInfo extends BaseGroup<ImmutableMap<IJElement, Option
                 .build(), old.comments());
     }
 
-    private static <T extends Enum<T>>Toast2<IJElement, Optional<IComment>> getElementOf(T value) {
+    private static <T extends Enum<T>>Tuple2<IJElement, Optional<IComment>> getElementOf(T value) {
         IJElement element = null;
         IComment comment = null;
         if (value instanceof IEnumDocs docs) {
@@ -33,7 +33,7 @@ public final class JsonEnumInfo extends BaseGroup<ImmutableMap<IJElement, Option
             comment = docs.docsComment();
         }
         if (element == null) element = IJElement.raw(value.name());
-        return Toast.of(element, Optional.ofNullable(comment));
+        return Tuple.of(element, Optional.ofNullable(comment));
     }
 
     public static JsonEnumInfo of(String title, String index, ImmutableMap<IJElement, Optional<IComment>> items, IComment... comments) {

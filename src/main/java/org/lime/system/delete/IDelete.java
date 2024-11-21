@@ -1,9 +1,7 @@
 package org.lime.system.delete;
 
-import org.lime._system;
-
 public interface IDelete {
-    IDelete NONE = new IDelete() {
+     IDelete NONE = new IDelete() {
         @Override
         public boolean isDeleted() {
             return false;

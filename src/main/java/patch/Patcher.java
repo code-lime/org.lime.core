@@ -4,9 +4,9 @@ import net.minecraft.server.Main;
 import org.apache.commons.io.FilenameUtils;
 import org.bukkit.Bukkit;
 import org.lime.json.JsonElementOptional;
-import org.lime.system.json;
-import org.lime.system.toast.Toast;
-import org.lime.system.toast.Toast2;
+import org.lime.json.builder.Json;
+import org.lime.system.tuple.Tuple;
+import org.lime.system.tuple.Tuple2;
 
 import java.io.Closeable;
 import java.io.File;
@@ -56,8 +56,7 @@ public class Patcher {
         return formatter.toString();
     }
 
-    private static Toast2<String, String> calculateVersion(List<BasePluginPatcher> patchers) throws Throwable {
-        Native.log("Calculate patch version...");
+    private static Tuple2<String, String> calculateVersion(List<BasePluginPatcher> patchers) throws Throwable {
         List<ModifyClass> checkFiles = new ArrayList<>();
         try (var ignored = Native.subLog()) {
             for (BasePluginPatcher patcher : patchers) {
@@ -65,7 +64,7 @@ public class Patcher {
             }
         }
         checkFiles.sort(Comparator.comparing(ModifyClass::name));
-        return Toast.of(
+        return Tuple.of(
                 miniSha1(checkFiles.stream().flatMap(v -> Stream.of(v.name().getBytes(), v.rawClass()))),
                 miniSha1(checkFiles.stream().filter(ModifyClass::isModify).flatMap(v -> Stream.of(v.name().getBytes(), v.rawClass())))
         );
@@ -81,27 +80,30 @@ public class Patcher {
     private static void throwablePatch(List<BasePluginPatcher> patchers) throws Throwable {
         Native.log("Check patch...");
         Path paperPath = Paths.get(ManagementFactory.getRuntimeMXBean().getClassPath());
+        Native.log("Read paper jar...");
         JarArchive paperArchive = JarArchive.of("paper", paperPath);
 
         for (BasePluginPatcher patcher : patchers) {
-            Native.log("Read "+patcher.name+" plugin jar...");
+            Native.log("Read " + patcher.name + " plugin jar...");
             patcher.pluginArchive(JarArchive.of("plugin", of(patcher.plugin)));
         }
 
+        Native.log("Calculate patch version...");
+
         boolean resetCacheOriginal = !paperArchive.entries.containsKey("lime-patch.json");
 
-        Toast2<String, String> currentVersion = Optional.ofNullable(paperArchive.entries.get("lime-patch.json"))
+        Tuple2<String, String> currentVersion = Optional.ofNullable(paperArchive.entries.get("lime-patch.json"))
                 .map(String::new)
-                .map(json::parse)
+                .map(Json::parse)
                 .map(JsonElementOptional::of)
                 .flatMap(JsonElementOptional::getAsJsonObject)
                 .flatMap(v -> v.getAsJsonObject("version"))
                 .flatMap(v -> v.getAsString("value")
                         .flatMap(patch -> v.getAsString("append")
-                                .map(append -> Toast.of(patch, append))))
+                                .map(append -> Tuple.of(patch, append))))
                 .orElse(null);
 
-        Toast2<String, String> patchVersion = calculateVersion(patchers);
+        Tuple2<String, String> patchVersion = calculateVersion(patchers);
 
         Native.log("Current patch version: " + (currentVersion == null ? "Not patched" : currentVersion));
         Native.log("New patch version:     " + patchVersion);
@@ -111,7 +113,7 @@ public class Patcher {
         boolean isOnlyAppendPart = currentVersion == null || !currentVersion.val1.equals(patchVersion.val1);
 
         Native.log("Patch...");
-        paperArchive.entries.put("lime-patch.json", json.format(json.object()
+        paperArchive.entries.put("lime-patch.json", Json.format(Json.object()
                 .addObject("version", v -> v
                         .add("value", isOnlyAppendPart ? "??????????" : patchVersion.val0)
                         .add("append", patchVersion.val1)

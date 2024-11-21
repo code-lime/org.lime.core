@@ -2,7 +2,7 @@ package org.lime.plugin;
 
 import org.bukkit.scheduler.BukkitTask;
 import org.lime.system.execute.*;
-import org.lime.system.toast.*;
+import org.lime.system.tuple.*;
 
 public class TimerBuilder {
     private final ITimer plugin;
@@ -25,7 +25,7 @@ public class TimerBuilder {
 
     public TimerBuilder withCallback(Timers.IRunnable callback) { return new TimerBuilder(plugin, callback, next, wait, loop, async); }
     public TimerBuilder withCallback(Action1<Double> callback) {
-        Toast1<Long> buff = Toast.of(System.currentTimeMillis());
+        Tuple1<Long> buff = Tuple.of(System.currentTimeMillis());
         return withCallback(() -> {
             long now = System.currentTimeMillis();
             callback.invoke((now - buff.val0) / (loop * 50.0));
@@ -33,7 +33,7 @@ public class TimerBuilder {
         });
     }
     public TimerBuilder withCallbackTicks(Action1<Long> callback) {
-        Toast1<Long> buff = Toast.of(System.currentTimeMillis());
+        Tuple1<Long> buff = Tuple.of(System.currentTimeMillis());
         return withCallback(() -> {
             long now = System.currentTimeMillis();
             callback.invoke(now - buff.val0);
@@ -52,10 +52,10 @@ public class TimerBuilder {
     public BukkitTask run() { return type.run(this); }
 
     private enum type {
-        sync_once(v -> !v.async && v.loop == -1, v -> Timers.runTaskLater(v.callback, v.plugin, v.wait, Timers.TimerType.TimerBuilder)),
-        async_once(v -> v.async && v.loop == -1, v -> Timers.runTaskLaterAsynchronously(v.callback, v.plugin, v.wait, Timers.TimerType.TimerBuilder)),
-        sync_repeat(v -> !v.async && v.loop != -1, v -> Timers.runTaskTimer(v.callback, v.plugin, v.wait, v.loop, Timers.TimerType.TimerBuilder)),
-        async_repeat(v -> v.async && v.loop != -1, v -> Timers.runTaskTimerAsynchronously(v.callback, v.plugin, v.wait, v.loop, Timers.TimerType.TimerBuilder));
+        sync_once(v -> !v.async && v.loop == -1, v -> Timers.runTaskLater(v.callback, v.plugin, v.wait)),
+        async_once(v -> v.async && v.loop == -1, v -> Timers.runTaskLaterAsynchronously(v.callback, v.plugin, v.wait)),
+        sync_repeat(v -> !v.async && v.loop != -1, v -> Timers.runTaskTimer(v.callback, v.plugin, v.wait, v.loop)),
+        async_repeat(v -> v.async && v.loop != -1, v -> Timers.runTaskTimerAsynchronously(v.callback, v.plugin, v.wait, v.loop));
 
         private final Func1<TimerBuilder, Boolean> isDo;
         private final Func1<TimerBuilder, BukkitTask> run;

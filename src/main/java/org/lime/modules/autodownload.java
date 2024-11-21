@@ -7,14 +7,14 @@ import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.event.HoverEvent;
 import org.apache.commons.io.FileUtils;
 import org.apache.commons.io.FilenameUtils;
-import org.lime.core;
+import org.lime.LimeCore;
 import org.lime.plugin.CoreElement;
 import org.lime.plugin.ICore;
 import org.lime.plugin.IUpdateConfig;
 import org.lime.system.execute.Action0;
-import org.lime.system.json;
-import org.lime.system.toast.Toast;
-import org.lime.system.toast.Toast2;
+import org.lime.json.builder.Json;
+import org.lime.system.tuple.Tuple;
+import org.lime.system.tuple.Tuple2;
 import org.lime.web;
 import org.lime.zip;
 
@@ -27,10 +27,10 @@ import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
-public class autodownload implements IUpdateConfig, ICore {
-    public static CoreElement create() { return new autodownload()._create(); }
+public class AutoDownload implements IUpdateConfig, ICore {
+    public static CoreElement create() { return new AutoDownload()._create(); }
     private CoreElement _create() {
-        return CoreElement.create(autodownload.class)
+        return CoreElement.create(AutoDownload.class)
                 .withInstance(this)
                 .addEmpty("autodownload-on", () -> enable(true))
                 .addEmpty("autodownload-off", () -> enable(false));
@@ -42,10 +42,10 @@ public class autodownload implements IUpdateConfig, ICore {
     public HashMap<String, String> headers = new HashMap<>();
     public Pattern path = null;
     public List<Pattern> ignore = new ArrayList<>();
-    public core base_core;
+    public LimeCore base_core;
 
     public void syncConfig() {
-        JsonObject json = base_core._existConfig("autodownload") ? org.lime.system.json.parse(base_core._readAllConfig("autodownload")).getAsJsonObject() : new JsonObject();
+        JsonObject json = base_core._existConfig("autodownload") ? Json.parse(base_core._readAllConfig("autodownload")).getAsJsonObject() : new JsonObject();
         enable = json.has("enable") && json.get("enable").getAsBoolean();
         url = enable ? json.get("url").getAsString() : null;
 
@@ -72,9 +72,9 @@ public class autodownload implements IUpdateConfig, ICore {
     }
 
     public void enable(boolean state) {
-        JsonObject json = base_core._existConfig("autodownload") ? org.lime.system.json.parse(base_core._readAllConfig("autodownload")).getAsJsonObject() : new JsonObject();
+        JsonObject json = base_core._existConfig("autodownload") ? Json.parse(base_core._readAllConfig("autodownload")).getAsJsonObject() : new JsonObject();
         json.addProperty("enable", state);
-        base_core._writeAllConfig("autodownload", org.lime.system.json.format(json));
+        base_core._writeAllConfig("autodownload", Json.format(json));
         updateConfigAsync(Collections.emptyList(), () -> {});
     }
     @Override public void updateConfigAsync(Collection<String> files, Action0 callback) {
@@ -84,11 +84,11 @@ public class autodownload implements IUpdateConfig, ICore {
         else callback.invoke();
     }
 
-    @Override public void core(core base_core) {
+    @Override public void core(LimeCore base_core) {
         this.base_core = base_core;
         this.base_core._logOP("Loaded 'autodownload' module!");
     }
-    @Override public core core() { return base_core; }
+    @Override public LimeCore core() { return base_core; }
 
     @Override public void updateConfigSync() {
         syncConfig();
@@ -108,7 +108,7 @@ public class autodownload implements IUpdateConfig, ICore {
                 .flatMap(v -> v.isDirectory() ? v.getName().equals(".git") ? Stream.empty() : getFilesWithoutGit(v) : Stream.of(v));
     }
 
-    private Map<String, byte[]> downloadRawFiles(final Toast2<byte[], Integer> downloaded) {
+    private Map<String, byte[]> downloadRawFiles(final Tuple2<byte[], Integer> downloaded) {
         if (url.startsWith("folder://")) {
             base_core._logOP("Reading...");
             File folder = new File(url.substring(9));
@@ -137,7 +137,7 @@ public class autodownload implements IUpdateConfig, ICore {
     }
 
     private void downloadConfigFiles(Collection<String> fileList) {
-        Toast2<byte[], Integer> downloaded = Toast.of(new byte[0], -1);
+        Tuple2<byte[], Integer> downloaded = Tuple.of(new byte[0], -1);
         Map<String, byte[]> files;
         try {
             Map<String, byte[]> _files = downloadRawFiles(downloaded);
@@ -170,9 +170,9 @@ public class autodownload implements IUpdateConfig, ICore {
             });
             _resultFiles.entrySet()
                     .stream()
-                    .map(kv -> Toast.of(String.join("", path.split(kv.getKey())), kv.getValue()))
+                    .map(kv -> Tuple.of(String.join("", path.split(kv.getKey())), kv.getValue()))
                     .filter(kv -> ignore.stream().noneMatch(pattern -> pattern.matcher(kv.val0).find()))
-                    .map(kv -> Toast.of(kv.val0.split("/"), kv.val1))
+                    .map(kv -> Tuple.of(kv.val0.split("/"), kv.val1))
                     .sorted(Comparator.comparing(kv -> kv.val0[kv.val0.length - 1]))
                     .forEach(kv -> kv.invoke((path, bytes) -> {
                         if (path.length > 1) {
@@ -181,7 +181,7 @@ public class autodownload implements IUpdateConfig, ICore {
                             switch (ext) {
                                 case "json" -> jsonDirs.compute(path[0], (k, json) -> {
                                     if (json == null) json = new JsonObject();
-                                    JsonObject item = org.lime.system.json.parse(StandardCharsets.UTF_8.decode(ByteBuffer.wrap(bytes)).toString()).getAsJsonObject();
+                                    JsonObject item = Json.parse(StandardCharsets.UTF_8.decode(ByteBuffer.wrap(bytes)).toString()).getAsJsonObject();
                                     json = base_core._combineJson(json, item, false).getAsJsonObject();
                                     return json;
                                 });
@@ -202,12 +202,12 @@ public class autodownload implements IUpdateConfig, ICore {
 /*
             _files.entrySet()
                     .stream()
-                    .map(kv -> Toast.of(String.join("", path.split(kv.getKey())), kv.getValue()))
+                    .map(kv -> Tuple.of(String.join("", path.split(kv.getKey())), kv.getValue()))
                     .filter(kv -> ignore.stream().noneMatch(pattern -> pattern.matcher(kv.val0).find()))
-                    .map(kv -> Toast.of(kv.val0.split("/"), kv.val1))
+                    .map(kv -> Tuple.of(kv.val0.split("/"), kv.val1))
                     .sorted(Comparator.comparing(kv -> kv.val0[kv.val0.length - 1]))
                     .filter(kv -> !kv.val0[0].equals("ref") || kv.val0.length >= 3 && kv.val0[1].equals(currentRef))
-                    .map(kv -> kv.val0[0].equals("ref") ? Toast.of(Arrays.stream(kv.val0).skip(2).toArray(String[]::new), kv.val1) : kv)
+                    .map(kv -> kv.val0[0].equals("ref") ? Tuple.of(Arrays.stream(kv.val0).skip(2).toArray(String[]::new), kv.val1) : kv)
                     .forEach(kv -> kv.invoke((path, bytes) -> {
                         if (path.length > 1) {
                             String ext = FilenameUtils.getExtension(path[path.length - 1]);
@@ -246,7 +246,7 @@ public class autodownload implements IUpdateConfig, ICore {
         }
 
         base_core._logOP("Reading...");
-        for (Map.Entry<String, JsonElement> kv : json.parse(new String(files.get("link.json"))).getAsJsonObject().entrySet()) {
+        for (Map.Entry<String, JsonElement> kv : Json.parse(new String(files.get("link.json"))).getAsJsonObject().entrySet()) {
             if (!(fileList == null || fileList.contains(kv.getKey()) || (!kv.getKey().endsWith(".json") && fileList.contains(kv.getKey() + ".json")))) continue;
             byte[] bytes = files.get(kv.getValue().getAsString());
             if (bytes == null)

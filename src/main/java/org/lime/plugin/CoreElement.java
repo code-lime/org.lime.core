@@ -4,7 +4,7 @@ import com.google.common.collect.ImmutableList;
 import com.google.gson.JsonElement;
 import org.bukkit.command.CommandSender;
 import org.bukkit.permissions.Permission;
-import org.lime.core;
+import org.lime.LimeCore;
 import org.lime.system.execute.Action0;
 import org.lime.system.execute.Action1;
 import org.lime.system.execute.Func0;
@@ -29,7 +29,7 @@ public final class CoreElement {
     public final Class<?> tClass;
     public final String name;
     public final Object instance;
-    public final Action1<core> init;
+    public final Action1<LimeCore> init;
     public final Action0 uninit;
     public final SortType sortType;
     public final boolean disable;
@@ -38,7 +38,7 @@ public final class CoreElement {
     public final List<CoreData<?>> config;
     public final List<Permission> permissions;
 
-    private CoreElement(Class<?> tClass, String name, Object instance, Action1<core> init, Action0 uninit, List<CoreData<?>> config, List<Func0<CoreCommand<?>>> commands, List<Permission> permissions, SortType sortType, boolean disable) {
+    private CoreElement(Class<?> tClass, String name, Object instance, Action1<LimeCore> init, Action0 uninit, List<CoreData<?>> config, List<Func0<CoreCommand<?>>> commands, List<Permission> permissions, SortType sortType, boolean disable) {
         this.tClass = tClass;
         this.name = name;
         this.instance = instance;
@@ -56,7 +56,7 @@ public final class CoreElement {
     public CoreElement withInstance() { try { return withInstance(tClass.getDeclaredConstructor().newInstance()); } catch (Exception e) { throw new IllegalArgumentException(e); } }
     public CoreElement withInstance(Object instance) { return new CoreElement(tClass, name, instance, init, uninit, config, commands, permissions, sortType, disable); }
     public CoreElement withInit(Action0 init) { return withInit(v -> init.invoke()); }
-    public CoreElement withInit(Action1<core> init) { return new CoreElement(tClass, name, instance, init, uninit, config, commands, permissions, sortType, disable); }
+    public CoreElement withInit(Action1<LimeCore> init) { return new CoreElement(tClass, name, instance, init, uninit, config, commands, permissions, sortType, disable); }
     public CoreElement addPermission(String permission) { return addPermission(new Permission(permission)); }
     public CoreElement addPermission(Permission permission) { return addPermissions(permission); }
     public CoreElement addPermissions(String... permissions) { return addPermissions(Arrays.stream(permissions).map(Permission::new).toArray(Permission[]::new)); }

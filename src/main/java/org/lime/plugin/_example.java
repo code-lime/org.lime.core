@@ -4,8 +4,8 @@ import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import net.kyori.adventure.text.Component;
 import org.bukkit.scheduler.BukkitTask;
-import org.lime.core;
-import org.lime.invokable.IInvokable;
+import org.lime.LimeCore;
+import org.lime.invokable.BaseInvokable;
 import org.lime.system.execute.Action0;
 import org.lime.system.execute.Action1;
 import org.lime.system.execute.Func0;
@@ -13,7 +13,7 @@ import org.lime.system.execute.Func0;
 import java.io.File;
 
 @SuppressWarnings("unused")
-class _example extends core {
+class _example extends LimeCore {
     public static _example _plugin;
 
     @Override public String getLogPrefix() { return "LIME:EXAMPLE"; }
@@ -44,7 +44,7 @@ class _example extends core {
     public static BukkitTask invokeAsync(Action0 async, Timers.IRunnable nextSync) { return _plugin._invokeAsync(async, nextSync); }
     public static <T>BukkitTask invokeAsync(Func0<T> async, Action1<T> nextSync) { return _plugin._invokeAsync(async, nextSync); }
     public static void invokeSync(Timers.IRunnable sync) { _plugin._invokeSync(sync); }
-    public static void invokable(IInvokable invokable) { _plugin._invokable(invokable); }
+    public static void invokable(BaseInvokable invokable) { _plugin._invokable(invokable); }
 
     public static JsonElement combineJson(JsonElement first, JsonElement second, boolean array_join) { return _plugin._combineJson(first, second, array_join); }
     public static JsonElement combineJson(JsonElement first, JsonElement second) { return _plugin._combineJson(first, second); }

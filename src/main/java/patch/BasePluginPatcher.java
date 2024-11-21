@@ -4,8 +4,8 @@ import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import org.bukkit.plugin.java.JavaPlugin;
 import org.lime.system.Regex;
-import org.lime.system.json;
-import org.lime.system.toast.Toast;
+import org.lime.json.builder.Json;
+import org.lime.system.tuple.Tuple;
 import org.lime.system.utils.IterableUtils;
 
 import javax.annotation.Nullable;
@@ -39,7 +39,7 @@ public abstract class BasePluginPatcher implements SignatureTools {
         this(plugin, readPatchResource(plugin));
     }
     private BasePluginPatcher(Class<? extends JavaPlugin> plugin, @Nullable byte[] patchData) {
-        this(plugin, patchData == null ? new JsonObject() : json.parse(new String(patchData)).getAsJsonObject());
+        this(plugin, patchData == null ? new JsonObject() : Json.parse(new String(patchData)).getAsJsonObject());
     }
     private BasePluginPatcher(Class<? extends JavaPlugin> plugin, JsonObject patchData) {
         this.plugin = plugin;
@@ -71,8 +71,8 @@ public abstract class BasePluginPatcher implements SignatureTools {
                                     .asList()
                                     .stream()
                                     .map(JsonElement::getAsString)
-                                    .map(v -> Toast.of(v, true)),
-                            Stream.of(Toast.of("patch\\/.*", false)))
+                                    .map(v -> Tuple.of(v, true)),
+                            Stream.of(Tuple.of("patch\\/.*", false)))
                     .filter(IterableUtils.distinctBy(v -> v.val0))
                     .forEach(v -> v.invoke((regex, patch) -> Native.subLog("Append group '"+regex+"'", () -> pluginArchive.entries
                             .entrySet()

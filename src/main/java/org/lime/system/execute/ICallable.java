@@ -1,7 +1,5 @@
 package org.lime.system.execute;
 
-import org.lime._system;
-
 import java.io.Serializable;
 
 public interface ICallable extends Serializable {

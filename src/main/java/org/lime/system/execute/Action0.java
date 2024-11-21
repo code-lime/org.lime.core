@@ -2,9 +2,10 @@ package org.lime.system.execute;
 
 import org.lime.plugin.Timers;
 
+import java.io.Closeable;
 import java.lang.reflect.Method;
 
-public interface Action0 extends Timers.IRunnable, AutoCloseable, ICallable {
+public interface Action0 extends Timers.IRunnable, Closeable, ICallable {
     void invoke();
     @Override default void run() { invoke(); }
     @Override default void close() { invoke(); }

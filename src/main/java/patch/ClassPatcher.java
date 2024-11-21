@@ -2,7 +2,7 @@ package patch;
 
 import org.objectweb.asm.*;
 import com.google.common.collect.Lists;
-import org.lime.system.toast.*;
+import org.lime.system.tuple.*;
 
 import java.util.*;
 
@@ -12,10 +12,9 @@ public final class ClassPatcher<T> {
     private final List<ProgressMethodVisitor> progressVisitors = new ArrayList<>();
 
     private final List<String> appendInterfaces = new ArrayList<>();
-    private final List<Toast5<Integer, String, String, String, Object>> appendFields = new ArrayList<>();
-    private final List<Toast6<MethodPatcher, Integer, String, String, String, String[]>> appendMethods = new ArrayList<>();
+    private final List<Tuple5<Integer, String, String, String, Object>> appendFields = new ArrayList<>();
+    private final List<Tuple6<MethodPatcher, Integer, String, String, String, String[]>> appendMethods = new ArrayList<>();
     private final Map<IMethodFilter<T>, MethodPatcher> patchMethods = new HashMap<>();
-    //int access, String name, String descriptor, String signature, Object value
 
     public ClassPatcher(JarArchive archive, Class<T> tClass) {
         this.archive = archive;
@@ -27,11 +26,11 @@ public final class ClassPatcher<T> {
         return this;
     }
     public ClassPatcher<T> addField(int access, String name, String descriptor, String signature, Object value) {
-        appendFields.add(Toast.of(access, name, descriptor, signature, value));
+        appendFields.add(Tuple.of(access, name, descriptor, signature, value));
         return this;
     }
     public ClassPatcher<T> addMethod(MethodPatcher patcher, int access, String name, String descriptor, String signature, String[] exceptions) {
-        appendMethods.add(Toast.of(patcher, access, name, descriptor, signature, exceptions));
+        appendMethods.add(Tuple.of(patcher, access, name, descriptor, signature, exceptions));
         return this;
     }
     public ClassPatcher<T> patchMethod(IMethodFilter<T> filter, MethodPatcher patcher) {

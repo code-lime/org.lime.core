@@ -59,8 +59,7 @@ public class Time {
         return total;
     }
 
-    public static String formatTime(int total_sec)
-    {
+    public static String formatTime(int total_sec) {
         int sec = total_sec % 60;
         total_sec /= 60;
         int min = total_sec % 60;

@@ -1,15 +1,21 @@
 package org.lime.system;
 
-import org.lime._system;
 import org.lime.system.execute.Func0;
 
 public class Lazy<T> {
-    private T value = null;
-    private boolean created = false;
+    private T value;
+    private boolean created;
     private final Func0<T> creator;
 
+    public Lazy(T value) {
+        this.creator = () -> value;
+        this.value = value;
+        this.created = true;
+    }
     public Lazy(Func0<T> creator) {
         this.creator = creator;
+        this.value = null;
+        this.created = false;
     }
 
     public T value() {
@@ -20,6 +26,9 @@ public class Lazy<T> {
         return value;
     }
 
+    public static <T> Lazy<T> of(T value) {
+        return new Lazy<>(value);
+    }
     public static <T> Lazy<T> of(Func0<T> creator) {
         return new Lazy<>(creator);
     }

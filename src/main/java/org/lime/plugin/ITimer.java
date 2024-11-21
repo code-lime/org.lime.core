@@ -4,7 +4,7 @@ import org.bukkit.Bukkit;
 import org.bukkit.plugin.Plugin;
 import org.bukkit.scheduler.BukkitScheduler;
 import org.bukkit.scheduler.BukkitTask;
-import org.lime.invokable.IInvokable;
+import org.lime.invokable.BaseInvokable;
 import org.lime.system.execute.Action0;
 import org.lime.system.execute.Action1;
 import org.lime.system.execute.Func0;
@@ -13,28 +13,28 @@ public interface ITimer extends ILogger, Plugin {
     TimerBuilder _timer();
 
     default BukkitTask _nextTick(Timers.IRunnable callback) {
-        return Timers.runTaskLater(callback, this, 0, Timers.TimerType.StaticCore);
+        return Timers.runTaskLater(callback, this, 0);
     }
     default BukkitTask _onceNoCheck(Timers.IRunnable callback, double sec) {
-        return Timers.runTaskLater(callback, this, (long)(sec * 20), Timers.TimerType.StaticCore);
+        return Timers.runTaskLater(callback, this, (long)(sec * 20));
     }
     default BukkitTask _once(Timers.IRunnable callback, double sec) {
-        return Timers.runTaskLater(callback, this, (long)(sec * 20), Timers.TimerType.StaticCore);
+        return Timers.runTaskLater(callback, this, (long)(sec * 20));
     }
     default BukkitTask _onceTicks(Timers.IRunnable callback, long ticks) {
-        return Timers.runTaskLater(callback, this, ticks, Timers.TimerType.StaticCore);
+        return Timers.runTaskLater(callback, this, ticks);
     }
     default BukkitTask _repeat(Timers.IRunnable callback, double sec) {
-        return Timers.runTaskTimer(callback, this, (long)(sec * 20), (long)(sec * 20), Timers.TimerType.StaticCore);
+        return Timers.runTaskTimer(callback, this, (long)(sec * 20), (long)(sec * 20));
     }
     default BukkitTask _repeatTicks(Timers.IRunnable callback, long ticks) {
-        return Timers.runTaskTimer(callback, this, ticks, ticks, Timers.TimerType.StaticCore);
+        return Timers.runTaskTimer(callback, this, ticks, ticks);
     }
     default BukkitTask _repeat(Timers.IRunnable callback, double wait, double sec) {
-        return Timers.runTaskTimer(callback, this, (long)(wait * 20), (long)(sec * 20), Timers.TimerType.StaticCore);
+        return Timers.runTaskTimer(callback, this, (long)(wait * 20), (long)(sec * 20));
     }
     default BukkitTask _repeatTicks(Timers.IRunnable callback, long wait, long ticks) {
-        return Timers.runTaskTimer(callback, this, wait, ticks, Timers.TimerType.StaticCore);
+        return Timers.runTaskTimer(callback, this, wait, ticks);
     }
     default <T>void _repeat(T[] array, Action1<T> callback_part, Action0 callback_end, double sec, int inOneStep) {
         _ionce(array, array.length, 0, callback_part, callback_end, sec, inOneStep);
@@ -83,5 +83,5 @@ public interface ITimer extends ILogger, Plugin {
         }
         Bukkit.getScheduler().scheduleSyncDelayedTask(this, sync);
     }
-    void _invokable(IInvokable invokable);
+    void _invokable(BaseInvokable invokable);
 }

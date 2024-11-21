@@ -3,12 +3,11 @@ package org.lime.plugin;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonPrimitive;
-import org.lime._system;
-import org.lime.core;
+import org.lime.LimeCore;
 import org.lime.system.execute.Action1;
 import org.lime.system.execute.Func0;
 import org.lime.system.execute.Func1;
-import org.lime.system.json;
+import org.lime.json.builder.Json;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -58,7 +57,7 @@ public class CoreData<T> {
 
     @SuppressWarnings("unchecked")
     public static <T extends JsonElement> CoreData<T> json() {
-        return create(Type.Json, text -> (T) json.parse(text), json::format);
+        return create(Type.Json, text -> (T) Json.parse(text), Json::format);
     }
 
     public static CoreData<String> text() {
@@ -120,7 +119,7 @@ public class CoreData<T> {
         return list;
     }
 
-    void read(core plugin, boolean update) {
+    void read(LimeCore plugin, boolean update) {
         if (read == null || write == null) {
             if (update || type.init) invoke.invoke(null);
             return;
@@ -141,18 +140,18 @@ public class CoreData<T> {
             invokeRead(plugin._readAllConfig(_file, ext));
         } else {
             if (!isExist) plugin._writeAllConfig(_file, ext, "{}");
-            JsonObject base = json.parse(plugin._readAllConfig(_file, ext)).getAsJsonObject();
+            JsonObject base = Json.parse(plugin._readAllConfig(_file, ext)).getAsJsonObject();
             JsonElement data = base.has(parent) ? base.get(parent) : null;
             if (type == Type.Json) {
                 if (data == null) {
-                    base.add(parent, data = json.parse(getDefault()));
-                    plugin._writeAllConfig(_file, ext, json.format(base));
+                    base.add(parent, data = Json.parse(getDefault()));
+                    plugin._writeAllConfig(_file, ext, Json.format(base));
                 }
                 invokeRead(data.toString());
             } else {
                 if (data == null) {
                     base.add(parent, data = new JsonPrimitive(getDefault()));
-                    plugin._writeAllConfig(_file, ext, json.format(base));
+                    plugin._writeAllConfig(_file, ext, Json.format(base));
                 }
                 invokeRead(data.getAsString());
             }

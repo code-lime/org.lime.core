@@ -2,13 +2,10 @@ package patch;
 
 import com.google.common.collect.BiMap;
 import com.google.common.collect.HashBiMap;
-import io.papermc.paper.util.ObfHelper;
-import net.fabricmc.mappingio.MappingReader;
-import net.fabricmc.mappingio.format.MappingFormat;
-import net.fabricmc.mappingio.tree.MappingTree;
-import net.fabricmc.mappingio.tree.MemoryMappingTree;
-import org.lime.system.json;
-import org.lime.system.toast.*;
+import io.papermc.paper.util.MappingEnvironment;
+import net.neoforged.srgutils.IMappingFile;
+import org.lime.json.builder.Json;
+import org.lime.system.tuple.*;
 import org.lime.system.execute.*;
 import org.objectweb.asm.*;
 
@@ -17,7 +14,6 @@ import java.io.*;
 import java.lang.invoke.MethodHandleInfo;
 import java.lang.invoke.SerializedLambda;
 import java.lang.reflect.Method;
-import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import java.util.*;
 
@@ -150,7 +146,7 @@ public class Native {
             try (InputStream stream = Objects.requireNonNull(tClass.getClassLoader().getResourceAsStream(classFile + ".class"))) {
                 ClassReader cr = new ClassReader(stream);
                 ClassWriter cw = new ClassWriter(ClassWriter.COMPUTE_MAXS);
-                Toast1<FieldInfo> fieldInfo = Toast.of(null);
+                Tuple1<FieldInfo> fieldInfo = Tuple.of(null);
                 cr.accept(new ClassVisitor(Opcodes.ASM9, cw) {
                     @Override public MethodVisitor visitMethod(int access, String name, String descriptor, String signature, String[] exceptions) {
                         //Native.log("Compare method with: " + methodOwner.replace('/', '.') + "." + name + descriptor);
@@ -175,28 +171,28 @@ public class Native {
         }
     }
 
-    private static MemoryMappingTree tree;
     private record MappingInfo(String name, String description, boolean isMethod) { }
     public static Closeable loadDeobf() throws Throwable {
-        InputStream mappingsInputStream = ObfHelper.class.getClassLoader().getResourceAsStream("META-INF/mappings/reobf.tiny");
-        tree = new MemoryMappingTree();
+        InputStream mappingsInputStream = MappingEnvironment.mappingsStreamIfPresent();
         if (mappingsInputStream == null) return () -> {};
-        MappingReader.read(new InputStreamReader(mappingsInputStream, StandardCharsets.UTF_8), MappingFormat.TINY_2, tree);
-        for (MappingTree.ClassMapping classMapping : tree.getClasses()) {
+        IMappingFile tree = IMappingFile.load(mappingsInputStream);
+        for (IMappingFile.IClass classMapping : tree.getClasses()) {
             BiMap<MappingInfo, MappingInfo> members = HashBiMap.create();
-            for (MappingTree.MemberMapping member : classMapping.getMethods()) {
+            /*MOJANG+YARN - ORIGINAL*/
+            /*SPIGOT - MAPPED*/
+            for (IMappingFile.IMethod member : classMapping.getMethods())
                 members.put(
-                        new MappingInfo(member.getName(ObfHelper.MOJANG_PLUS_YARN_NAMESPACE), member.getDesc(ObfHelper.SPIGOT_NAMESPACE), true),
-                        new MappingInfo(member.getName(ObfHelper.SPIGOT_NAMESPACE), member.getDesc(ObfHelper.SPIGOT_NAMESPACE), true)
+                        new MappingInfo(member.getOriginal(), member.getMappedDescriptor(), true),
+                        new MappingInfo(member.getMapped(), member.getMappedDescriptor(), true)
                 );
-            }
-            for (MappingTree.MemberMapping member : classMapping.getFields()) {
+
+            for (IMappingFile.IField member : classMapping.getFields())
                 members.put(
-                        new MappingInfo(member.getName(ObfHelper.MOJANG_PLUS_YARN_NAMESPACE), member.getDesc(ObfHelper.SPIGOT_NAMESPACE), false),
-                        new MappingInfo(member.getName(ObfHelper.SPIGOT_NAMESPACE), member.getDesc(ObfHelper.SPIGOT_NAMESPACE), false)
+                        new MappingInfo(member.getOriginal(), member.getMappedDescriptor(), false),
+                        new MappingInfo(member.getMapped(), member.getMappedDescriptor(), false)
                 );
-            }
-            classesSpigotToMojang.put(classMapping.getName(ObfHelper.SPIGOT_NAMESPACE).replace('/', '.'), members);
+
+            classesSpigotToMojang.put(classMapping.getMapped().replace('/', '.'), members);
         }
         return mappingsInputStream;
     }
@@ -207,7 +203,7 @@ public class Native {
         if (!getSpigotName) mapping = mapping.inverse();
         if (mapping == null) return name;
         if (dat.contains(tClass)) {
-            log("Class " + tClass.getName() + " with found " + (isMethod ? "method" : "field") + " " + name + desc + "\n" + json.object().add(mapping, Record::toString, v -> v).build().toString());
+            log("Class " + tClass.getName() + " with found " + (isMethod ? "method" : "field") + " " + name + desc + "\n" + Json.object().add(mapping, Record::toString, v -> v).build().toString());
             dat.add(tClass);
         }
         MappingInfo src_info = mapping.get(new MappingInfo(name, desc, isMethod));

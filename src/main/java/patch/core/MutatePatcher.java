@@ -8,7 +8,7 @@ import net.minecraft.server.Main;
 import net.minecraft.server.players.PlayerList;
 import org.bukkit.plugin.PluginDescriptionFile;
 import org.bukkit.plugin.java.LibraryLoader;
-import org.lime.core;
+import org.lime.LimeCore;
 import org.lime.system.execute.Execute;
 import org.lime.system.execute.ICallable;
 import org.objectweb.asm.Label;
@@ -17,7 +17,6 @@ import org.objectweb.asm.Type;
 import patch.*;
 
 import java.io.File;
-import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 
@@ -27,7 +26,7 @@ public class MutatePatcher extends BasePluginPatcher {
     }
 
     private MutatePatcher() {
-        super(core.class);
+        super(LimeCore.class);
     }
 
     @Override public void patch(JarArchive versionArchive, JarArchive bukkitArchive) {

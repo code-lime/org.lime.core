@@ -32,11 +32,7 @@ public class JarArchive {
                 jarEntry = zis.getNextJarEntry();
                 if (jarEntry == null) break;
                 String entryName = jarEntry.getName();
-                byte[] entryBytes;
-                try (ByteArrayOutputStream stream = new ByteArrayOutputStream()) {
-                    for (int c = zis.read(); c != -1; c = zis.read()) stream.write(c);
-                    entryBytes = stream.toByteArray();
-                }
+                byte[] entryBytes = zis.readAllBytes();
                 zis.closeEntry();
                 archive.entries.put(entryName, entryBytes);
             }

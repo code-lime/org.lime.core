@@ -12,8 +12,8 @@ import org.joml.Math;
 import org.lime.docs.IIndexDocs;
 import org.lime.docs.IIndexGroup;
 import org.lime.docs.json.*;
-import org.lime.system.json;
-import org.lime.system.toast.*;
+import org.lime.json.builder.Json;
+import org.lime.system.tuple.*;
 
 import javax.annotation.Nullable;
 
@@ -30,9 +30,9 @@ public class MathUtils {
         return String.format("%1."+parts+"f", value).replace(",", ".");
     }
 
-    public static Toast3<Integer, Integer, Integer> getPosToast(String str) {
+    public static Tuple3<Integer, Integer, Integer> getPosTuple(String str) {
         String[] _pos = str.split(" ");
-        return Toast.of(Integer.parseInt(_pos[0]), Integer.parseInt(_pos[1]), Integer.parseInt(_pos[2]));
+        return Tuple.of(Integer.parseInt(_pos[0]), Integer.parseInt(_pos[1]), Integer.parseInt(_pos[2]));
     }
     public static Vector getVector(String str) {
         String[] _pos = str.split(" ");
@@ -170,7 +170,7 @@ Vector3f zAxis = new Vector3f(
         return new Quaternionf().rotateZYX(0, Math.toRadians(-yaw), Math.toRadians(pitch));
     }
     public static JsonElement quaternion(Quaternionf quaternion) {
-        return json.array()
+        return Json.array()
                 .add(quaternion.x)
                 .add(quaternion.y)
                 .add(quaternion.z)
@@ -214,7 +214,7 @@ Vector3f zAxis = new Vector3f(
     }
 
     public static JsonObject transformation(Transformation transformation) {
-        return json.object()
+        return Json.object()
                 .add("offset", getString(convert(transformation.getTranslation())))
                 .add("scale", getString(convert(transformation.getScale())))
                 .addObject("rotation", v -> v

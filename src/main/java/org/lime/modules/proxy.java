@@ -8,7 +8,7 @@ import org.bukkit.Bukkit;
 import org.bukkit.entity.Player;
 import org.bukkit.plugin.messaging.Messenger;
 import org.bukkit.plugin.messaging.PluginMessageListener;
-import org.lime.core;
+import org.lime.LimeCore;
 import org.lime.plugin.CoreElement;
 import org.lime.plugin.ICore;
 
@@ -17,8 +17,8 @@ import java.util.*;
 import java.util.concurrent.CompletableFuture;
 import java.util.function.BiFunction;
 
-public class proxy implements ICore {
-    private core plugin;
+public class Proxy implements ICore {
+    private LimeCore plugin;
 
     private PluginMessageListener messageListener;
     private Map<String, Queue<CompletableFuture<?>>> callbackMap;
@@ -26,13 +26,13 @@ public class proxy implements ICore {
     private Map<String, ForwardConsumer> forwardListeners;
     private ForwardConsumer globalForwardListener;
 
-    public static CoreElement create() { return new proxy()._create(); }
+    public static CoreElement create() { return new Proxy()._create(); }
 
-    @Override public void core(core base_core) { plugin = base_core; }
-    @Override public core core() { return plugin; }
+    @Override public void core(LimeCore base_core) { plugin = base_core; }
+    @Override public LimeCore core() { return plugin; }
 
     private CoreElement _create() {
-        return CoreElement.create(proxy.class)
+        return CoreElement.create(Proxy.class)
                 .withInstance(this)
                 .withInit(() -> {
                     this.callbackMap = new HashMap<>();

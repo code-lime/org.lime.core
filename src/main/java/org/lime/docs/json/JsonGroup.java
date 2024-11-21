@@ -3,8 +3,8 @@ package org.lime.docs.json;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.Streams;
 import org.lime.docs.BaseGroup;
-import org.lime.system.toast.Toast;
-import org.lime.system.toast.Toast1;
+import org.lime.system.tuple.Tuple;
+import org.lime.system.tuple.Tuple1;
 
 import java.util.stream.Stream;
 
@@ -20,7 +20,7 @@ public final class JsonGroup extends BaseGroup<IJElement> {
     public static JsonGroup of(String title, IJElement element, IComment... comments) { return of(title, title.toLowerCase(), element, comments); }
 
     @Override public Stream<String> elementContext() {
-        Toast1<Boolean> isFirst = Toast.of(true);
+        Tuple1<Boolean> isFirst = Tuple.of(true);
         return Streams.concat(
                 element().lines(this)
                         .map(v -> {
