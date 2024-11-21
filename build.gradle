@@ -1,377 +1,85 @@
-import org.gradle.plugins.ide.eclipse.model.ClasspathEntry
-
-import java.nio.charset.Charset
-import java.nio.file.Files
-import java.nio.file.Paths
-import java.nio.file.StandardCopyOption
-import java.util.function.Predicate
-import java.util.zip.ZipEntry
-import java.util.zip.ZipOutputStream
-
 plugins {
-    id 'java'
-    id 'eclipse'
+    id 'java-library'
+    id 'maven-publish'
+    id "io.papermc.paperweight.userdev" version "+"
 }
 
-group = pluginGroup
-version = pluginVersion
-
-String _version = "1.20.1"
-String _build = "194"
-boolean _remote = true
-boolean _mapped = true
-
-sourceCompatibility = '20'
-targetCompatibility = '20'
+//<editor-fold desc="Settings: Plugin">
+import io.papermc.paperweight.userdev.ReobfArtifactConfiguration
 
 dependencies {
-    compileOnly(
-            files(libPath((_mapped ? "paper-unmapped-" : "spigot-") + _version+"-"+_build+".jar")),
-            files(libPath("ProtocolLib.jar")),
-            //files(libPath("JSEngine-3.0.5.jar")),
-            files(libPath("graaljs/graal-sdk-23.0.3.jar")),
-            files(libPath("graaljs/icu4j-72.1.jar")),
-            files(libPath("graaljs/js-23.0.3.jar")),
-            files(libPath("graaljs/js-scriptengine-23.0.3.jar")),
-            files(libPath("graaljs/regex-23.0.3.jar")),
-            files(libPath("graaljs/truffle-api-23.0.3.jar")),
-    )
+    paperweight.paperDevBundle("${versionPaper}")
 }
 
-//<editor-fold desc="LOADER">
+paperweight.reobfArtifactConfiguration = ReobfArtifactConfiguration.getMOJANG_PRODUCTION()
 
-eclipse.classpath.file.whenMerged {
-    for (ClasspathEntry entry : entries) {
-        String entryFile = entry.path;
-        if (entryFile.endsWith('.jar')) {
-            File folder = new File(entryFile).getParentFile();
-            for (String postfix : new String[]{ "-sources.jar", ".sources.jar" }) {
-                File srcFile = new File(getFileNameWithoutExt(entryFile) + postfix);
-                if (srcFile.exists()) {
-                    System.out.println("Add sources: " + srcFile);
-                    entry.setSourcePath(it.fileReference(srcFile));
-                    break;
-                }
+processResources {
+    def props =
+    [
+        version: version,
+        versionGraalVm: versionGraalVm
+    ]
+    inputs.properties props
+    filteringCharset 'UTF-8'
+    filesMatching('plugin.yml') {
+        expand props
+    }
+}
+//</editor-fold>
+
+//<editor-fold desc="Settings: Java">
+int targetJavaVersion = 23
+java {
+    def javaVersion = JavaVersion.toVersion(targetJavaVersion)
+    sourceCompatibility = javaVersion
+    targetCompatibility = javaVersion
+    if (JavaVersion.current() < javaVersion) {
+        toolchain.languageVersion = JavaLanguageVersion.of(targetJavaVersion)
+    }
+}
+
+tasks.withType(JavaCompile).configureEach {
+    if (targetJavaVersion >= 10 || JavaVersion.current().isJava10Compatible()) {
+        options.release = targetJavaVersion
+    }
+}
+//</editor-fold>
+
+//<editor-fold desc="Settings: Maven">
+publishing {
+    repositories {
+        maven {
+            name = "OSSRH"
+            url = "https://oss.sonatype.org/service/local/staging/deploy/maven2/"
+            credentials {
+                username = System.getenv("MAVEN_USERNAME")
+                password = System.getenv("MAVEN_PASSWORD")
             }
         }
     }
 }
+//</editor-fold>
 
-static String getFileNameWithoutExt(String fileName) {
-    int pos = fileName.lastIndexOf(".");
-    if (pos > 0 && pos < (fileName.length() - 1)) return fileName.substring(0, pos);
-    return fileName;
-}
+//<editor-fold desc="Settings: SourceGenerator">
+apply from: 'sourcegenerator.gradle'
+//</editor-fold>
 
-String githubMinecraftDataPath() {
-    return Paths.get(projectDir.absolutePath, "..");
+//<editor-fold desc="Settings: Libraries">
+//<editor-fold desc="Settings: Libraries: GraalJS">
+dependencies {
+    implementation "org.graalvm.js:js:${versionGraalVm}"
+    implementation "org.graalvm.js:js-scriptengine:${versionGraalVm}"
+    implementation "org.graalvm.truffle:truffle-api:${versionGraalVm}"
 }
+//</editor-fold>
 
-File decompileGit(String file) {
-    String path = Paths.get(projectDir.parent, file, "src", "main", "java").toString();
-    return new File(path);
-}
-String decompilePath(String file) {
-    return Paths.get(githubMinecraftDataPath(), ".decompile", file).toString();
-}
-File decompileFile(String file) {
-    return new File(decompilePath(file));
-}
-String libPath(String file) {
-    return Paths.get(githubMinecraftDataPath(), ".libs", file);
-}
-String[] libPathAll(String file) {
-    List<String> lines = new ArrayList<>();
-    for (String line : getFiles(new File(libPath(file).toString())).toArray()) {
-        if (line.endsWith("-sources.jar")) continue;
-        lines.add(line);
-    }
-    return lines.toArray();
+//<editor-fold desc="Settings: Libraries: ProtocolLib">
+repositories {
+    maven { url "https://repo.dmulloy2.net/repository/public/" }
 }
 
-static List<String> getText(Process process) {
-    BufferedReader input = new BufferedReader(new InputStreamReader(process.getInputStream()));
-    try {
-        List<String> lines = new ArrayList<>()
-        String line
-        while ((line = input.readLine()) != null) lines.add(line)
-        return lines
-    }
-    finally {
-        input.close()
-    }
+dependencies {
+    compileOnly "com.comphenix.protocol:ProtocolLib:${versionProtocolLib}"
 }
-interface Action1<T> { void invoke(T arg0); }
-static void invokeText(Process process, Action1<String> action) {
-    Charset inputCharset = Charset.forName("windows-1251");
-    BufferedReader input = new BufferedReader(new InputStreamReader(process.getInputStream(), inputCharset))
-    try {
-        String line
-        while ((line = input.readLine()) != null) {
-            action.invoke(line)
-        }
-    }
-    finally {
-        input.close()
-    }
-}
-String executeJs(String js) {
-    String exe = Paths.get(githubMinecraftDataPath(), ".utils", "js.exe").toAbsolutePath().toFile().path + " " + Base64.getEncoder().encodeToString(js.getBytes());
-    return new String(Base64.getDecoder().decode(String.join("\n", getText(Runtime.runtime.exec(exe)))));
-}
-static Map<String, String> regedit(String... path) {
-    HashMap<String, String> map = new HashMap<>()
-    for (String line : getText(Runtime.runtime.exec('reg query ' + String.join("\\", path)))) {
-        if (!line.startsWith("    ")) continue
-        String[] args = line.substring(4).split(" {4}")
-        map.put(args[0], args.length >= 3 ? args[2] : "")
-    }
-    return map
-}
-static List<File> getFiles(File dir, Predicate<File> filter) {
-    List<File> files = new ArrayList<>();
-    for (File file : dir.listFiles()) {
-        if (file.isFile()) {
-            if (filter.test(file)) files.add(file);
-        }
-        else if (file.isDirectory()) files.addAll(getFiles(file, filter));
-    }
-    return files;
-}
-static List<File> getFiles(File dir) {
-    List<File> files = new ArrayList<>();
-    for (File file : dir.listFiles()) {
-        if (file.isFile()) files.add(file);
-        else if (file.isDirectory()) files.addAll(getFiles(file));
-    }
-    return files;
-}
-String generateFile(File dir, String text) {
-    List<String> lines = text.replace("\r", "").split("\n");
-    List<String> output = new ArrayList<>();
-    List<String> code = null;
-    boolean  edited = false;
-    int size = lines.size();
-    for (int i = 0; i < size; i++) {
-        String line = lines.get(i);
-        String trim_line = line.trim();
-        int start = trim_line.indexOf("//");
-        if (start != 0) {
-            if (code != null) continue;
-            output.add(line);
-            continue;
-        }
-        switch (trim_line) {
-            case "//<generator>":
-                if (code != null) throw new IllegalArgumentException("<generator> in line '"+(i+1)+"'");
-                code = new ArrayList<>();
-                output.add(line);
-                break;
-            case "//</generator>":
-                if (code == null) throw new IllegalArgumentException("</generator> in line '"+(i+1)+"'");
-                var executeCode = executeJs(String.join("\n", code));
-                output.add(executeCode);
-                output.add(line);
-
-                edited = true;
-                code = null;
-                break;
-            default:
-                if (trim_line.startsWith("//<generator name=\"")) {
-                    if (code != null) throw new IllegalArgumentException("<generator> in line '"+(i+1)+"'");
-
-                    String file_name = trim_line.substring(19);
-                    file_name = file_name.substring(0, file_name.indexOf("\">"));
-                    String[] args = file_name.split(':');
-                    code = new ArrayList<>();
-                    if (args.length > 1) {
-                        System.out.println('Execute file function: ' + args[0] + " : " + args[1]);
-                        code.add(Paths.get(dir.absolutePath, args[0]).toFile().text + "\n" + args[1]);
-                    } else {
-                        System.out.println('Execute single file: ' + file_name);
-                        code.add(Paths.get(dir.absolutePath, file_name).toFile().text);
-                    }
-                    output.add(line);
-                } else {
-                    output.add(line);
-                    if (code != null) code.add(trim_line.substring(2));
-                }
-                break;
-        }
-    }
-    return edited ? String.join("\n", output) : null;
-}
-HashMap<String, String> generateJavas(File dir, String text) {
-    List<String> lines = text.replace("\r", "").split("\n");
-    HashMap<String, String> outputFiles = new HashMap<>();
-    for (String line in lines) {
-        String[] data = line.split(":", 2);
-
-        //System.out.println(line + " -- " + data[0] + ": " + data[1]);
-
-        String js = Paths.get(dir.absolutePath, data[0]).toFile().text + "\n" + data[1];
-        String _raw = executeJs(js);
-
-        //System.out.println("JS: " + js);
-        //System.out.println("Raw: " + _raw);
-
-        String[] raw = _raw.split('\r');
-        int filesLength = raw.length / 2;
-        for (int i = 0; i < filesLength; i++) {
-            int index = i * 2;
-            String fileName = raw[index];
-            String fileText = raw[index + 1];
-            outputFiles.put(fileName, fileText);
-        }
-    }
-    return outputFiles;
-}
-
-static byte[] zip(HashMap<String, byte[]> entries) {
-    ByteArrayOutputStream stream = new ByteArrayOutputStream();
-    try {
-        ZipOutputStream zip = new ZipOutputStream(stream);
-        try {
-            for (Map.Entry<String, byte[]> kv : entries.entrySet()) {
-                ZipEntry entry = new ZipEntry(kv.getKey());
-                zip.putNextEntry(entry);
-                zip.write(kv.getValue());
-                zip.closeEntry();
-            }
-        } finally {
-            zip.close();
-        }
-        return stream.toByteArray();
-    } catch (Exception e) {
-        throw new IllegalArgumentException(e);
-    } finally {
-        stream.close();
-    }
-}
-
-task generator() {
-    HashMap<String, byte[]> entries = new HashMap<>();
-    String prefix = Paths.get(projectDir.absolutePath, "src", "main", "java").toAbsolutePath();
-    for (File file : getFiles(Paths.get(projectDir.absolutePath, "src", "main", "java").toAbsolutePath().toFile())) {
-        var path = file.path;
-        if (path.endsWith(".java") || path.endsWith(".javas")) {
-            String filePath = file.toPath().toAbsolutePath().toString();
-            String text = file.text;
-            if (path.endsWith(".javas")) {
-                HashMap<String, String> _files = generateJavas(file.parentFile, text);
-                for (Map.Entry<String, String> _kv : _files.entrySet()) {
-                    String _text = _kv.getValue();
-                    var _filePath = Paths.get(file.parentFile.absolutePath, _kv.getKey()).toAbsolutePath();
-                    _filePath.toFile().text = _text;
-                    entries.put(_filePath.toString().replace(prefix + "\\", ""), _text.getBytes());
-                }
-            } else {
-                String _file = generateFile(file.parentFile, text);
-                if (_file != null) {
-                    if (_file.equals(text)) {
-                        System.out.println("EQUALS EDITED: " + filePath);
-                    } else {
-                        System.out.println("EDITED: " + filePath);
-                        file.text = text = _file;
-                    }
-                }
-                entries.put(filePath.replace(prefix + "\\", ""), text.getBytes());
-            }
-        }
-    }
-
-    java.nio.file.Path srcPath = Paths.get(projectDir.absolutePath, "build", "src");
-    if (!srcPath.toFile().exists()) srcPath.toFile().mkdirs();
-
-    Paths.get(projectDir.absolutePath,
-            "build",
-            "src",
-            getFileNameWithoutExt(jar.archiveFile.get().asFile.toPath().fileName.toString()) + '-sources.jar')
-            .toAbsolutePath()
-            .toFile()
-            .bytes = zip(entries);
-}
-
-File libDir() {
-    return new File(Paths.get(githubMinecraftDataPath(), ".libs").toAbsolutePath().toString())
-}
-java.nio.file.Path javaRemote() {
-    return Paths.get(githubMinecraftDataPath(), ".libs",
-            System.getProperty("os.name").toLowerCase().concat("win")
-                    ? "Java.Remote.bat"
-                    : "Java.Remote.sh"
-    ).toAbsolutePath()
-}
-java.nio.file.Path javaMapper() {
-    return Paths.get(githubMinecraftDataPath(), ".libs", "Java.Mapper.exe").toAbsolutePath()
-}
-task copyToLib() {}
-static String unicode_format(String text) {
-    StringBuilder builder = new StringBuilder()
-    for (char ch : text.toCharArray()) builder.append("%u").append(String.format("%04x", (int) ch))
-    return builder.toString()
-}
-copyToLib.doLast {
-    println "Copy..."
-    java.nio.file.Path originalPath = jar.archiveFile.get().asFile.toPath()
-    String file_name = originalPath.fileName.toString();
-    String src_name = getFileNameWithoutExt(file_name) + "-sources.jar";
-    if (_mapped) {
-        try {
-            println "Unmapping..."
-            String[] arr;
-            java.nio.file.Path out_path = Paths.get(originalPath.toAbsolutePath().getParent().toString(), "out.jar")
-            if (_remote) {
-                java.nio.file.Path bat_path = javaRemote()
-                arr = new String[4];
-                arr[0] = bat_path.toString();
-                arr[1] = _version+"-"+_build;
-                arr[2] = originalPath.toAbsolutePath().toString();
-                arr[3] = out_path.toString();
-            } else {
-                java.nio.file.Path exe_path = javaMapper()
-                arr = new String[4];
-                arr[0] = exe_path.toString();
-                arr[1] = "mapp="+libPath("paper-unmapped-" + _version + ".mapp");
-                arr[2] = "i=" + originalPath.toAbsolutePath().toString();
-                arr[3] = "o=" + out_path.toString();
-            }
-
-            Process process = new ProcessBuilder(arr).redirectErrorStream(true).directory(libDir()).start()
-            invokeText(process, new Action1<String>() {
-                @Override public void invoke(String line) {
-                    println line;
-                }
-            });
-            originalPath = out_path
-            println "Unmapped!"
-        } catch (IOException ex) {
-            println unicode_format(ex.message)
-            throw ex
-        }
-    }
-
-    for (String path : [
-            Paths.get(githubMinecraftDataPath(), ".output"),
-            Paths.get(githubMinecraftDataPath(), ".libs")
-    ])
-    {
-        java.nio.file.Path copied = Paths.get(path, file_name)
-        java.nio.file.Path copied_src = Paths.get(path, src_name)
-        File dir = new File(path)
-        if (!dir.exists()) dir.mkdir()
-        println "> CD " + copied + " & " + copied_src
-        Files.copy(originalPath, copied, StandardCopyOption.REPLACE_EXISTING)
-        Files.copy(Paths.get(projectDir.absolutePath, "build", "src", src_name), copied_src, StandardCopyOption.REPLACE_EXISTING)
-    }
-    println "End of time: " + java.time.LocalDate.now().toString() + " " + java.time.LocalTime.now().toString()
-    java.awt.Toolkit.getDefaultToolkit().beep();
-}
-
-build {
-    dependsOn copyToLib
-}
-
-compileJava.options.encoding = 'UTF-8'
-compileJava.options.compilerArgs.add("--add-exports=java.base/jdk.internal.reflect=ALL-UNNAMED")
+//</editor-fold>
 //</editor-fold>
