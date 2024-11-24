@@ -28,13 +28,6 @@ jobs:
           restore-keys: |
             ${{ runner.os }}-gradle
 
-      - name: Delete `latest` package
-        uses: actions/delete-package-versions@v5
-        with:
-          package-version-ids: 'latest'
-          package-name: 'org.lime.core'
-          package-type: 'maven'
-
       - name: Build and Publish
         env:
           GITHUB_ACTOR: ${{ github.actor }}
