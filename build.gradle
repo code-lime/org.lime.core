@@ -47,6 +47,11 @@ tasks.withType(JavaCompile).configureEach {
 
 //<editor-fold desc="Settings: Maven">
 publishing {
+    publications {
+        mavenJava(MavenPublication) {
+            from(components["java"])
+        }
+    }
     repositories {
         maven {
             name = "GitHubPackages"
