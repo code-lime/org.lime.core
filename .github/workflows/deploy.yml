@@ -27,6 +27,13 @@ jobs:
           GITHUB_COMMIT_INDEX=$(git rev-list --count HEAD)
           echo "GITHUB_COMMIT_INDEX=$GITHUB_COMMIT_INDEX" >> $GITHUB_ENV
 
+      - name: Delete latest version from GitHub Packages
+        run: |
+          curl -X DELETE \
+              -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" \
+              -H "Accept: application/vnd.github+json" \
+              "https://api.github.com/repos/${{ github.repository }}/packages/maven/org.lime:core/versions/latest"
+
       - name: Build and Publish (v${{ env.GITHUB_COMMIT_INDEX }})
         env:
           GITHUB_ACTOR: ${{ github.actor }}
