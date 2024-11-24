@@ -11,6 +11,10 @@ dependencies {
     paperweight.paperDevBundle("${versionPaper}")
 }
 
+def commitIndex = System.getenv().get("GITHUB_COMMIT_INDEX");
+if (commitIndex != null)
+    version = version + "-" + commitIndex;
+
 paperweight.reobfArtifactConfiguration = ReobfArtifactConfiguration.getMOJANG_PRODUCTION()
 
 processResources {
@@ -61,14 +65,6 @@ publishing {
                 password = System.getenv("GITHUB_TOKEN")
             }
         }
-    }
-}
-
-generateMetadataFileForMavenJavaPublication {
-    doFirst {
-        def commitCount = "git rev-list --count HEAD".execute().text.trim()
-        project.version = "1.0-${commitCount}"
-        println "Publish version: ${project.version}"
     }
 }
 //</editor-fold>
