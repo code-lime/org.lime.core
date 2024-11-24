@@ -63,15 +63,13 @@ publishing {
         }
     }
 }
-tasks.register('publishVersion') {
-    doLast {
+
+generateMetadataFileForMavenJavaPublication {
+    doFirst {
         def commitCount = "git rev-list --count HEAD".execute().text.trim()
         project.version = "1.0-${commitCount}"
         println "Publish version: ${project.version}"
     }
-}
-tasks.named("publish") {
-    dependsOn(tasks.named("publishVersion"))
 }
 //</editor-fold>
 
