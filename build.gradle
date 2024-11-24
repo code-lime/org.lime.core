@@ -51,6 +51,10 @@ publishing {
         mavenJava(MavenPublication) {
             from(components["java"])
         }
+        mavenJavaLatest(MavenPublication) {
+            from(components["java"])
+            version = 'latest'
+        }
     }
     repositories {
         maven {
