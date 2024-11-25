@@ -16,7 +16,7 @@ import org.lime.json.builder.Json;
 import org.lime.system.tuple.Tuple;
 import org.lime.system.tuple.Tuple2;
 import org.lime.Web;
-import org.lime.zip;
+import org.lime.Zip;
 
 import java.io.File;
 import java.nio.ByteBuffer;
@@ -133,7 +133,7 @@ public class AutoDownload implements IUpdateConfig, ICore {
         headers.forEach(builder::header);
         downloaded.set(builder.data().execute());
         base_core._logOP("Opening...");
-        return zip.unzip(downloaded.val0);
+        return Zip.unzip(downloaded.val0);
     }
 
     private void downloadConfigFiles(Collection<String> fileList) {

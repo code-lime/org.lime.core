@@ -14,7 +14,7 @@ import java.util.zip.ZipFile;
 import java.util.zip.ZipInputStream;
 import java.util.zip.ZipOutputStream;
 
-public class zip {
+public class Zip {
     public static HashMap<String, byte[]> unzip(byte[] input) {
         File file = new File(UUID.randomUUID() + ".zip");
         try {
