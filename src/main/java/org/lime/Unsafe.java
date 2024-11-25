@@ -3,7 +3,6 @@ package org.lime;
 import io.papermc.paper.util.MappingEnvironment;
 import net.neoforged.srgutils.IMappingFile;
 import org.objectweb.asm.Type;
-import sun.misc.Unsafe;
 
 import java.io.Closeable;
 import java.io.InputStream;
@@ -14,7 +13,7 @@ import java.lang.reflect.Modifier;
 import java.util.*;
 import java.util.stream.Collectors;
 
-public class unsafe {
+public class Unsafe {
     @SuppressWarnings("unchecked")
     public static <T>T createInstance(Class<T> tClass) {
         try {
@@ -91,12 +90,12 @@ public class unsafe {
         return ofMapped(tClass, name, desc.getDescriptor(), isMethod);
     }
 
-    static final Unsafe unsafe;
+    static final sun.misc.Unsafe unsafe;
     static {
         try (Closeable ignored = loadDeobf()) {
-            Field sif = Unsafe.class.getDeclaredField("theUnsafe");
+            Field sif = sun.misc.Unsafe.class.getDeclaredField("theUnsafe");
             sif.setAccessible(true);
-            unsafe = (Unsafe)sif.get(null);
+            unsafe = (sun.misc.Unsafe)sif.get(null);
         } catch (Throwable e) {
             throw new IllegalArgumentException(e);
         }

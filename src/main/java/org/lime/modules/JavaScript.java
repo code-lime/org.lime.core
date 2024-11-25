@@ -24,7 +24,7 @@ import org.lime.plugin.ICore;
 import org.lime.reflection.Reflection;
 import org.lime.system.execute.Action1;
 import org.lime.json.builder.Json;
-import org.lime.unsafe;
+import org.lime.Unsafe;
 
 import javax.annotation.Nullable;
 import javax.script.Bindings;
@@ -50,7 +50,7 @@ public class JavaScript implements ICore {
         public Accessor.LanguageSupport base;
 
         public static LanguageAccessorProxy create(Accessor.LanguageSupport base) {
-            LanguageAccessorProxy proxy = unsafe.createInstance(LanguageAccessorProxy.class);
+            LanguageAccessorProxy proxy = Unsafe.createInstance(LanguageAccessorProxy.class);
             proxy.base = base;
             return proxy;
         }

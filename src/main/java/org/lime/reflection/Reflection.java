@@ -2,7 +2,7 @@ package org.lime.reflection;
 
 import com.google.common.collect.Streams;
 import org.lime.system.execute.Func1;
-import org.lime.unsafe;
+import org.lime.Unsafe;
 import org.objectweb.asm.Type;
 
 import java.lang.invoke.MethodHandles;
@@ -171,13 +171,13 @@ public class Reflection {
 
     public static String name(Field field) {
         return superClasses(field.getDeclaringClass())
-                .flatMap(tClass -> unsafe.ofMapped(tClass, field.getName(), Type.getType(field.getType()), false).stream())
+                .flatMap(tClass -> Unsafe.ofMapped(tClass, field.getName(), Type.getType(field.getType()), false).stream())
                 .findFirst()
                 .orElseGet(field::getName);
     }
     public static String name(Method method) {
         return superClasses(method.getDeclaringClass())
-                .flatMap(tClass -> unsafe.ofMapped(tClass, method.getName(), Type.getType(method), true).stream())
+                .flatMap(tClass -> Unsafe.ofMapped(tClass, method.getName(), Type.getType(method), true).stream())
                 .findFirst()
                 .orElseGet(method::getName);
     }
