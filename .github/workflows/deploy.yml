@@ -36,7 +36,7 @@ jobs:
         run: ./gradlew build
 
       - name: Delete latest version from GitHub Packages
-        uses: code-lime/DeletePackageFilter
+        uses: code-lime/DeletePackageFilter@v1.0.0
         with:
           type: maven
           version: latest
