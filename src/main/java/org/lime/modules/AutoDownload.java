@@ -15,7 +15,7 @@ import org.lime.system.execute.Action0;
 import org.lime.json.builder.Json;
 import org.lime.system.tuple.Tuple;
 import org.lime.system.tuple.Tuple2;
-import org.lime.web;
+import org.lime.Web;
 import org.lime.zip;
 
 import java.io.File;
@@ -129,7 +129,7 @@ public class AutoDownload implements IUpdateConfig, ICore {
             return map;
         }
         base_core._logOP("Downloading...");
-        web.method.builder builder = web.method.GET.create(url);
+        Web.Method.Builder builder = Web.Method.GET.create(url);
         headers.forEach(builder::header);
         downloaded.set(builder.data().execute());
         base_core._logOP("Opening...");

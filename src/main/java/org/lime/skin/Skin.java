@@ -2,7 +2,7 @@ package org.lime.skin;
 
 import com.google.gson.JsonObject;
 import org.lime.LimeCore;
-import org.lime.web;
+import org.lime.Web;
 
 public class Skin {
     private static final String API_BASE = "https://api.mineskin.org/generate/url";
@@ -30,7 +30,7 @@ public class Skin {
             Thread.sleep(500);
         } catch (Exception ignored) {
         }
-        JsonObject json =  web.method.POST
+        JsonObject json =  Web.Method.POST
                 .create(API_BASE, getBody(url, variant).toString())
                 .setHeader("User-Agent", "MineSkin-JavaClient")
                 .setHeader("Content-Type", "application/json")
