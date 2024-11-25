@@ -40,6 +40,7 @@ jobs:
         with:
           type: maven
           version: latest
+          token: ${{ secrets.GITHUB_TOKEN }}
         
       - name: Publish (v${{ env.GITHUB_COMMIT_INDEX }})
         env:
