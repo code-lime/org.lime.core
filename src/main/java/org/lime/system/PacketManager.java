@@ -47,7 +47,7 @@ public class PacketManager {
     public static class Adapter extends PacketAdapter {
         public static class Builder {
             private static final Map<Class<?>, List<PacketType>> classToPacketTypes = Streams.stream(PacketType.values())
-                    .flatMap(type -> Optional.of(type.getPacketClass())
+                    .flatMap(type -> Optional.ofNullable(type.getPacketClass())
                             .map(v -> Tuple.of(v, type))
                             .stream())
                     .collect(Collectors.groupingBy(v -> v.val0, Collectors.mapping(v -> v.val1, Collectors.toList())));
