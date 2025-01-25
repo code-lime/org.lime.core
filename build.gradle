@@ -15,6 +15,10 @@ def commitIndex = System.getenv().get("GITHUB_COMMIT_INDEX");
 if (commitIndex != null)
     version = version + "-" + commitIndex;
 
+task printVersion {
+    println "Project version: $version"
+}
+
 paperweight.reobfArtifactConfiguration = ReobfArtifactConfiguration.getMOJANG_PRODUCTION()
 
 processResources {
