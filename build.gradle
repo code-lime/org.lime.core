@@ -2,6 +2,7 @@ plugins {
     id 'java-library'
     id 'maven-publish'
     id "io.papermc.paperweight.userdev" version "+"
+    id "fr.brouillard.oss.gradle.jgitver" version "+"
 }
 
 //<editor-fold desc="Settings: Plugin">
@@ -10,10 +11,6 @@ import io.papermc.paperweight.userdev.ReobfArtifactConfiguration
 dependencies {
     paperweight.paperDevBundle("${versionPaper}")
 }
-
-def commitIndex = System.getenv().get("GITHUB_COMMIT_INDEX");
-if (commitIndex != null)
-    version = version + "-" + commitIndex;
 
 task printVersion {
     println "Project version: $version"
@@ -24,8 +21,8 @@ paperweight.reobfArtifactConfiguration = ReobfArtifactConfiguration.getMOJANG_PR
 processResources {
     def props =
     [
-        version: version,
-        versionGraalVm: versionGraalVm
+        version: "${version}",
+        versionGraalVm: "${versionGraalVm}"
     ]
     inputs.properties props
     filteringCharset 'UTF-8'
@@ -100,4 +97,12 @@ dependencies {
     compileOnly "com.comphenix.protocol:ProtocolLib:${versionProtocolLib}"
 }
 //</editor-fold>
+//</editor-fold>
+
+//<editor-fold desc="Settings: Clean output folder">
+task cleanJarOutput(type: Delete) {
+    delete jar.destinationDirectory
+}
+
+jar.dependsOn(cleanJarOutput)
 //</editor-fold>

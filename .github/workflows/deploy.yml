@@ -22,30 +22,16 @@ jobs:
           distribution: 'oracle'
           cache: gradle
 
-      - name: Read commit index
-        run: |
-          GITHUB_COMMIT_INDEX=$(git rev-list --count HEAD)
-          echo "GITHUB_COMMIT_INDEX=$GITHUB_COMMIT_INDEX" >> $GITHUB_ENV
-
-      - name: Build (v${{ env.GITHUB_COMMIT_INDEX }})
+      - name: Build
         env:
           GITHUB_ACTOR: ${{ github.actor }}
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           GITHUB_REPOSITORY: ${{ github.repository }}
-          GITHUB_COMMIT_INDEX: ${{ env.GITHUB_COMMIT_INDEX }}
         run: ./gradlew build
 
-      - name: Delete latest version from GitHub Packages
-        uses: code-lime/DeletePackageFilter@v1.0.0
-        with:
-          type: maven
-          version: latest
-          token: ${{ secrets.GITHUB_TOKEN }}
-        
-      - name: Publish (v${{ env.GITHUB_COMMIT_INDEX }})
+      - name: Publish
         env:
           GITHUB_ACTOR: ${{ github.actor }}
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           GITHUB_REPOSITORY: ${{ github.repository }}
-          GITHUB_COMMIT_INDEX: ${{ env.GITHUB_COMMIT_INDEX }}
         run: ./gradlew publish
