@@ -12,6 +12,16 @@ dependencies {
     paperweight.paperDevBundle("${versionPaper}")
 }
 
+version = "$version";
+if (version.contains('-')) {
+    String[] argsVersion = version.split('-', 2);
+    if (argsVersion[1] == "0") {
+        version = argsVersion[0];
+    } else {
+        version = "${argsVersion[0]}-alpha.${argsVersion[1]}";
+    }
+}
+
 task printVersion {
     println "Project version: $version"
 }
