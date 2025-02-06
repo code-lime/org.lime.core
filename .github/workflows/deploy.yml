@@ -7,6 +7,17 @@ on:
   pull_request:
     branches: [ "master" ]
 
+permissions:
+  packages: 
+    write
+
+env:
+  GITHUB_OWNER: ${{ github.repository_owner }}
+  GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+  GITHUB_REPOSITORY: ${{ github.repository }}
+  GITHUB_PACKAGE_USERNAME: ${{ github.repository_owner }}
+  GITHUB_PACKAGE_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
 jobs:
   build_and_pub:
     runs-on: ubuntu-latest
@@ -24,15 +35,7 @@ jobs:
           cache: gradle
 
       - name: Build
-        env:
-          GITHUB_ACTOR: ${{ github.actor }}
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          GITHUB_REPOSITORY: ${{ github.repository }}
         run: ./gradlew build
 
       - name: Publish
-        env:
-          GITHUB_ACTOR: ${{ github.actor }}
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          GITHUB_REPOSITORY: ${{ github.repository }}
         run: ./gradlew publish
