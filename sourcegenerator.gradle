@@ -66,7 +66,7 @@ class SourceGenerator {
                     break;
             }
         }
-        return edited ? String.join("\n", output) : null;
+        return edited ? String.join("\n", output).replace('\r','').replace('\n','\r\n') : null;
     }
     private HashMap<String, String> generateJavas(File dir, String text) {
         List<String> lines = text.replace("\r", "").split("\n");
