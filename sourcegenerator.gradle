@@ -85,7 +85,7 @@ class SourceGenerator {
                 int index = i * 2;
                 String fileName = raw[index];
                 String fileText = raw[index + 1];
-                outputFiles.put(fileName, fileText);
+                outputFiles.put(fileName, fileText.replace('\n','\r\n'));
             }
         }
         return outputFiles;
