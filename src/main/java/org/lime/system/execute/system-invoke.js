@@ -529,3 +529,12 @@ function getAllFiles() {
         return 'ERROR ' + e.name + ": " + e.message + "\nLogs:\n"+logs.join('\n');
     }
 }
+function findClassSwitch() {
+    var out = [];
+    for (var i = 0; i < 10; i++) {
+        out.push('            case ' + i + ' -> withExceptions');
+        out.push('                    ? (withReturn ? FuncEx' + i + '.class : ActionEx' + i + '.class)');
+        out.push('                    : (withReturn ? Func' + i + '.class : Action' + i + '.class);');
+    }
+    return out.join('\n');
+}

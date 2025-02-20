@@ -14,6 +14,44 @@ public class Execute {
 
     private static final Action0 EMPTY = () -> {};
 
+    public static Class<? extends ICallable> findClass(int count, boolean withReturn, boolean withExceptions) {
+        return switch (count) {
+            //<generator name="system-invoke.js:findClassSwitch()">
+            case 0 -> withExceptions
+                    ? (withReturn ? FuncEx0.class : ActionEx0.class)
+                    : (withReturn ? Func0.class : Action0.class);
+            case 1 -> withExceptions
+                    ? (withReturn ? FuncEx1.class : ActionEx1.class)
+                    : (withReturn ? Func1.class : Action1.class);
+            case 2 -> withExceptions
+                    ? (withReturn ? FuncEx2.class : ActionEx2.class)
+                    : (withReturn ? Func2.class : Action2.class);
+            case 3 -> withExceptions
+                    ? (withReturn ? FuncEx3.class : ActionEx3.class)
+                    : (withReturn ? Func3.class : Action3.class);
+            case 4 -> withExceptions
+                    ? (withReturn ? FuncEx4.class : ActionEx4.class)
+                    : (withReturn ? Func4.class : Action4.class);
+            case 5 -> withExceptions
+                    ? (withReturn ? FuncEx5.class : ActionEx5.class)
+                    : (withReturn ? Func5.class : Action5.class);
+            case 6 -> withExceptions
+                    ? (withReturn ? FuncEx6.class : ActionEx6.class)
+                    : (withReturn ? Func6.class : Action6.class);
+            case 7 -> withExceptions
+                    ? (withReturn ? FuncEx7.class : ActionEx7.class)
+                    : (withReturn ? Func7.class : Action7.class);
+            case 8 -> withExceptions
+                    ? (withReturn ? FuncEx8.class : ActionEx8.class)
+                    : (withReturn ? Func8.class : Action8.class);
+            case 9 -> withExceptions
+                    ? (withReturn ? FuncEx9.class : ActionEx9.class)
+                    : (withReturn ? Func9.class : Action9.class);
+            //</generator>
+            default -> throw new IllegalArgumentException("Unsupported count: " + count);
+        };
+    }
+
     public static Action0 actionEmpty() { return EMPTY; }
     public static Action0 action(Action0 action) { return action; }
     public static <T0> Action1<T0> action(Action1<T0> action) { return action; }
