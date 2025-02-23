@@ -91,6 +91,9 @@ public class Unsafe {
     }
 
     static final sun.misc.Unsafe unsafe;
+    public static sun.misc.Unsafe unsafe() {
+        return unsafe;
+    }
     static {
         try (Closeable ignored = loadDeobf()) {
             Field sif = sun.misc.Unsafe.class.getDeclaredField("theUnsafe");
