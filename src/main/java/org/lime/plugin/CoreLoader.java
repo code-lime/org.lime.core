@@ -58,7 +58,7 @@ public abstract class CoreLoader extends JavaPlugin implements ITimer, ICombineJ
 
         if (LimeCore.instance == null) {
             try {
-                Patcher.patch();
+                Patcher.patch(this.getLogger()::warning);
 
                 LimeCore.instance = _core;
                 init_core();

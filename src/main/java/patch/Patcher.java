@@ -5,9 +5,11 @@ import org.apache.commons.io.FilenameUtils;
 import org.bukkit.Bukkit;
 import org.lime.json.JsonElementOptional;
 import org.lime.json.builder.Json;
+import org.lime.system.execute.Action1;
 import org.lime.system.tuple.Tuple;
 import org.lime.system.tuple.Tuple2;
 
+import javax.annotation.Nullable;
 import java.io.Closeable;
 import java.io.File;
 import java.lang.management.ManagementFactory;
@@ -71,7 +73,12 @@ public class Patcher {
     }
 
     public static void patch() {
+        patch(null);
+    }
+    public static void patch(@Nullable Action1<String> logger) {
         try {
+            if (logger != null)
+                Native.logger = logger;
             throwablePatch(patchers);
         } catch (Throwable e) {
             throw new IllegalArgumentException(e);

@@ -4,20 +4,24 @@ import com.google.common.collect.BiMap;
 import com.google.common.collect.HashBiMap;
 import io.papermc.paper.util.MappingEnvironment;
 import net.neoforged.srgutils.IMappingFile;
+import org.jetbrains.annotations.NotNull;
 import org.lime.json.builder.Json;
 import org.lime.system.tuple.*;
 import org.lime.system.execute.*;
 import org.objectweb.asm.*;
+import org.objectweb.asm.Type;
 
 import javax.annotation.Nullable;
 import java.io.*;
 import java.lang.invoke.MethodHandleInfo;
 import java.lang.invoke.SerializedLambda;
-import java.lang.reflect.Method;
+import java.lang.reflect.*;
 import java.security.MessageDigest;
 import java.util.*;
 
 public class Native {
+    static @NotNull Action1<String> logger = System.out::println;
+
     public static String sha256(byte[] bytes) throws Throwable {
         MessageDigest digest = MessageDigest.getInstance("SHA-256");
         byte[] hash = digest.digest(bytes);
@@ -34,7 +38,7 @@ public class Native {
 
     private static @Nullable String prefix = null;
     public static void log(String log) {
-        System.out.println(prefix == null ? log : (prefix + log));
+        logger.invoke(prefix == null ? log : (prefix + log));
     }
     public interface ICloseable extends Closeable {  @Override void close(); }
     public interface IAction { void execute(); }
