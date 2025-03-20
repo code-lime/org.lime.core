@@ -41,11 +41,35 @@ public class CacheLibraryLoader extends LibraryLoader {
                 : Optional.empty();
     }
 
+    private static Object mapStringObject(Object in, Function<String, String> modify) {
+        return in instanceof Map<?,?> map
+                ? mapStringMap(map, modify)
+                : in instanceof Collection<?> list
+                ? mapStringCollection(list, modify)
+                : in instanceof String str
+                ? modify.apply(str)
+                : in;
+    }
+    private static Collection<?> mapStringCollection(Collection<?> in, Function<String, String> modify) {
+        return OtherView.<Object>of(in, v -> mapStringObject(v, modify));
+    }
+    private static Map<?,?> mapStringMap(Map<?,?> in, Function<String, String> modify) {
+        return OtherView.<Object>ofValues(in, v -> mapStringObject(v, modify));
+    }
+
     @Override public @Nullable ClassLoader createLoader(@Nonnull PluginDescriptionFile desc, List<java.nio.file.Path> paths) {
         final String LOG_PREFIX = Objects.requireNonNullElseGet(desc.getPrefix(), desc::getName);
 
         Optional<Map<?,?>> meta = getRawMeta(desc)
-                .map(RawPluginMeta::rawData);
+                .map(RawPluginMeta::rawData)
+                .map(v -> mapStringMap(v, str -> {
+                    if (!str.startsWith("=") || !str.endsWith("="))
+                        return str;
+                    String envName = str.substring(1, str.length() - 1);
+                    String ret = Objects.requireNonNullElse(System.getenv(envName), str);
+                    logger.warning("Get env '"+envName+"': " + ret);
+                    return ret;
+                }));
 
         List<String> rawJars = new ArrayList<>();
         meta
