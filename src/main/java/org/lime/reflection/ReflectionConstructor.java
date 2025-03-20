@@ -5,7 +5,7 @@ import org.lime.system.execute.ICallable;
 import java.lang.reflect.Constructor;
 import java.lang.reflect.InvocationTargetException;
 
-public record ReflectionConstructor<T>(Constructor<T> constructor) implements ICallable {
+public record ReflectionConstructor<T>(Constructor<T> constructor) {
     public static <T> ReflectionConstructor<T> of(Constructor<T> method) {
         return new ReflectionConstructor<>(method);
     }
@@ -22,16 +22,17 @@ public record ReflectionConstructor<T>(Constructor<T> constructor) implements IC
         }
     }
 
-    @Override
     public Object call(Object[] args) {
         return newInstance(args);
     }
 
-    public <J extends ICallable> J build(Class<J> tClass) {
-        return build(tClass, "invoke");
+    public ICallable lambda() {
+        return Lambda.lambda(constructor);
     }
-
-    public <J extends ICallable> J build(Class<J> tClass, String invokable) {
-        return createProxy(tClass, invokable);
+    public <J extends ICallable>J lambda(Class<J> tClass) {
+        return Lambda.lambda(constructor, tClass);
+    }
+    public <J>J lambda(Class<J> tClass, String invokeName) {
+        return Lambda.lambda(constructor, tClass, invokeName);
     }
 }

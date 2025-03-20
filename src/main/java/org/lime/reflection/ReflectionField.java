@@ -1,5 +1,7 @@
 package org.lime.reflection;
 
+import org.lime.system.execute.ICallable;
+
 import java.lang.reflect.Field;
 
 public record ReflectionField<T>(Field field) {
@@ -41,5 +43,25 @@ public record ReflectionField<T>(Field field) {
         } catch (IllegalAccessException e) {
             throw new IllegalArgumentException(e);
         }
+    }
+
+    public ICallable getter() {
+        return Lambda.getter(field);
+    }
+    public <J extends ICallable>J getter(Class<J> tClass) {
+        return Lambda.getter(field, tClass);
+    }
+    public <J>J getter(Class<J> tClass, String invokeName) {
+        return Lambda.getter(field, tClass, invokeName);
+    }
+
+    public ICallable setter() {
+        return Lambda.setter(field);
+    }
+    public <J extends ICallable>J setter(Class<J> tClass) {
+        return Lambda.setter(field, tClass);
+    }
+    public <J>J setter(Class<J> tClass, String invokeName) {
+        return Lambda.setter(field, tClass, invokeName);
     }
 }

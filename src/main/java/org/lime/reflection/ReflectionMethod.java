@@ -8,7 +8,7 @@ import java.lang.reflect.Modifier;
 import java.util.Arrays;
 import java.util.stream.Collectors;
 
-public record ReflectionMethod(Method method) implements ICallable {
+public record ReflectionMethod(Method method) {
     public static ReflectionMethod of(Method method) {
         return new ReflectionMethod(method);
     }
@@ -44,18 +44,19 @@ public record ReflectionMethod(Method method) implements ICallable {
         }
     }
 
-    @Override
     public Object call(Object[] args) {
         return isStatic()
                 ? call(null, args)
                 : call(args[0], Arrays.copyOfRange(args, 1, args.length));
     }
 
-    public <T extends ICallable> T build(Class<T> tClass) {
-        return build(tClass, "invoke");
+    public ICallable lambda() {
+        return Lambda.lambda(method);
     }
-
-    public <T extends ICallable> T build(Class<T> tClass, String invokable) {
-        return createProxy(tClass, invokable);
+    public <J extends ICallable> J lambda(Class<J> tClass) {
+        return Lambda.lambda(method, tClass);
+    }
+    public <J> J lambda(Class<J> tClass, String invokeName) {
+        return Lambda.lambda(method, tClass, invokeName);
     }
 }
