@@ -143,10 +143,12 @@ public class Patcher {
             Native.log("Read bukkit jar...");
             JarArchive bukkitArchive = JarArchive.of("bukkit", bukkitOrig);
 
+            JarArchiveAuto archive = new JarArchiveAuto(versionArchive, bukkitArchive);
+
             Native.log("Read deobf file...");
             try (Closeable ignored = Native.loadDeobf()) {
                 for (BasePluginPatcher patcher : patchers)
-                    patcher.patch(versionArchive, bukkitArchive);
+                    patcher.patch(archive);
             }
             Native.log("Save version jar...");
             bukkitArchive.toFile(bukkitBase);

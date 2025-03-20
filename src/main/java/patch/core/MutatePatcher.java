@@ -7,6 +7,7 @@ import net.minecraft.paper.java.RawPluginMeta;
 import net.minecraft.server.Main;
 import net.minecraft.server.players.PlayerList;
 import org.bukkit.plugin.PluginDescriptionFile;
+import org.bukkit.plugin.java.JavaPluginLoader;
 import org.bukkit.plugin.java.LibraryLoader;
 import org.lime.LimeCore;
 import org.lime.system.execute.Execute;
@@ -15,6 +16,7 @@ import org.objectweb.asm.Label;
 import org.objectweb.asm.Opcodes;
 import org.objectweb.asm.Type;
 import patch.*;
+import patch.JarArchiveAuto;
 
 import java.io.File;
 import java.util.List;
@@ -29,35 +31,38 @@ public class MutatePatcher extends BasePluginPatcher {
         super(LimeCore.class);
     }
 
-    @Override public void patch(JarArchive versionArchive, JarArchive bukkitArchive) {
-        versionArchive
+    @Override public void patch(JarArchiveAuto archive) {
+        var mutateCacheLibraryLoader = MethodPatcher.mutate(v -> new ProgressMethodVisitor(v, v) {
+            @Override protected List<String> createProgressList() {
+                return List.of("Replace.Type", "Replace.Method");
+            }
+
+            private final String from = Type.getInternalName(LibraryLoader.class);
+            private final String to = Type.getInternalName(CacheLibraryLoader.class);
+
+            @Override public void visitTypeInsn(int opcode, String type) {
+                if (type.equals(from)) {
+                    Native.log("Replace '" + from + "' to '" + to + "' by " + OpcodesNames.getName(opcode));
+                    type = to;
+                    setProgressDuplicate("Replace.Type");
+                }
+                super.visitTypeInsn(opcode, type);
+            }
+            @Override public void visitMethodInsn(int opcode, String owner, String name, String descriptor, boolean isInterface) {
+                if (owner.equals(from)) {
+                    Native.log("Replace '" + from + "' to '" + to + "' in method " + owner + "." + name + descriptor);
+                    owner = to;
+                    setProgressDuplicate("Replace.Method");
+                }
+                super.visitMethodInsn(opcode, owner, name, descriptor, isInterface);
+            }
+        });
+
+        archive
                 .patchMethod(IMethodFilter.of(SpigotPluginProvider.class, IMethodInfo.STATIC_CONSTRUCTOR, false),
-                        MethodPatcher.mutate(v -> new ProgressMethodVisitor(v, v) {
-                            @Override protected List<String> createProgressList() {
-                                return List.of("Replace.Type", "Replace.Method");
-                            }
-
-                            private final String from = Type.getInternalName(LibraryLoader.class);
-                            private final String to = Type.getInternalName(CacheLibraryLoader.class);
-
-                            @Override public void visitTypeInsn(int opcode, String type) {
-                                if (type.equals(from)) {
-                                    Native.log("Replace '" + from + "' to '" + to + "'");
-                                    type = to;
-                                    setProgressDuplicate("Replace.Type");
-                                }
-                                super.visitTypeInsn(opcode, type);
-                            }
-                            @Override public void visitMethodInsn(int opcode, String owner, String name, String descriptor, boolean isInterface) {
-                                if (owner.equals(from)) {
-                                    Native.log("Replace '" + from + "' to '" + to + "' in method " + owner + "." + name + descriptor);
-                                    owner = to;
-                                    setProgressDuplicate("Replace.Method");
-                                }
-                                super.visitMethodInsn(opcode, owner, name, descriptor, isInterface);
-                            }
-                        }));
-        versionArchive
+                        mutateCacheLibraryLoader)
+                .patchMethod(IMethodFilter.of(JavaPluginLoader.class, IMethodInfo.OBJECT_CONSTRUCTOR, false),
+                        mutateCacheLibraryLoader)
                 .patchMethod(IMethodFilter.of(Execute.actionEx(Main::main)),
                         MethodPatcher.mutate(v -> new ProgressMethodVisitor(v, v) {
                             @Override protected List<String> createProgressList() {
@@ -73,8 +78,7 @@ public class MutatePatcher extends BasePluginPatcher {
                                 Native.writeMethod(Execute.action(OptionSetUtils::setOptions), super::visitMethodInsn);
                                 setProgress("Append.OptionSet");
                             }
-                        }));
-        versionArchive
+                        }))
                 .patchMethod(IMethodFilter.of(PlayerList.class, IMethodInfo.STATIC_CONSTRUCTOR, false),
                         MethodPatcher.mutate(v -> new ProgressMethodVisitor(v, v) {
                             @Override protected List<String> createProgressList() {
@@ -101,7 +105,7 @@ public class MutatePatcher extends BasePluginPatcher {
 
         String mapAnyAnySignature = signatureType(Type.getInternalName(Map.class), "*", "*");
 
-        bukkitArchive
+        archive
                 .of(PluginDescriptionFile.class)
                 .addInterface(Type.getInternalName(RawPluginMeta.class))
                 .addField(Opcodes.ACC_PRIVATE, "rawData", Type.getDescriptor(Map.class), mapAnyAnySignature, null)

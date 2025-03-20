@@ -13,9 +13,9 @@ import java.util.jar.JarInputStream;
 import java.util.jar.JarOutputStream;
 import java.util.jar.Manifest;
 
-public class JarArchive {
-    public final String name;
-    public final Manifest manifest;
+public class JarArchive implements JarArchiveBase {
+    private final String name;
+    private final Manifest manifest;
     public final HashMap<String, byte[]> entries = new HashMap<>();
 
     private JarArchive(String name, Manifest manifest) {
@@ -52,7 +52,20 @@ public class JarArchive {
         }
     }
     public void toFile(Path path) throws Throwable { Files.write(path, toByteArray()); }
-    public <T>ClassPatcher<T> of(Class<T> tClass) { return new ClassPatcher<T>(this, tClass); }
+
+    public <T>boolean has(Class<T> tClass) {
+        String className = Native.classFile(tClass);
+        return this.entries.containsKey(className);
+    }
+
+    @Override
+    public String name() {
+        return name;
+    }
+
+    public <T> ClassPatcher<T> of(Class<T> tClass) {
+        return new ClassPatcher<T>(this, tClass);
+    }
     public <T>JarArchive patchMethod(IMethodFilter<T> filter, MethodPatcher patcher) {
         return of(filter.tClass()).patchMethod(filter, patcher).patch();
     }
@@ -83,16 +96,3 @@ public class JarArchive {
         return this;
     }
 }
-
-
-
-
-
-
-
-
-
-
-
-
-

@@ -86,5 +86,5 @@ public abstract class BasePluginPatcher implements SignatureTools {
         return classes;
     }
 
-    public abstract void patch(JarArchive versionArchive, JarArchive bukkitArchive);
+    public abstract void patch(JarArchiveAuto archive);
 }
