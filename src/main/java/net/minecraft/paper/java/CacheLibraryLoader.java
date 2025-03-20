@@ -1,15 +1,25 @@
 package net.minecraft.paper.java;
 
+import com.google.common.collect.Streams;
+import net.minecraft.paper.java.view.OtherView;
+import net.minecraft.unsafe.Native;
 import org.bukkit.plugin.PluginDescriptionFile;
 import org.bukkit.plugin.java.LibraryLoader;
+import org.eclipse.aether.DefaultRepositorySystemSession;
+import org.eclipse.aether.RepositorySystem;
+import org.eclipse.aether.repository.Authentication;
+import org.eclipse.aether.repository.Proxy;
+import org.eclipse.aether.repository.RemoteRepository;
+import org.eclipse.aether.repository.RepositoryPolicy;
+import org.eclipse.aether.util.repository.AuthenticationBuilder;
 
 import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
-import java.io.File;
-import java.net.URL;
-import java.net.URLClassLoader;
+import java.lang.reflect.Field;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.util.*;
-import java.util.concurrent.ConcurrentHashMap;
+import java.util.function.Function;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 import java.util.stream.Stream;
@@ -25,53 +35,41 @@ public class CacheLibraryLoader extends LibraryLoader {
         this.logger = logger;
     }
 
-    private static Optional<RawPluginMeta> getRawMeta(Object data) {
+    private Optional<RawPluginMeta> getRawMeta(Object data) {
         return data instanceof RawPluginMeta rpm
                 ? Optional.of(rpm)
                 : Optional.empty();
     }
 
-    @Override public @Nullable ClassLoader createLoader(@Nonnull PluginDescriptionFile desc) {
+    @Override public @Nullable ClassLoader createLoader(@Nonnull PluginDescriptionFile desc, List<java.nio.file.Path> paths) {
         final String LOG_PREFIX = Objects.requireNonNullElseGet(desc.getPrefix(), desc::getName);
 
+        Optional<Map<?,?>> meta = getRawMeta(desc)
+                .map(RawPluginMeta::rawData);
+
         List<String> rawJars = new ArrayList<>();
-        getRawMeta(desc)
-                .map(v -> v.rawData().get("raw-libraries"))
+        meta
+                .map(v -> v.get("raw-libraries"))
                 .ifPresent(value -> {
                     if (value instanceof List<?> rawLibs)
                         rawLibs.forEach(v -> rawJars.add(v.toString()));
                 });
 
-        ClassLoader classLoader = super.createLoader(desc);
-        if (classLoader == null && rawJars.isEmpty()) return null;
-
-        Stream<URL> urls = Stream.empty();
-        if (classLoader != null) {
-            URLClassLoader urlClassLoader = (URLClassLoader)classLoader;
-            urls = Stream.concat(urls, Arrays.stream(urlClassLoader.getURLs()));
-        }
         if (!rawJars.isEmpty()) {
             this.logger.log(Level.INFO, "[{0}] Loading {1} raw libraries... please wait", new Object[] { LOG_PREFIX, rawJars.size() });
-            urls = Stream.concat(urls, rawJars.stream().map(v -> {
-                try {
-                    URL url = new File("plugins/libs/" + v).toURI().toURL();
-                    this.logger.log(Level.INFO, "[{0}] Loaded raw library {1}", new Object[] { LOG_PREFIX, v });
-                    return url;
-                } catch (Exception e) {
-                    throw new IllegalArgumentException(e);
+            Stream<Path> additionalPaths = rawJars.stream().map(v -> {
+                Path path = Path.of("plugins", "libs", v);
+                Path abs = path.toAbsolutePath();
+                if (!Files.exists(abs)) {
+                    this.logger.log(Level.WARNING, "[{0}] Error load raw library {1}. File {2} not found", new Object[] { LOG_PREFIX, v, abs });
+                    throw new RuntimeException("File " + abs + " not found");
                 }
-            }));
+                this.logger.log(Level.INFO, "[{0}] Loaded raw library {1}", new Object[] { LOG_PREFIX, v });
+                return abs;
+            });
+            paths = (paths == null ? additionalPaths : Streams.concat(paths.stream(), additionalPaths)).toList();
         }
 
-        List<URLClassLoader> otherLoaders = new ArrayList<>();
-        urls.forEach(url -> {
-            otherLoaders.add(classLoaders.computeIfAbsent(url, v -> {
-                this.logger.log(Level.INFO, "[{0}] Create new class loader {1}", new Object[] { LOG_PREFIX, v });
-                return new URLClassLoader(new URL[] { v }, parentClassLoader);
-            }));
-            this.logger.log(Level.INFO, "[{0}] Loading class loader {1}", new Object[] { LOG_PREFIX, url });
-        });
-        if (otherLoaders.isEmpty()) return null;
-        return new JoinClassLoader(parentClassLoader, otherLoaders.toArray(URLClassLoader[]::new));
+        return super.createLoader(desc, paths);
     }
 }
