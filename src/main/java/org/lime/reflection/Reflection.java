@@ -94,17 +94,6 @@ public class Reflection {
         catch (Exception e) { throw new IllegalArgumentException(e); }
     }
 
-    public static void init() {
-        /*if (core.instance._existConfig("mappings")) {
-            try {
-                version = new minecraft_version(system.json.parse(core.instance._readAllConfig("mappings")).getAsJsonObject());
-                core.instance._logOP("Loaded mappings:\n - " + version.version + " (" + version.spigot_id + ")");
-            } catch (Exception e) {
-                core.instance._logStackTrace(e);
-            }
-        }*/
-    }
-
     public static String name(Field field) {
         return superClasses(field.getDeclaringClass())
                 .flatMap(tClass -> Unsafe.ofMapped(tClass, field.getName(), Type.getType(field.getType()), false).stream())

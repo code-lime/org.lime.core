@@ -223,7 +223,6 @@ public abstract class CoreLoader extends JavaPlugin implements ITimer, ICombineJ
 
         commands().forEach((command, cmd) -> Bukkit.getCommandMap().register(this.getName(), cmd.build(this)));
         //_repeat(_system::tryClearCompare, 60);
-        Reflection.init();
     }
     protected abstract void init();
     protected abstract void invokableTick();
