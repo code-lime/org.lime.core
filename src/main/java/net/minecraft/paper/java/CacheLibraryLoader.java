@@ -175,7 +175,6 @@ public class CacheLibraryLoader extends LibraryLoader {
                         return str;
                     String envName = str.substring(1, str.length() - 1);
                     String ret = Objects.requireNonNullElse(System.getenv(envName), str);
-                    logger.warning("Get env '"+envName+"': " + ret);
                     return ret;
                 }));
 
