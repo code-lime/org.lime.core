@@ -1,22 +1,28 @@
 package net.minecraft.unsafe;
 
+import org.lime.system.execute.Execute;
+
+import javax.annotation.Nullable;
+import java.lang.invoke.MethodHandle;
 import java.lang.invoke.MethodHandles;
+import java.lang.invoke.MethodType;
 import java.lang.invoke.VarHandle;
 import java.lang.reflect.*;
-import java.security.AccessController;
-import java.security.PrivilegedAction;
+import java.util.Objects;
 
-@SuppressWarnings("removal")
 public class Native {
     private static final VarHandle MODIFIERS;
     private static final VarHandle SIGNATURE;
+    private static final MethodHandle ACCESSIBLE;
     static {
         try {
             MODIFIERS = MethodHandles.privateLookupIn(Field.class, MethodHandles.lookup())
                     .findVarHandle(Field.class, "modifiers", int.class);
             SIGNATURE = MethodHandles.privateLookupIn(Method.class, MethodHandles.lookup())
                     .findVarHandle(Method.class, "signature", String.class);
-        } catch (IllegalAccessException | NoSuchFieldException ex) {
+            ACCESSIBLE = MethodHandles.privateLookupIn(AccessibleObject.class, MethodHandles.lookup())
+                    .findVirtual(AccessibleObject.class, "setAccessible0", MethodType.methodType(boolean.class, boolean.class));
+        } catch (IllegalAccessException | NoSuchFieldException | NoSuchMethodException ex) {
             throw new IllegalArgumentException(ex);
         }
     }
@@ -37,13 +43,7 @@ public class Native {
     }
     public static Field nonFinal(Field field) {
         int mods = field.getModifiers();
-        //if (Modifier.isFinal(mods)) {
         try {
-            /*
-            Field modifiersField = Field.class.getDeclaredField("modifiers");
-            modifiersField.setAccessible(true);
-            modifiersField.setInt(field, field.getModifiers() & ~Modifier.FINAL);
-            */
             Method getDeclaredFields0 = Class.class.getDeclaredMethod("getDeclaredFields0", boolean.class);
             getDeclaredFields0.setAccessible(true);
             Field[] fields = (Field[]) getDeclaredFields0.invoke(Field.class, false);
@@ -63,18 +63,53 @@ public class Native {
         } catch (Exception e) {
             throw new IllegalArgumentException(e);
         }
-        //}
-        //if (Modifier.isFinal(mods)) MODIFIERS.set(field, mods & ~Modifier.FINAL);
-        //return field;
     }
     public static <T extends AccessibleObject>T access(T val) {
-        if (System.getSecurityManager() == null) {
-            val.setAccessible(true);
+        try {
+            ACCESSIBLE.invoke(val, true);
             return val;
+        } catch (Throwable e) {
+            throw new RuntimeException(e);
         }
-        else return AccessController.doPrivileged((PrivilegedAction<T>) () -> {
-            val.setAccessible(true);
-            return val;
-        });
+    }
+
+    private static final Method getDeclaredFields0Method = Execute.funcEx(() ->
+            access(Class.class.getDeclaredMethod("getDeclaredFields0", boolean.class))).throwable().invoke();
+    public static Field[] declaredFields(Class<?> tClass) {
+        try {
+            return (Field[]) getDeclaredFields0Method.invoke(tClass, false);
+        } catch (Throwable e) {
+            throw new RuntimeException(e);
+        }
+    }
+    public static @Nullable Field declaredField(Class<?> tClass, String name) {
+        Field[] fields = declaredFields(tClass);
+        for (Field field : fields)
+            if (name.equals(field.getName()))
+                return field;
+        return null;
+    }
+
+    private static final Field allowedModesField = Objects.requireNonNull(access(declaredField(MethodHandles.Lookup.class, "allowedModes")));
+    public static MethodHandles.Lookup allowedModes(MethodHandles.Lookup lookup) {
+        int mods = lookup.lookupModes();
+        mods |= MethodHandles.Lookup.PRIVATE;
+        mods |= MethodHandles.Lookup.MODULE;
+        try {
+            allowedModesField.setInt(lookup, mods);
+            return lookup;
+        } catch (Exception e) {
+            throw new RuntimeException(e);
+        }
+    }
+
+    private static final Method lookupOfMethod = Execute.funcEx(() ->
+            access(MethodHandles.class.getDeclaredMethod("lookup", Class.class))).throwable().invoke();
+    public static MethodHandles.Lookup lookup(Class<?> tClass) {
+        try {
+            return (MethodHandles.Lookup) lookupOfMethod.invoke(null, tClass);
+        } catch (Throwable e) {
+            throw new RuntimeException(e);
+        }
     }
 }

@@ -2,10 +2,12 @@ package org.lime.reflection;
 
 import com.google.common.collect.Streams;
 import net.minecraft.unsafe.Native;
+import org.lime.system.execute.Execute;
 import org.lime.system.execute.Func1;
 import org.lime.Unsafe;
 import org.objectweb.asm.Type;
 
+import java.lang.invoke.MethodHandles;
 import java.lang.reflect.*;
 import java.util.*;
 import java.util.stream.Stream;
@@ -18,8 +20,23 @@ public class Reflection {
         return Native.nonFinal(field);
     }
     public static <T extends AccessibleObject>T access(T val) {
-        return TestNative.access(val);
+        return Native.access(val);
     }
+
+    public static Field[] declaredFields(Class<?> tClass) {
+        return Native.declaredFields(tClass);
+    }
+    public static Field declaredField(Class<?> tClass, String name) {
+        return Native.declaredField(tClass, name);
+    }
+
+    public static MethodHandles.Lookup allowedModes(MethodHandles.Lookup lookup) {
+        return Native.allowedModes(lookup);
+    }
+    public static MethodHandles.Lookup lookup(Class<?> tClass) {
+        return Native.lookup(tClass);
+    }
+
     public static <T>Constructor<T> constructor(Class<T> tClass, Class<?>... args) {
         try { return access(tClass.getDeclaredConstructor(args)); }
         catch (Exception e) { throw new IllegalArgumentException(e); }

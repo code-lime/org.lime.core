@@ -4,9 +4,7 @@ import com.google.common.primitives.Primitives;
 import org.bukkit.Bukkit;
 import org.bukkit.plugin.java.PluginClassLoader;
 import org.lime.LimeCore;
-import org.lime.reflection.Lambda;
 import org.lime.reflection.Reflection;
-import org.lime.reflection.TestNative;
 import org.lime.system.tuple.Tuple;
 import org.lime.system.tuple.Tuple1;
 import org.objectweb.asm.ClassWriter;
@@ -100,7 +98,7 @@ public class LambdaCreatorAsm implements LambdaCreator {
         }
     }
     private static <T>Class<?> defineClass(Class<?> dClass, Class<T> tClass, byte[] bytes) throws Throwable {
-        MethodHandles.Lookup lookup = TestNative.allowedModes(MethodHandles.privateLookupIn(dClass, TestNative.lookup(dClass)));
+        MethodHandles.Lookup lookup = Reflection.allowedModes(MethodHandles.privateLookupIn(dClass, Reflection.lookup(dClass)));
         ClassLoader loader = LimeCore.instance.getClass().getClassLoader();//dClass.getClassLoader();//new CombinedClassLoader(dClass, tClass);
         System.out.println("TRY DEFINE CLASS: " + dClass);
         for (var p : Bukkit.getPluginManager().getPlugins()) {

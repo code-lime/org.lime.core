@@ -1,7 +1,7 @@
 package org.lime.reflection.lambda;
 
+import org.lime.reflection.Reflection;
 import org.lime.reflection.ReflectionMethod;
-import org.lime.reflection.TestNative;
 
 import javax.annotation.Nullable;
 import java.lang.invoke.MethodHandle;
@@ -39,9 +39,9 @@ public class LambdaCreatorProxy implements LambdaCreator {
     @Override
     public <T, J extends Executable> T createExecutable(J executable, Class<T> tClass, Method invoke) {
         try {
-            MethodHandles.Lookup lookup = MethodHandles.privateLookupIn(tClass, TestNative.lookup(tClass));
+            MethodHandles.Lookup lookup = MethodHandles.privateLookupIn(tClass, Reflection.lookup(tClass));
 
-            TestNative.access(executable);
+            Reflection.access(executable);
 
             MethodHandle handle;
             if (executable instanceof Method method) handle = lookup.unreflect(method);
@@ -64,9 +64,9 @@ public class LambdaCreatorProxy implements LambdaCreator {
     @Override
     public <T> T createField(Field field, boolean isGetter, Class<T> tClass, Method invoke) {
         try {
-            MethodHandles.Lookup lookup = MethodHandles.privateLookupIn(tClass, TestNative.lookup(tClass));
+            MethodHandles.Lookup lookup = MethodHandles.privateLookupIn(tClass, Reflection.lookup(tClass));
 
-            TestNative.access(field);
+            Reflection.access(field);
 
             MethodHandle handle = isGetter
                     ? lookup.unreflectGetter(field)
