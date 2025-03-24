@@ -37,7 +37,7 @@ public class LambdaCreatorProxy implements LambdaCreator {
     }
 
     @Override
-    public <T, J extends Executable> T createExecutable(J executable, Class<T> tClass, Method invoke) {
+    public <T, J extends Executable> T executable(J executable, Class<T> tClass, Method invoke) {
         try {
             MethodHandles.Lookup lookup = MethodHandles.privateLookupIn(tClass, Reflection.lookup(tClass));
 
@@ -62,7 +62,7 @@ public class LambdaCreatorProxy implements LambdaCreator {
         }
     }
     @Override
-    public <T> T createField(Field field, boolean isGetter, Class<T> tClass, Method invoke) {
+    public <T> T field(Field field, boolean isGetter, Class<T> tClass, Method invoke) {
         try {
             MethodHandles.Lookup lookup = MethodHandles.privateLookupIn(tClass, Reflection.lookup(tClass));
 

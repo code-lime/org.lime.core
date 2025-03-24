@@ -4,16 +4,13 @@ import org.lime.reflection.lambda.LambdaCreator;
 import org.lime.reflection.lambda.LambdaCreatorProxy;
 import org.lime.system.execute.Execute;
 import org.lime.system.execute.ICallable;
-import org.lime.system.tuple.Tuple;
-import org.lime.system.tuple.Tuple3;
 
 import java.lang.reflect.*;
 import java.util.Arrays;
 import java.util.List;
-import java.util.concurrent.ConcurrentHashMap;
 
 public class Lambda {
-    private static final ConcurrentHashMap<Tuple3<Class<?>, Member, Object>, Object> cachedCallable = new ConcurrentHashMap<>();
+    private static final LambdaCreator creator = new LambdaCreatorProxy().cache();
 
     private static int getExecuteCount(Executable executable) {
         return executable.getParameterCount() + (Modifier.isStatic(executable.getModifiers()) ? 0 : 1);
@@ -34,7 +31,7 @@ public class Lambda {
         return lambda(method, tClass, getInvokeMethod(tClass));
     }
     public static <T>T lambda(Method method, Class<T> tClass, Method invoke) {
-        return createLambda(method, tClass, invoke);
+        return creator.executable(method, tClass, invoke);
     }
 
     public static ICallable lambda(Constructor<?> constructor) {
@@ -44,7 +41,7 @@ public class Lambda {
         return lambda(constructor, tClass, getInvokeMethod(tClass));
     }
     public static <T>T lambda(Constructor<?> constructor, Class<T> tClass, Method invoke) {
-        return createLambda(constructor, tClass, invoke);
+        return creator.executable(constructor, tClass, invoke);
     }
 
     public static ICallable getter(Field field) {
@@ -54,7 +51,7 @@ public class Lambda {
         return getter(field, tClass, getInvokeMethod(tClass));
     }
     public static <T>T getter(Field field, Class<T> tClass, Method invoke) {
-        return createField(field, true, tClass, invoke);
+        return creator.field(field, true, tClass, invoke);
     }
 
     public static ICallable setter(Field field) {
@@ -64,35 +61,6 @@ public class Lambda {
         return setter(field, tClass, getInvokeMethod(tClass));
     }
     public static <T>T setter(Field field, Class<T> tClass, Method invoke) {
-        return createField(field, false, tClass, invoke);
-    }
-
-    private static final LambdaCreator creator = new LambdaCreatorProxy();
-
-    private static <T, J extends Executable>T createLambda(
-            J executable,
-            Class<T> tClass,
-            Method invoke) {
-        return (T) cachedCallable.computeIfAbsent(Tuple.of(tClass, executable, null), _ -> createExecutableLambda(executable, tClass, invoke));
-    }
-    private static <T, J extends Executable>T createExecutableLambda(
-            J executable,
-            Class<T> tClass,
-            Method invoke) {
-        return creator.createExecutable(executable, tClass, invoke);
-    }
-    private static <T>T createField(
-            Field field,
-            boolean isGetter,
-            Class<T> tClass,
-            Method invoke) {
-        return (T) cachedCallable.computeIfAbsent(Tuple.of(tClass, field, isGetter), _ -> createFieldLambda(field, isGetter, tClass, invoke));
-    }
-    private static <T>T createFieldLambda(
-            Field field,
-            boolean isGetter,
-            Class<T> tClass,
-            Method invoke) {
-        return creator.createField(field, isGetter, tClass, invoke);
+        return creator.field(field, false, tClass, invoke);
     }
 }
