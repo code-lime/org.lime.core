@@ -53,10 +53,10 @@ public record ReflectionMethod(Method method) {
     public ICallable lambda() {
         return Lambda.lambda(method);
     }
-    public <J extends ICallable> J lambda(Class<J> tClass) {
+    public <J> J lambda(Class<J> tClass) {
         return Lambda.lambda(method, tClass);
     }
-    public <J> J lambda(Class<J> tClass, String invokeName) {
-        return Lambda.lambda(method, tClass, invokeName);
+    public <J> J lambda(Class<J> tClass, Method invoke) {
+        return Lambda.lambda(method, tClass, invoke);
     }
 }

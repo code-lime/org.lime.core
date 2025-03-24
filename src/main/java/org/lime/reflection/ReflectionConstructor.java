@@ -4,6 +4,7 @@ import org.lime.system.execute.ICallable;
 
 import java.lang.reflect.Constructor;
 import java.lang.reflect.InvocationTargetException;
+import java.lang.reflect.Method;
 
 public record ReflectionConstructor<T>(Constructor<T> constructor) {
     public static <T> ReflectionConstructor<T> of(Constructor<T> method) {
@@ -29,10 +30,10 @@ public record ReflectionConstructor<T>(Constructor<T> constructor) {
     public ICallable lambda() {
         return Lambda.lambda(constructor);
     }
-    public <J extends ICallable>J lambda(Class<J> tClass) {
+    public <J>J lambda(Class<J> tClass) {
         return Lambda.lambda(constructor, tClass);
     }
-    public <J>J lambda(Class<J> tClass, String invokeName) {
-        return Lambda.lambda(constructor, tClass, invokeName);
+    public <J>J lambda(Class<J> tClass, Method invoke) {
+        return Lambda.lambda(constructor, tClass, invoke);
     }
 }

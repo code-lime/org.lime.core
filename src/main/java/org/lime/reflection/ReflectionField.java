@@ -3,6 +3,7 @@ package org.lime.reflection;
 import org.lime.system.execute.ICallable;
 
 import java.lang.reflect.Field;
+import java.lang.reflect.Method;
 
 public record ReflectionField<T>(Field field) {
     public static <T> ReflectionField<T> of(Field field) {
@@ -48,20 +49,20 @@ public record ReflectionField<T>(Field field) {
     public ICallable getter() {
         return Lambda.getter(field);
     }
-    public <J extends ICallable>J getter(Class<J> tClass) {
+    public <J>J getter(Class<J> tClass) {
         return Lambda.getter(field, tClass);
     }
-    public <J>J getter(Class<J> tClass, String invokeName) {
-        return Lambda.getter(field, tClass, invokeName);
+    public <J>J getter(Class<J> tClass, Method invoke) {
+        return Lambda.getter(field, tClass, invoke);
     }
 
     public ICallable setter() {
         return Lambda.setter(field);
     }
-    public <J extends ICallable>J setter(Class<J> tClass) {
+    public <J>J setter(Class<J> tClass) {
         return Lambda.setter(field, tClass);
     }
-    public <J>J setter(Class<J> tClass, String invokeName) {
-        return Lambda.setter(field, tClass, invokeName);
+    public <J>J setter(Class<J> tClass, Method invoke) {
+        return Lambda.setter(field, tClass, invoke);
     }
 }
