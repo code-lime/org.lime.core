@@ -18,7 +18,7 @@ public class Reflection {
         return Native.nonFinal(field);
     }
     public static <T extends AccessibleObject>T access(T val) {
-        return Native.access(val);
+        return TestNative.access(val);
     }
     public static <T>Constructor<T> constructor(Class<T> tClass, Class<?>... args) {
         try { return access(tClass.getDeclaredConstructor(args)); }
