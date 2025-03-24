@@ -14,8 +14,10 @@ public class LambdaCreatorProxy implements LambdaCreator {
     public <T, J extends Executable> T createExecutable(J executable, Class<T> tClass, Method invoke) {
         try {
             MethodHandles.Lookup lookup = MethodHandles.privateLookupIn(tClass, TestNative.lookup(tClass));
-            MethodHandle handle;
 
+            TestNative.access(executable);
+
+            MethodHandle handle;
             if (executable instanceof Method method) handle = lookup.unreflect(method);
             else if (executable instanceof Constructor<?> constructor) handle = lookup.unreflectConstructor(constructor);
             else throw new IllegalArgumentException("Unsupported member type: " + executable.getClass());
@@ -37,6 +39,9 @@ public class LambdaCreatorProxy implements LambdaCreator {
     public <T> T createField(Field field, boolean isGetter, Class<T> tClass, Method invoke) {
         try {
             MethodHandles.Lookup lookup = MethodHandles.privateLookupIn(tClass, TestNative.lookup(tClass));
+
+            TestNative.access(field);
+
             MethodHandle handle = isGetter
                     ? lookup.unreflectGetter(field)
                     : lookup.unreflectSetter(field);
