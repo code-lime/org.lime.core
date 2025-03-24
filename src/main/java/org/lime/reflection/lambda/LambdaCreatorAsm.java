@@ -1,6 +1,7 @@
 package org.lime.reflection.lambda;
 
 import com.google.common.primitives.Primitives;
+import org.apache.commons.lang3.NotImplementedException;
 import org.bukkit.Bukkit;
 import org.bukkit.plugin.java.PluginClassLoader;
 import org.lime.LimeCore;
@@ -19,6 +20,7 @@ import java.lang.reflect.*;
 import java.util.*;
 import java.util.stream.Collectors;
 
+@Deprecated(forRemoval = true)
 public class LambdaCreatorAsm implements LambdaCreator {
     private static void visitUnboxingType(MethodVisitor mv, Class<?> primitiveType) {
         Class<?> argType = Primitives.wrap(primitiveType);
@@ -144,7 +146,7 @@ public class LambdaCreatorAsm implements LambdaCreator {
         }
         loader = new CombinedClassLoader(dClass.getClassLoader(), tClass.getClassLoader());
         System.out.println("   LOADER: " + loader);
-
+        /*
         //dClass.getClassLoader().loadClass()
         //ClassLoader oldLoader = dClass.getClassLoader();
         //TestNative.replaceLoader(dClass, loader);
@@ -154,11 +156,14 @@ public class LambdaCreatorAsm implements LambdaCreator {
                     .lookupClass();
         } finally {
             //TestNative.replaceLoader(dClass, oldLoader);
-        }
+        }*/
+        throw new NotImplementedException();
     }
 
     @Override
     public <T, J extends Executable> T createExecutable(J executable, Class<T> tClass, Method invoke) {
+        if (true)
+            throw new NotImplementedException();
         try {
             ClassWriter cw = new ClassWriter(ClassWriter.COMPUTE_MAXS | ClassWriter.COMPUTE_FRAMES);
 
@@ -339,6 +344,8 @@ public class LambdaCreatorAsm implements LambdaCreator {
     }
     @Override
     public <T> T createField(Field field, boolean isGetter, Class<T> tClass, Method invoke) {
+        if (true)
+                throw new NotImplementedException();
         try {
             ClassWriter cw = new ClassWriter(ClassWriter.COMPUTE_MAXS | ClassWriter.COMPUTE_FRAMES);
 
