@@ -3,6 +3,7 @@ package org.lime.reflection.lambda;
 import org.lime.reflection.ReflectionMethod;
 import org.lime.reflection.TestNative;
 
+import javax.annotation.Nullable;
 import java.lang.invoke.MethodHandle;
 import java.lang.invoke.MethodHandles;
 import java.lang.reflect.*;
@@ -10,8 +11,8 @@ import java.lang.reflect.*;
 public class LambdaCreatorProxy implements LambdaCreator {
     private static final Method toStringMethod = ReflectionMethod.of(Object.class, "toString").method();
 
-    private static Object invokeDynamic(MethodHandle handle, Object[] args) throws Throwable {
-        return switch (args.length) {
+    private static Object invokeDynamic(MethodHandle handle, @Nullable Object[] args) throws Throwable {
+        return switch (args == null ? 0 : args.length) {
             //<editor-fold desc="Invokes">
             //<generator name="invoke-dynamic.js:getAllCases(15)">
             case 0 -> handle.invoke();
