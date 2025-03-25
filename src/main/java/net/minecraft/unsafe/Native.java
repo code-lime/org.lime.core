@@ -1,7 +1,5 @@
 package net.minecraft.unsafe;
 
-import org.lime.system.execute.Execute;
-
 import javax.annotation.Nullable;
 import java.lang.invoke.MethodHandle;
 import java.lang.invoke.MethodHandles;
@@ -73,8 +71,20 @@ public class Native {
         }
     }
 
-    private static final Method getDeclaredFields0Method = Execute.funcEx(() ->
-            access(Class.class.getDeclaredMethod("getDeclaredFields0", boolean.class))).throwable().invoke();
+    private interface ThrowableExecute<T> {
+        T invoke() throws Throwable;
+
+        static <T>T of(ThrowableExecute<T> lambda) {
+            try {
+                return lambda.invoke();
+            } catch (Throwable e) {
+                throw new RuntimeException(e);
+            }
+        }
+    }
+
+    private static final Method getDeclaredFields0Method = ThrowableExecute.of(() ->
+            access(Class.class.getDeclaredMethod("getDeclaredFields0", boolean.class)));
     public static Field[] declaredFields(Class<?> tClass) {
         try {
             return (Field[]) getDeclaredFields0Method.invoke(tClass, false);
@@ -103,8 +113,8 @@ public class Native {
         }
     }
 
-    private static final Method lookupOfMethod = Execute.funcEx(() ->
-            access(MethodHandles.class.getDeclaredMethod("lookup", Class.class))).throwable().invoke();
+    private static final Method lookupOfMethod = ThrowableExecute.of(() ->
+            access(MethodHandles.class.getDeclaredMethod("lookup", Class.class)));
     public static MethodHandles.Lookup lookup(Class<?> tClass) {
         try {
             return (MethodHandles.Lookup) lookupOfMethod.invoke(null, tClass);
