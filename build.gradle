@@ -13,13 +13,29 @@ dependencies {
 }
 
 version = "$version";
+boolean hasPostfixOriginal = false;
 if (version.contains('-')) {
+    hasPostfixOriginal = true;
     String[] argsVersion = version.split('-', 2);
     if (argsVersion[1] == "0") {
         version = argsVersion[0];
     } else {
         version = "${argsVersion[0]}-alpha.${argsVersion[1]}";
     }
+}
+var globalProps = getProperties();
+boolean isTagCommit = "LIGHTWEIGHT" == globalProps["base_tag_type"];
+if (!hasPostfixOriginal && !isTagCommit) {
+    var argsVersion = version.split('\\.');
+    int lastIndex = argsVersion.length - 1;
+    String lastValue = argsVersion[lastIndex];
+    try {
+        lastValue = Integer.toString(Integer.parseUnsignedInt(lastValue) + 1) + "-alpha.0";
+    } catch (ignored) {
+        lastValue = lastValue + "-unsafe";
+    }
+    argsVersion[lastIndex] = lastValue;
+    version = String.join(".", argsVersion);
 }
 
 task printVersion {
