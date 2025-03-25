@@ -1,5 +1,6 @@
 package patch;
 
+import org.lime.reflection.LambdaInfo;
 import org.lime.system.execute.Execute;
 import org.lime.system.execute.ICallable;
 import org.objectweb.asm.Type;
@@ -12,7 +13,7 @@ public interface IMethodFilter<T> extends IMethodInfo {
     String toInfo();
 
     static <T>IMethodFilter<T> of(ICallable callable) {
-        SerializedLambda lambda = Native.infoFromLambda(callable);
+        SerializedLambda lambda = LambdaInfo.infoFromLambda(callable);
         Class<T> methodClass = Execute.funcEx(() -> (Class<T>)Class.forName(lambda.getImplClass().replace('/','.'))).throwable().invoke();
         String methodName = lambda.getImplMethodName();
         String methodDescriptor = lambda.getImplMethodSignature();

@@ -62,8 +62,8 @@ public class LambdaInfo {
 
     private static final ConcurrentHashMap<Class<?>, Func1<Serializable, SerializedLambda>> classReaders = new ConcurrentHashMap<>();
     public static SerializedLambda infoFromLambda(Serializable lambda) {
-        return classReaders.computeIfAbsent(lambda.getClass(), v -> ReflectionMethod.of(v, "writeReplace").lambda(Func1.class))
-                .invoke(lambda);
+        Func1<Serializable, SerializedLambda> func = classReaders.computeIfAbsent(lambda.getClass(), v -> ReflectionMethod.of(v, "writeReplace").lambda(Func1.class));
+        return func.invoke(lambda);
     }
     public static MemberInfo infoFromMethodLambda(Serializable lambda) {
         return MemberInfo.of(infoFromLambda(lambda));
