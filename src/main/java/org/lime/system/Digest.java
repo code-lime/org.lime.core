@@ -1,5 +1,8 @@
 package org.lime.system;
 
+import org.lime.system.execute.Execute;
+
+import java.io.InputStream;
 import java.security.MessageDigest;
 import java.util.Formatter;
 import java.util.stream.Stream;
@@ -18,6 +21,12 @@ public class Digest {
         this.algorithm = algorithm;
     }
 
+    public String miniHashStream(InputStream... parts) {
+        return miniHashStream(Stream.of(parts));
+    }
+    public String miniHashStream(Stream<InputStream> parts) {
+        return miniHash(parts.map(Execute.funcEx(InputStream::readAllBytes).throwable()));
+    }
     public String miniHash(byte[]... parts) {
         return miniHash(Stream.of(parts));
     }
@@ -25,6 +34,12 @@ public class Digest {
         return hash(parts).substring(5, 15);
     }
 
+    public String hashStream(InputStream... parts) {
+        return hashStream(Stream.of(parts));
+    }
+    public String hashStream(Stream<InputStream> parts) {
+        return hash(parts.map(Execute.funcEx(InputStream::readAllBytes).throwable()));
+    }
     public String hash(byte[]... parts) {
         return hash(Stream.of(parts));
     }
