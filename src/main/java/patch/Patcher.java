@@ -5,6 +5,7 @@ import org.apache.commons.io.FilenameUtils;
 import org.bukkit.Bukkit;
 import org.lime.json.JsonElementOptional;
 import org.lime.json.builder.Json;
+import org.lime.system.Digest;
 import org.lime.system.execute.Action1;
 import org.lime.system.tuple.Tuple;
 import org.lime.system.tuple.Tuple2;
@@ -17,7 +18,6 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.nio.file.StandardCopyOption;
-import java.security.MessageDigest;
 import java.util.*;
 import java.util.stream.Stream;
 
@@ -41,23 +41,6 @@ public class Patcher {
         return orig;
     }
 
-    private static String miniSha1(byte[]... parts) throws Throwable {
-        MessageDigest md = MessageDigest.getInstance("SHA-1");
-        for (byte[] part : parts) md.update(part);
-        return hex(md.digest()).substring(5, 15);
-    }
-    private static String miniSha1(Stream<byte[]> parts) throws Throwable {
-        MessageDigest md = MessageDigest.getInstance("SHA-1");
-        parts.forEach(md::update);
-        return hex(md.digest()).substring(5, 15);
-    }
-
-    private static String hex(final byte[] hash) {
-        Formatter formatter = new Formatter();
-        for (byte b : hash) formatter.format("%02x", b);
-        return formatter.toString();
-    }
-
     private static Tuple2<String, String> calculateVersion(List<BasePluginPatcher> patchers) throws Throwable {
         List<ModifyClass> checkFiles = new ArrayList<>();
         try (var ignored = Native.subLog()) {
@@ -67,8 +50,8 @@ public class Patcher {
         }
         checkFiles.sort(Comparator.comparing(ModifyClass::name));
         return Tuple.of(
-                miniSha1(checkFiles.stream().flatMap(v -> Stream.of(v.name().getBytes(), v.rawClass()))),
-                miniSha1(checkFiles.stream().filter(ModifyClass::isModify).flatMap(v -> Stream.of(v.name().getBytes(), v.rawClass())))
+                Digest.SHA1.miniHash(checkFiles.stream().flatMap(v -> Stream.of(v.name().getBytes(), v.rawClass()))),
+                Digest.SHA1.miniHash(checkFiles.stream().filter(ModifyClass::isModify).flatMap(v -> Stream.of(v.name().getBytes(), v.rawClass())))
         );
     }
 
@@ -128,9 +111,9 @@ public class Patcher {
         ).getBytes());
 
         Path versionBase = of(Main.class);
-        String sha256Old = Native.sha256(Files.readAllBytes(versionBase));
+        String sha256Old = Digest.SHA256.hash(Files.readAllBytes(versionBase));
         Path bukkitBase = of(Bukkit.class);
-        String bukkitOldSha256 = Native.sha256(Files.readAllBytes(bukkitBase));
+        String bukkitOldSha256 = Digest.SHA256.hash(Files.readAllBytes(bukkitBase));
 
         Native.log("Getting original version jar...");
         Path versionOrig = loadBaseFile(versionBase, resetCacheOriginal);
@@ -162,10 +145,10 @@ public class Patcher {
         }
         versionArchive.toFile(versionBase);
 
-        String baseSha256 = Native.sha256(Files.readAllBytes(versionBase));
-        String origSha256 = Native.sha256(Files.readAllBytes(versionOrig));
-        String bukkitBaseSha256 = Native.sha256(Files.readAllBytes(bukkitBase));
-        String bukkitOrigSha256 = Native.sha256(Files.readAllBytes(bukkitOrig));
+        String baseSha256 = Digest.SHA256.hash(Files.readAllBytes(versionBase));
+        String origSha256 = Digest.SHA256.hash(Files.readAllBytes(versionOrig));
+        String bukkitBaseSha256 = Digest.SHA256.hash(Files.readAllBytes(bukkitBase));
+        String bukkitOrigSha256 = Digest.SHA256.hash(Files.readAllBytes(bukkitOrig));
 
         Native.log("Apply paper jar...");
         Native.log(" - " + sha256Old + " or " + origSha256 + " > " + baseSha256);

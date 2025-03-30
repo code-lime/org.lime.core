@@ -15,23 +15,11 @@ import javax.annotation.Nullable;
 import java.io.*;
 import java.lang.invoke.MethodHandleInfo;
 import java.lang.invoke.SerializedLambda;
-import java.security.MessageDigest;
 import java.util.*;
 
 public class Native {
     static @NotNull Action1<String> logger = System.out::println;
 
-    public static String sha256(byte[] bytes) throws Throwable {
-        MessageDigest digest = MessageDigest.getInstance("SHA-256");
-        byte[] hash = digest.digest(bytes);
-        StringBuilder hexString = new StringBuilder(2 * hash.length);
-        for (byte b : hash) {
-            String hex = Integer.toHexString(0xff & b);
-            if (hex.length() == 1) hexString.append('0');
-            hexString.append(hex);
-        }
-        return hexString.toString();
-    }
     public static String classFile(Class<?> tClass) { return className(tClass) + ".class"; }
     public static String className(Class<?> tClass) { return tClass.getName().replace('.', '/'); }
 
