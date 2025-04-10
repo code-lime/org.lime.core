@@ -75,6 +75,10 @@ tasks.withType(JavaCompile).configureEach {
         options.release = targetJavaVersion
     }
 }
+
+jar {
+    archiveFileName = "${project.group}.${archiveFileName.get()}"
+}
 //</editor-fold>
 
 //<editor-fold desc="Settings: Maven">
