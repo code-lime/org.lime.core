@@ -16,9 +16,13 @@ import org.eclipse.aether.util.repository.AuthenticationBuilder;
 import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
 import java.lang.reflect.Field;
+import java.net.URL;
+import java.net.URLClassLoader;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.*;
+import java.util.concurrent.locks.ReentrantLock;
+import java.util.function.BiFunction;
 import java.util.function.Function;
 import java.util.logging.Level;
 import java.util.logging.Logger;
@@ -41,6 +45,32 @@ public class CacheLibraryLoader extends LibraryLoader {
             repositoriesField = Native.access(Native.nonFinal(LibraryLoader.class.getDeclaredField("repositories")));
         } catch (Exception e) {
             throw new RuntimeException(e);
+        }
+    }
+
+    private static final BiFunction<URL[], ClassLoader, URLClassLoader> defaultFactory;
+    private static final ReentrantLock cacheLock = new ReentrantLock();
+    private static final HashSet<URL> cacheUrls = new HashSet<>();
+    private static URLClassLoader cacheLoader = null;
+
+    static {
+        defaultFactory = LibraryLoader.LIBRARY_LOADER_FACTORY;
+        LibraryLoader.LIBRARY_LOADER_FACTORY = CacheLibraryLoader::cacheLibraryLoader;
+    }
+
+    private static URLClassLoader cacheLibraryLoader(URL[] urls, ClassLoader parent) {
+        cacheLock.lock();
+        try {
+            HashSet<URL> append = new HashSet<>();
+            for (URL url : urls)
+                if (cacheUrls.add(url))
+                    append.add(url);
+
+            if (!append.isEmpty())
+                cacheLoader = defaultFactory.apply(append.toArray(URL[]::new), Objects.requireNonNullElse(cacheLoader, parent));
+            return cacheLoader;
+        } finally {
+            cacheLock.unlock();
         }
     }
 
