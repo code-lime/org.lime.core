@@ -28,8 +28,10 @@ import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 public class AutoDownload implements IUpdateConfig, ICore {
-    public static CoreElement create() { return new AutoDownload()._create(); }
-    private CoreElement _create() {
+    public static CoreElement<AutoDownload> create() {
+        return new AutoDownload()._create();
+    }
+    private CoreElement<AutoDownload> _create() {
         return CoreElement.create(AutoDownload.class)
                 .withInstance(this)
                 .addEmpty("autodownload-on", () -> enable(true))

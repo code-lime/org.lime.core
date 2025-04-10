@@ -203,8 +203,10 @@ public class JavaScript implements ICore {
 
     private static IContextFactory context;
 
-    public static CoreElement create() { return new JavaScript()._create(); }
-    private CoreElement _create() {
+    public static CoreElement<JavaScript> create() {
+        return new JavaScript()._create();
+    }
+    private CoreElement<JavaScript> _create() {
         return CoreElement.create(JavaScript.class)
                 .withInstance(this)
                 .withInit(this::init)

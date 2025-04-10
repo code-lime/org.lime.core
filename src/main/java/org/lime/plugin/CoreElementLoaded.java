@@ -2,18 +2,22 @@ package org.lime.plugin;
 
 import java.util.Optional;
 
-public interface CoreElementLoaded {
+public interface CoreElementLoaded<T> {
     void cancel();
-    Optional<CoreElement> element();
+    Optional<CoreElement<T>> element();
     String name();
-    Class<?> type();
+    Class<T> type();
 
-    static CoreElementLoaded disabled(CoreElement element) {
-        return new CoreElementLoaded() {
+    default Optional<T> instance() {
+        return element().map(v -> v.instance);
+    }
+
+    static <T> CoreElementLoaded<T> disabled(CoreElement<T> element) {
+        return new CoreElementLoaded<>() {
             @Override public void cancel() { }
-            @Override public Optional<CoreElement> element() { return Optional.empty(); }
+            @Override public Optional<CoreElement<T>> element() { return Optional.empty(); }
             @Override public String name() { return element.name; }
-            @Override public Class<?> type() { return element.tClass; }
+            @Override public Class<T> type() { return element.tClass; }
         };
     }
 }

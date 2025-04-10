@@ -29,7 +29,7 @@ public class LimeCore extends CoreLoader {
     @Override public String getLogPrefix() { return "LIME:" + this.getName().toUpperCase(); }
     @Override public String getConfigFile() { return "plugins/" + this.getName().toLowerCase() + "/"; }
 
-    private final List<CoreElement> elements = new ArrayList<>();
+    private final List<CoreElement<?>> elements = new ArrayList<>();
     private final HashMap<String, CoreCommand<?>> commands = new HashMap<>();
     private final List<LibraryClassLoader> libraries = new ArrayList<>();
     private final ConcurrentLinkedQueue<BaseInvokable> tickCalls = new ConcurrentLinkedQueue<>();
@@ -37,15 +37,15 @@ public class LimeCore extends CoreLoader {
     @Override public TimerBuilder _timer() { return TimerBuilder.create(this); }
     @Override public void _invokable(BaseInvokable invokable) { tickCalls.add(invokable); }
 
-    @Override public CoreElementLoaded add(CoreElement element) {
+    @Override public <T> CoreElementLoaded<T> add(CoreElement<T> element) {
         if (element.disable) return CoreElementLoaded.disabled(element);
         elements.add(element);
         if (element.instance instanceof ICore icore) icore.core(this);
-        return new CoreElementLoaded() {
+        return new CoreElementLoaded<>() {
             @Override public void cancel() { if (elements.remove(element) && element.uninit != null) element.uninit.invoke(); }
-            @Override public Optional<CoreElement> element() { return Optional.of(element); }
+            @Override public Optional<CoreElement<T>> element() { return Optional.of(element); }
             @Override public String name() { return element.name; }
-            @Override public Class<?> type() { return element.tClass; }
+            @Override public Class<T> type() { return element.tClass; }
         };
     }
     @Override public void add(CoreCommand<?> command) { commands.put(command.cmd, command); }
@@ -79,8 +79,8 @@ public class LimeCore extends CoreLoader {
         }
         return Collections.emptyList();
     }
-    public List<CoreElementLoaded> addOther() {
-        List<CoreElementLoaded> other = new ArrayList<>();
+    public List<CoreElementLoaded<?>> addOther() {
+        List<CoreElementLoaded<?>> other = new ArrayList<>();
         if (this.getClassLoader() instanceof PluginClassLoader loader) {
             try (JarFile jar = new JarFile(this.getFile())) {
                 jar.entries().asIterator().forEachRemaining(entry -> {
@@ -93,7 +93,7 @@ public class LimeCore extends CoreLoader {
                         if (!Modifier.isStatic(method.getModifiers())) return;
                         if (method.getReturnType() != CoreElement.class) return;
                         if (elements.stream().anyMatch(v -> v.tClass == tClass)) return;
-                        other.add(add((CoreElement)method.invoke(null)));
+                        other.add(add((CoreElement<?>)method.invoke(null)));
                     } catch (NoSuchMethodException ignored) {
 
                     } catch (Throwable e) {
@@ -109,7 +109,7 @@ public class LimeCore extends CoreLoader {
         return other;
     }
 
-    @Override public Stream<CoreElement> elements() { return this.elements.stream(); }
+    @Override public Stream<CoreElement<?>> elements() { return this.elements.stream(); }
     @Override public Stream<LibraryClassLoader> libraries() { return this.libraries.stream(); }
 
     @Override protected Map<String, CoreCommand<?>> commands() { return this.commands; }

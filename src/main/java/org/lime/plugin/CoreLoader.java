@@ -9,7 +9,6 @@ import org.bukkit.plugin.PluginManager;
 import org.bukkit.plugin.java.JavaPlugin;
 import org.lime.LibraryClassLoader;
 import org.lime.LimeCore;
-import org.lime.reflection.Reflection;
 import org.lime.modules.PluginImporter;
 import org.lime.system.execute.*;
 import patch.Patcher;
@@ -20,9 +19,9 @@ import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 public abstract class CoreLoader extends JavaPlugin implements ITimer, ICombineJson, IConfig, IFile, ILogger {
-    public abstract Stream<CoreElement> elements();
+    public abstract Stream<CoreElement<?>> elements();
     public abstract Stream<LibraryClassLoader> libraries();
-    public abstract CoreElementLoaded add(CoreElement command);
+    public abstract <T> CoreElementLoaded<T> add(CoreElement<T> command);
     public abstract void add(CoreCommand<?> command);
     public abstract void add(String cmd, Func1<CoreCommand<?>, CoreCommand<?>> builder);
     public abstract void library(File... jars);
@@ -31,26 +30,7 @@ public abstract class CoreLoader extends JavaPlugin implements ITimer, ICombineJ
 
     protected abstract Map<String, CoreCommand<?>> commands();
     protected abstract Optional<IUpdateConfig> config();
-/*
-    private static final LibraryClassLoader coreLoader;
-    static {
-        System.out.println("CoreLoader.Starting...");
-        var libs = Stream.of(
-                "graal-sdk-23.0.3.jar",
-                "icu4j-72.1.jar",
-                "js-23.0.3.jar",
-                "js-scriptengine-23.0.3.jar",
-                "regex-23.0.3.jar",
-                "truffle-api-23.0.3.jar")
-                .map(v -> "graaljs/" + v)
-                .map(IConfig::getLibraryFile)
-                .toList();
-        coreLoader = new LibraryClassLoader(core.class, libs);
-        coreLoader.load();
 
-        System.out.println("CoreLoader.OK!");
-    }
-*/
     @Override public void onEnable() {
         if (!(this instanceof LimeCore _core)) {
             throw new IllegalArgumentException("Not support '"+this.getClass()+"'! Supported only `"+ LimeCore.class+"`");
@@ -155,71 +135,6 @@ public abstract class CoreLoader extends JavaPlugin implements ITimer, ICombineJ
                     return true;
                 })
         );
-        /*add("update.class", cmd -> cmd.withCheck(ServerOperator::isOp).withTab((sender, args) -> {
-            if (args.length == 1) return Arrays.stream(Bukkit.getPluginManager().getPlugins()).map(Plugin::getName).collect(Collectors.toList());
-            Plugin plugin = Bukkit.getPluginManager().getPlugin(args[0]);
-            if (plugin == null) return Collections.emptyList();
-            List<PluginClassLoader> loaders = reflection.getField(JavaPluginLoader.class, "loaders", plugin.getPluginLoader());
-            PluginClassLoader loader = loaders.stream().filter(v -> plugin.equals(v.getPlugin())).findFirst().orElse(null);
-            Map<String, Class<?>> classes = reflection.getField(PluginClassLoader.class, "classes", loader);
-            return new ArrayList<>(classes.keySet());
-        }).withExecutor((sender, args) -> {
-            if (args.length < 2) return false;
-            Plugin plugin = Bukkit.getPluginManager().getPlugin(args[0]);
-            if (plugin == null) return true;
-            List<PluginClassLoader> loaders = reflection.getField(JavaPluginLoader.class, "loaders", plugin.getPluginLoader());
-            PluginClassLoader loader = loaders.stream().filter(v -> plugin.equals(v.getPlugin())).findFirst().orElse(null);
-            Map<String, Class<?>> classes = reflection.getField(PluginClassLoader.class, "classes", loader);
-            String className = Arrays.stream(args).skip(1).collect(Collectors.joining(" "));
-            Class<?> classT = classes.getOrDefault(className, null);
-            if (classT == null) return true;
-            Class<?> classNew;
-            try {
-                classNew = new ClassLoader() {
-                    @Override public Class<?> loadClass(String name) throws ClassNotFoundException {
-                        if (name != null) return getParent().loadClass(name);
-                        try {
-                            InputStream is = loader.getResourceAsStream(className.replace(".", "/") + ".class");
-                            byte[] buf = new byte[10000];
-                            int len = is.read(buf);
-                            return defineClass(name, buf, 0, len);
-                        } catch (IOException e) {
-                            throw new ClassNotFoundException("", e);
-                        }
-                    }
-                }.loadClass(null);
-            } catch (Exception e) {
-                core.instance._logStackTrace(e);
-                return true;
-            }
-            core.instance._logOP("Updated class: " + classNew.getName());
-            /*if (args.length < 2) return false;
-            Plugin plugin = Bukkit.getPluginManager().getPlugin(args[0]);
-            if (!(plugin instanceof core)) return false;
-            core _core = (core)plugin;
-            List<system.Tuple2<String, element>> elements = _CoreElements;
-            Collection<String> files = Arrays.stream(args).skip(1).collect(Collectors.toList());
-            Set<String> _files = new HashSet<>();
-            files.forEach(file -> elements.forEach(element -> element.val1.config.forEach(data -> {
-                if (!data.getKey().equals(file)) return;
-                _files.add(data.file);
-            })));
-            _core._LogOP("Update files: " + String.join(" & ", _files));
-            try {
-                _core.updateConfigAsync(_files, () -> {
-                    files.forEach(file -> elements.forEach(element -> element.val1.config.forEach(data -> {
-                        if (!data.getKey().equals(file)) return;
-                        data.read(_core, true);
-                    })));
-                });
-            } catch (Exception e) {
-                _core._LogStackTrace(e);
-                return true;
-                //throw new IllegalArgumentException(e);
-            }
-            _core._LogOP("Updated!");*//*
-            return true;
-        }));*/
 
         commands().forEach((command, cmd) -> Bukkit.getCommandMap().register(this.getName(), cmd.build(this)));
         //_repeat(_system::tryClearCompare, 60);

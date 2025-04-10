@@ -26,12 +26,14 @@ public class Proxy implements ICore {
     private Map<String, ForwardConsumer> forwardListeners;
     private ForwardConsumer globalForwardListener;
 
-    public static CoreElement create() { return new Proxy()._create(); }
+    public static CoreElement<Proxy> create() {
+        return new Proxy()._create();
+    }
 
     @Override public void core(LimeCore base_core) { plugin = base_core; }
     @Override public LimeCore core() { return plugin; }
 
-    private CoreElement _create() {
+    private CoreElement<Proxy> _create() {
         return CoreElement.create(Proxy.class)
                 .withInstance(this)
                 .withInit(() -> {
