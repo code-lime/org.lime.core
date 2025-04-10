@@ -40,14 +40,21 @@ if ($args.Count -eq 1) {
     $remotePath = $args[1]
 }
 
-# Find files matching the given pattern
+# Find files matching the given pattern and ignore *-sources.jar if more than one
 $files = Get-ChildItem -Filter $filePattern -File
 if ($files.Count -eq 0) {
     Write-Host "No file found matching pattern '$filePattern'."
     exit 1
-} elseif ($files.Count -gt 1) {
-    Write-Host "More than one file found matching pattern '$filePattern'."
-    exit 1
+}
+
+if ($files.Count -gt 1) {
+    $filtered = $files | Where-Object { $_.Name -notlike "*-sources.jar" }
+    if ($filtered.Count -eq 1) {
+        $files = $filtered
+    } else {
+        Write-Host "More than one file found matching pattern '$filePattern'."
+        exit 1
+    }
 }
 
 $localFile = $files[0].FullName

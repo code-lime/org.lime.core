@@ -37,9 +37,19 @@ shopt -u nullglob
 if [ ${#files[@]} -eq 0 ]; then
   echo "Error: No file found matching pattern '$FILE_PATTERN'."
   exit 1
-elif [ ${#files[@]} -gt 1 ]; then
-  echo "Error: More than one file found matching pattern '$FILE_PATTERN'."
-  exit 1
+fi
+
+if [ ${#files[@]} -gt 1 ]; then
+  filtered=()
+  for f in "${files[@]}"; do
+    [[ "$f" != *-sources.jar ]] && filtered+=("$f")
+  done
+  if [ ${#filtered[@]} -eq 1 ]; then
+    files=("${filtered[0]}")
+  else
+    echo "Error: More than one file found matching pattern '$FILE_PATTERN'."
+    exit 1
+  fi
 fi
 
 localFile="${files[0]}"
