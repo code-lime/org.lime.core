@@ -47,13 +47,15 @@ paperweight.reobfArtifactConfiguration = ReobfArtifactConfiguration.getMOJANG_PR
 processResources {
     def props =
     [
+        group: "${project.group}",
         version: "${version}",
         versionGraalVm: "${versionGraalVm}"
     ]
-    inputs.properties props
-    filteringCharset 'UTF-8'
+
+    inputs.properties(props)
+    filteringCharset = 'UTF-8'
     filesMatching('plugin.yml') {
-        expand props
+        expand(props)
     }
 }
 //</editor-fold>
