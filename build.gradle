@@ -81,6 +81,9 @@ tasks.withType(JavaCompile).configureEach {
 jar {
     archiveFileName = "${project.group}.${archiveFileName.get()}"
 }
+sourcesJar {
+    archiveFileName = "${project.group}.${archiveFileName.get()}"
+}
 //</editor-fold>
 
 //<editor-fold desc="Settings: Maven">
