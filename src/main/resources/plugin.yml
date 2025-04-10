@@ -1,4 +1,4 @@
-name: LimeCore
+name: ${group}.core
 version: ${version}
 main: org.lime.LimeCore
 api-version: 1.13
