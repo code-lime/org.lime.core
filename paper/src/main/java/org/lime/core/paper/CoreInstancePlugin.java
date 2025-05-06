@@ -121,6 +121,7 @@ public class CoreInstancePlugin extends JavaPlugin {
         }
         @Override
         protected void preInitInstance() {
+            try { plugin().getClass().getDeclaredField("instance").set(null, plugin()); } catch (Exception _) { }
             taskService = CoreInstance.core.taskService();
         }
 
