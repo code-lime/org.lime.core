@@ -90,6 +90,7 @@ public class CoreInstancePlugin extends JavaPlugin {
 
         @Override
         protected void setBaseCore(CoreInstance core) {
+            super.setBaseCore(core);
             CoreInstance.core = core;
         }
 

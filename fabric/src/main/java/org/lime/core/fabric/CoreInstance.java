@@ -52,6 +52,7 @@ public class CoreInstance
 
     @Override
     protected void setBaseCore(CoreInstance core) {
+        super.setBaseCore(core);
         CoreInstance.core = core;
     }
 
