@@ -2,8 +2,11 @@ static String getPathName(Project current) {
     Project parent = current.parent
     return parent == null ? current.name : "${parent.name}.${current.name}"
 }
+
+def resultPathName = project.name
+
 if (project.hasProperty('pathName'))
-    pathName = "${getPathName(project)}"
+    pathName = resultPathName = "${getPathName(project)}"
 
 //<editor-fold desc="Settings: SourceGenerator">
 apply from: 'https://raw.githubusercontent.com/code-lime/org.lime.core/refs/tags/2.0.2/sourcegenerator.gradle'
@@ -27,7 +30,7 @@ tasks.withType(JavaCompile).configureEach {
     }
 }
 
-var archiveName = "${group}.${pathName}"
+var archiveName = "${group}.${resultPathName}"
 
 tasks.withType(org.gradle.jvm.tasks.Jar).configureEach {
     archiveBaseName.set(archiveName)
