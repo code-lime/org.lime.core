@@ -28,7 +28,6 @@ public interface BaseCoreElementAccess<Command extends BaseCoreCommandRegister<S
     default List<CoreElementLoaded<?, ?>> addOther() {
         List<CoreElementLoaded<?, ?>> other = new ArrayList<>();
         ClassLoader loader = classLoader();
-        Func1<BaseCoreElement<?, Command, Self, ?>, CoreElementLoaded<?,?>> elementAdd = ReflectionMethod.of(this.getClass(), "addElement", BaseCoreElement.class).lambda(Func1.class);
 
         final int ACC_PUBLIC_STATIC = Opcodes.ACC_PUBLIC | Opcodes.ACC_STATIC;
         final String CREATE_NAME = "create";
@@ -48,8 +47,8 @@ public interface BaseCoreElementAccess<Command extends BaseCoreCommandRegister<S
                 if (!Modifier.isStatic(method.getModifiers())) return;
                 if (method.getReturnType() != elementClass()) return;
                 if (elements().anyMatch(v -> v.tClass == tClass)) return;
-                BaseCoreElement<?, Command, Self, ?> element = (BaseCoreElement<?, Command, Self, ?>)method.invoke(null);
-                other.add(elementAdd.invoke(element));
+                BaseCoreElement element = (BaseCoreElement)method.invoke(null);
+                other.add(this.addElement(element));
             } catch (NoSuchMethodException ignored) {
 
             } catch (Throwable e) {
