@@ -2,6 +2,7 @@ package net.minecraft.paper.java;
 
 import com.google.common.collect.Streams;
 import net.minecraft.paper.java.view.OtherView;
+import net.minecraft.unsafe.GlobalConfigure;
 import net.minecraft.unsafe.Native;
 import org.bukkit.plugin.PluginDescriptionFile;
 import org.bukkit.plugin.java.LibraryLoader;
@@ -56,6 +57,8 @@ public class CacheLibraryLoader extends LibraryLoader {
     static {
         defaultFactory = LibraryLoader.LIBRARY_LOADER_FACTORY;
         LibraryLoader.LIBRARY_LOADER_FACTORY = CacheLibraryLoader::cacheLibraryLoader;
+
+        GlobalConfigure.configure();
     }
 
     private static URLClassLoader cacheLibraryLoader(URL[] urls, ClassLoader parent) {
