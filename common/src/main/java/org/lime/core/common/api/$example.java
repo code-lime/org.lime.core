@@ -16,7 +16,7 @@ import java.io.File;
 abstract class $example extends BaseCoreInstance {
     public static $example instance;
 
-    @Override public String getLogPrefix() { return "LIME:EXAMPLE"; }
+    @Override public String logPrefix() { return "LIME:EXAMPLE"; }
     @Override public String configFile() { return "config/example/"; }
     @Override public String name() { return "example"; }
 

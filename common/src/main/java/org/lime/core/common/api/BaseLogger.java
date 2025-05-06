@@ -19,7 +19,7 @@ import java.util.Calendar;
 import java.util.List;
 
 public interface BaseLogger extends BaseState {
-    String getLogPrefix();
+    String logPrefix();
 
     Audience consoleAudiences();
     Audience playersAudiences(boolean operatorsOnly);
@@ -59,13 +59,13 @@ public interface BaseLogger extends BaseState {
     }
     default void $log(String log) {
         consoleAudiences()
-                .sendMessage(Component.text("["+getLogPrefix()+"] " + log));
+                .sendMessage(Component.text("["+ logPrefix()+"] " + log));
     }
     default void $logBroadcast(String log) {
         $logToFile("log_admin", "[{time}] " + log);
         $log(log);
         playersAudiences(false)
-                .sendMessage(Component.text("["+getLogPrefix()+"] " + log));
+                .sendMessage(Component.text("["+ logPrefix()+"] " + log));
     }
     default void $logConsole(String log) {
         $logToFile("log_admin", "[{time}] " + log);
@@ -75,14 +75,14 @@ public interface BaseLogger extends BaseState {
         $logToFile("log_admin", "[{time}] " + log);
         $log(log);
         playersAudiences(true)
-                .sendMessage(Component.text("["+getLogPrefix()+"] ").color(NamedTextColor.YELLOW).append(Component.text(log).color(NamedTextColor.WHITE)));
+                .sendMessage(Component.text("["+ logPrefix()+"] ").color(NamedTextColor.YELLOW).append(Component.text(log).color(NamedTextColor.WHITE)));
     }
     default void $logOP(Component log) {
         String plain_log = PlainTextComponentSerializer.plainText().serialize(log);
         $logToFile("log_admin", "[{time}] " + plain_log);
         $log(plain_log);
         playersAudiences(true)
-                .sendMessage(Component.text("["+getLogPrefix()+"] ").color(NamedTextColor.YELLOW).append(Component.empty().append(log).color(NamedTextColor.WHITE)));
+                .sendMessage(Component.text("["+ logPrefix()+"] ").color(NamedTextColor.YELLOW).append(Component.empty().append(log).color(NamedTextColor.WHITE)));
     }
     default void $logWithoutPrefix(String log) {
         consoleAudiences().sendMessage(Component.text(log));
@@ -108,7 +108,7 @@ public interface BaseLogger extends BaseState {
     }
     default void $logStackTrace(StackTraceElement[] stackTraceElements) {
         if (stackTraceElements.length > 30) {
-            Component client = Component.text("["+getLogPrefix()+"] ")
+            Component client = Component.text("["+ logPrefix()+"] ")
                     .color(NamedTextColor.YELLOW)
                     .append(Component.text(" StackTraceList:"));
             playersAudiences(true).sendMessage(client);
@@ -124,7 +124,7 @@ public interface BaseLogger extends BaseState {
                 lines.add(line);
                 client = client.append(Component.text("  " + line));
             }
-            client = Component.text("["+getLogPrefix()+"] ")
+            client = Component.text("["+ logPrefix()+"] ")
                     .color(NamedTextColor.YELLOW)
                     .append(Component.text("[StackTrace]")
                             .hoverEvent(HoverEvent.showText(client))

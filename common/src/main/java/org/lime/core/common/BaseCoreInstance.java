@@ -18,7 +18,7 @@ public abstract class BaseCoreInstance<
         global = baseCore;
     }
 
-    @Override public String getLogPrefix() { return "L:" + this.name().toUpperCase(); }
+    @Override public String logPrefix() { return "L:" + this.name().toUpperCase(); }
     @Override public String configFile() { return "config/" + this.name().toLowerCase() + "/"; }
 
     @Override
