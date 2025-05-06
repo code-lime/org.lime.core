@@ -52,10 +52,8 @@ TaskProvider<Jar> registerResultJarTask(String prefix) {
     }
 }
 
-def jarTasks = [
-        registerResultJarTask("").name,
-        registerResultJarTask("sources").name,
-]
+def resultJarTask = registerResultJarTask("")
+def resultSourcesJarTask = registerResultJarTask("sources")
 
 allprojects {
     repositories {
@@ -64,6 +62,13 @@ allprojects {
 }
 
 apply from: 'global.gradle'
+
+jar {
+    dependsOn(resultJarTask)
+}
+sourcesJar {
+    dependsOn(resultSourcesJarTask)
+}
 
 //<editor-fold desc="Settings: Maven">
 publishing {
@@ -117,7 +122,3 @@ allprojects {
     version = "${versionShare}"
 }
 //</editor-fold>
-
-build {
-    dependsOn(jarTasks)
-}
