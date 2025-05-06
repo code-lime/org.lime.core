@@ -63,13 +63,6 @@ allprojects {
 
 apply from: 'global.gradle'
 
-jar {
-    dependsOn(resultJarTask)
-}
-sourcesJar {
-    dependsOn(resultSourcesJarTask)
-}
-
 //<editor-fold desc="Settings: Maven">
 publishing {
     publications {
@@ -127,3 +120,7 @@ allprojects {
     version = "${versionShare}"
 }
 //</editor-fold>
+
+build {
+    dependsOn(resultJarTask, resultSourcesJarTask)
+}
