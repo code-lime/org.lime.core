@@ -1,0 +1,30 @@
+plugins {
+    id 'java-library'
+    id 'maven-publish'
+}
+
+apply from: '../global.gradle'
+
+//<editor-fold desc="Settings: Lib">
+java {
+    withSourcesJar()
+}
+//</editor-fold>
+
+dependencies {
+    implementation "net.kyori:adventure-api:4.14.0"
+    implementation "net.kyori:adventure-text-serializer-plain:4.14.0"
+    implementation "com.google.guava:guava:31.1-jre"
+    implementation "com.google.code.gson:gson:2.10"
+    implementation "org.joml:joml:1.10.5"
+    implementation "commons-io:commons-io:2.17.0"
+    implementation "org.apache.commons:commons-lang3:3.12.0"
+    implementation "org.ow2.asm:asm:9.7.1"
+}
+dependencies {
+    implementation "org.graalvm.js:js:${versionGraalVm}"
+    implementation "org.graalvm.js:js-scriptengine:${versionGraalVm}"
+    implementation "org.graalvm.truffle:truffle-api:${versionGraalVm}"
+}
+
+println("COMMON: ${group}/${pathName}#${version}")

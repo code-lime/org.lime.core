@@ -1,128 +1,154 @@
-import javax.script.ScriptEngineManager;
+import com.oracle.truffle.js.scriptengine.GraalJSScriptEngine
+
+import javax.script.ScriptEngine
 import java.nio.file.Paths
 
 class SourceGenerator {
-    public static final SourceGenerator Instance = new SourceGenerator();
-    private final ScriptEngineManager engine = new ScriptEngineManager();
+    public static final SourceGenerator Instance = new SourceGenerator()
 
-    private String executeJs(String js) {
-        return engine.getEngineByName("nashorn").eval(js);
+    class PackageName {
+        PackageName parent
+        String fullName
+        PackageName(String[] args) {
+            int length = args.length
+            if (length == 0)
+                throw new Throwable("NOT SUPPORT ZERO LENGTH")
+            fullName = String.join(".", args)
+            parent = length > 1 ? new PackageName(Arrays.copyOf(args, length - 1)) : null
+        }
+
+        PackageName parent() {
+            return parent
+        }
+        @Override
+        String toString() {
+            return fullName
+        }
+    }
+
+    private String executeJs(String packageName, String js) {
+        ScriptEngine engine = GraalJSScriptEngine.create(
+                Engine.newBuilder()
+                        .option("engine.WarnInterpreterOnly", "false")
+                        .build(),
+                Context.newBuilder("js")
+                        .allowHostAccess(HostAccess.ALL)
+                        .allowHostClassLookup(v -> true))
+        engine.put("PACKAGE", new PackageName(packageName.split("\\.")))
+        return engine.eval(js)
     }
     private static String getFileExtension(File file) {
-        String name = file.getName();
-        int lastIndexOf = name.lastIndexOf(".");
-        return lastIndexOf == -1 ? "" : name.substring(lastIndexOf);
+        String name = file.getName()
+        int lastIndexOf = name.lastIndexOf(".")
+        return lastIndexOf == -1 ? "" : name.substring(lastIndexOf)
     }
-    private String generateFile(File dir, String text) {
-        List<String> lines = text.replace("\r", "").split("\n");
-        List<String> output = new ArrayList<>();
-        List<String> code = null;
-        boolean  edited = false;
-        int size = lines.size();
+    private String generateFile(String packageName, File dir, String text) {
+        List<String> lines = text.replace("\r", "").split("\n")
+        List<String> output = new ArrayList<>()
+        List<String> code = null
+        boolean edited = false
+        int size = lines.size()
         for (int i = 0; i < size; i++) {
-            String line = lines.get(i);
-            String trim_line = line.trim();
-            int start = trim_line.indexOf("//");
+            String line = lines.get(i)
+            String trim_line = line.trim()
+            int start = trim_line.indexOf("//")
             if (start != 0) {
-                if (code != null) continue;
-                output.add(line);
-                continue;
+                if (code != null) continue
+                output.add(line)
+                continue
             }
             switch (trim_line) {
                 case "//<generator>":
-                    if (code != null) throw new IllegalArgumentException("<generator> in line '"+(i+1)+"'");
-                    code = new ArrayList<>();
-                    output.add(line);
-                    break;
+                    if (code != null) throw new IllegalArgumentException("<generator> in line '"+(i+1)+"'")
+                    code = new ArrayList<>()
+                    output.add(line)
+                    break
                 case "//</generator>":
-                    if (code == null) throw new IllegalArgumentException("</generator> in line '"+(i+1)+"'");
-                    var executeCode = executeJs(String.join("\n", code));
-                    output.add(executeCode);
-                    output.add(line);
+                    if (code == null) throw new IllegalArgumentException("</generator> in line '"+(i+1)+"'")
+                    var executeCode = executeJs(packageName, String.join("\n", code))
+                    output.add(executeCode)
+                    output.add(line)
 
-                    edited = true;
-                    code = null;
-                    break;
+                    edited = true
+                    code = null
+                    break
                 default:
                     if (trim_line.startsWith("//<generator name=\"")) {
-                        if (code != null) throw new IllegalArgumentException("<generator> in line '"+(i+1)+"'");
+                        if (code != null) throw new IllegalArgumentException("<generator> in line '"+(i+1)+"'")
 
-                        String file_name = trim_line.substring(19);
-                        file_name = file_name.substring(0, file_name.indexOf("\">"));
-                        String[] args = file_name.split(':');
-                        code = new ArrayList<>();
+                        String file_name = trim_line.substring(19)
+                        file_name = file_name.substring(0, file_name.indexOf("\">"))
+                        String[] args = file_name.split(':')
+                        code = new ArrayList<>()
                         if (args.length > 1) {
-                            System.out.println('Execute file function: ' + args[0] + " : " + args[1]);
-                            code.add(Paths.get(dir.absolutePath, args[0]).toFile().text + "\n" + args[1]);
+                            System.out.println('Execute file function: ' + args[0] + " : " + args[1])
+                            code.add(Paths.get(dir.absolutePath, args[0]).toFile().text + "\n" + args[1])
                         } else {
-                            System.out.println('Execute single file: ' + file_name);
-                            code.add(Paths.get(dir.absolutePath, file_name).toFile().text);
+                            System.out.println('Execute single file: ' + file_name)
+                            code.add(Paths.get(dir.absolutePath, file_name).toFile().text)
                         }
-                        output.add(line);
+                        output.add(line)
                     } else {
-                        output.add(line);
-                        if (code != null) code.add(trim_line.substring(2));
+                        output.add(line)
+                        if (code != null) code.add(trim_line.substring(2))
                     }
-                    break;
+                    break
             }
         }
-        return edited ? String.join("\n", output).replace('\r','').replace('\n','\r\n') : null;
+        return edited ? String.join("\n", output).replace('\r','').replace('\n','\r\n') : null
     }
-    private HashMap<String, String> generateJavas(File dir, String text) {
-        List<String> lines = text.replace("\r", "").split("\n");
-        HashMap<String, String> outputFiles = new HashMap<>();
-        for (String line in lines) {
-            String[] data = line.split(":", 2);
+    private HashMap<String, String> generateJavas(String packageName, File dir, String text) {
+        HashMap<String, String> outputFiles = new HashMap<>()
+        for (def line in text.replaceAll("\r", "").split("\n")) {
+            def data = line.split(":", 2)
 
-            System.out.println('Execute folder function: ' + data[0] + " : " + data[1]);
+            println('Execute folder function: ' + data[0] + " : " + data[1])
 
-            String js = Paths.get(dir.absolutePath, data[0]).toFile().text + "\n" + data[1];
-            String _raw = executeJs(js);
+            def js = Paths.get(dir.absolutePath, data[0]).toFile().text + "\n" + data[1]
+            def _raw = executeJs(packageName, js)
 
-            String[] raw = _raw.split('\r');
-            int filesLength = raw.length / 2;
-            for (int i = 0; i < filesLength; i++) {
-                int index = i * 2;
-                String fileName = raw[index];
-                String fileText = raw[index + 1];
-                outputFiles.put(fileName, fileText.replace('\n','\r\n'));
+            def raw = _raw.split('\r')
+            def filesLength = raw.length / 2
+            for (def i = 0; i < filesLength; i++) {
+                def index = i * 2
+                def fileName = raw[index]
+                def fileText = raw[index + 1]
+                outputFiles.put(fileName, fileText.replaceAll('\n','\r\n'))
             }
         }
-        return outputFiles;
+        return outputFiles
     }
 
-    void executeGenerator(Iterable<File> files) {
-        for (File file : files) {
-            String filePath = file.getAbsolutePath();
-            switch (getFileExtension(file)) {
-                case ".javas": {
-                    HashMap<String, String> _files = generateJavas(file.parentFile, file.text);
-                    for (Map.Entry<String, String> _kv : _files.entrySet()) {
-                        String _text = _kv.getValue();
-                        var _filePath = Paths.get(file.parentFile.absolutePath, _kv.getKey()).toAbsolutePath();
-                        var _file = _filePath.toFile();
-                        if (_file.text.equals(_text)) {
-                            //System.out.println("EQUALS EDITED: " + filePath);
-                        } else {
-                            System.out.println("EDITED: " + _filePath);
-                            _file.text = _text;
-                        }
+    void executeGenerator(String packageName, File file) {
+        String filePath = file.getAbsolutePath()
+        switch (getFileExtension(file)) {
+            case ".javas": {
+                HashMap<String, String> _files = generateJavas(packageName, file.parentFile, file.text)
+                for (Map.Entry<String, String> _kv : _files.entrySet()) {
+                    String _text = _kv.getValue()
+                    var _filePath = Paths.get(file.parentFile.absolutePath, _kv.getKey()).toAbsolutePath()
+                    var _file = _filePath.toFile()
+                    if (_file.text == _text) {
+                        //System.out.println("EQUALS EDITED: " + filePath);
+                    } else {
+                        System.out.println("EDITED: " + _filePath)
+                        _file.text = _text
                     }
-                    break;
                 }
-                case ".java": {
-                    String text = file.text;
-                    String _file = generateFile(file.parentFile, text);
-                    if (_file != null) {
-                        if (_file.equals(text)) {
-                            //System.out.println("EQUALS EDITED: " + filePath);
-                        } else {
-                            System.out.println("EDITED: " + filePath);
-                            file.text = text = _file;
-                        }
+                break
+            }
+            case ".java": {
+                String text = file.text
+                String _file = generateFile(packageName, file.parentFile, text)
+                if (_file != null) {
+                    if (_file == text) {
+                        //System.out.println("EQUALS EDITED: " + filePath);
+                    } else {
+                        System.out.println("EDITED: " + filePath)
+                        file.text = text = _file
                     }
-                    break;
                 }
+                break
             }
         }
     }
@@ -133,12 +159,20 @@ buildscript {
         mavenCentral()
     }
     dependencies {
-        classpath "org.openjdk.nashorn:nashorn-core:15.4"
+        def versionGraalVm = "24.1.1"
+        classpath "org.graalvm.js:js:${versionGraalVm}"
+        classpath "org.graalvm.js:js-scriptengine:${versionGraalVm}"
+        classpath "org.graalvm.truffle:truffle-api:${versionGraalVm}"
     }
 }
 
-task generator {
+tasks.register('generator') {
     sourceSets.forEach {
-        SourceGenerator.Instance.executeGenerator(it.allSource.files);
+        it.allSource.sourceDirectories.files.forEach { root ->
+            fileTree(root).files.forEach {
+                String packageName = root.relativePath(it).replaceAll("\\.(\\w+)+\$", "").replaceAll("/(\\w|\\.)+\$", "").replaceAll("[/\\\\]", ".")
+                SourceGenerator.Instance.executeGenerator(packageName, it)
+            }
+        }
     }
 }

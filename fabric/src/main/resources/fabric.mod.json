@@ -1,0 +1,24 @@
+{
+  "schemaVersion": 1,
+  "id": "${modId}",
+  "version": "${version}",
+  "name": "${group}.core",
+  "description": "",
+  "authors": ["Lime"],
+  "contact": {},
+  "license": "unlicense",
+  "environment": "server",
+  "entrypoints": {
+    "main": [
+      "org.lime.core.fabric.CoreInstance"
+    ]
+  },
+  "mixins": [
+    "test.mixins.json"
+  ],
+  "depends": {
+    "fabricloader": ">=${versionLoader}",
+    "fabric": "*",
+    "minecraft": "${versionMinecraft}"
+  }
+}

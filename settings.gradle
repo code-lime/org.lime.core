@@ -1,1 +1,23 @@
+pluginManagement {
+    repositories {
+        gradlePluginPortal()
+        mavenCentral()
+        maven { url = 'https://maven.fabricmc.net/' }
+        maven { url = 'https://papermc.io/repo/repository/maven-public/' }
+    }
+}
+
+dependencyResolutionManagement {
+    repositories {
+        gradlePluginPortal()
+        mavenCentral()
+        maven { url = 'https://maven.fabricmc.net/' }
+        maven { url = 'https://repo.papermc.io/repository/maven-public/' }
+    }
+}
+
 rootProject.name = 'core'
+
+include('common')
+include('fabric')
+include('paper')

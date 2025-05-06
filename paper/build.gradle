@@ -1,0 +1,46 @@
+plugins {
+    id 'java'
+    id 'io.papermc.paperweight.userdev' version '+'
+}
+
+apply from: '../global.gradle'
+
+dependencies {
+    implementation project(':common')
+}
+
+versionGraalVm = project(":common").versionGraalVm
+
+projectCombineJars(project(':common'))
+
+//<editor-fold desc="Settings: Plugin">
+import io.papermc.paperweight.userdev.ReobfArtifactConfiguration
+
+dependencies {
+    paperweight.paperDevBundle("${versionPaper}")
+}
+
+paperweight.reobfArtifactConfiguration = ReobfArtifactConfiguration.getMOJANG_PRODUCTION()
+
+processResources {
+    configureProcessResources(delegate, "plugin.yml", [
+            group: "${project.group}",
+    ])
+}
+//</editor-fold>
+
+//<editor-fold desc="Settings: Libraries">
+//<editor-fold desc="Settings: Libraries: ProtocolLib">
+repositories {
+    maven {
+        url = "https://repo.dmulloy2.net/repository/public/"
+    }
+}
+
+dependencies {
+    compileOnly "com.comphenix.protocol:ProtocolLib:${versionProtocolLib}"
+}
+//</editor-fold>
+//</editor-fold>
+
+println("PAPER: ${group}/${pathName}#${version}")

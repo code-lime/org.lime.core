@@ -1,0 +1,79 @@
+static String getPathName(Project current) {
+    Project parent = current.parent
+    return parent == null ? current.name : "${parent.name}.${current.name}"
+}
+pathName = "${getPathName(project)}"
+
+//<editor-fold desc="Settings: SourceGenerator">
+apply from: java.nio.file.Path.of(project.rootDir.path, "sourcegenerator.gradle")
+//</editor-fold>
+
+//<editor-fold desc="Settings: Java">
+int targetJavaVersion = 23
+java {
+    def javaVersion = JavaVersion.toVersion(targetJavaVersion)
+    sourceCompatibility = javaVersion
+    targetCompatibility = javaVersion
+    if (JavaVersion.current() < javaVersion) {
+        toolchain.languageVersion = JavaLanguageVersion.of(targetJavaVersion)
+    }
+    withSourcesJar()
+}
+
+tasks.withType(JavaCompile).configureEach {
+    if (targetJavaVersion >= 10 || JavaVersion.current().isJava10Compatible()) {
+        options.release = targetJavaVersion
+    }
+}
+
+var archiveName = "${group}.${pathName}"
+
+tasks.withType(org.gradle.jvm.tasks.Jar).configureEach {
+    archiveBaseName.set(archiveName)
+}
+//</editor-fold>
+
+//<editor-fold desc="Settings: Clean output folder">
+tasks.withType(org.gradle.jvm.tasks.Jar).configureEach {
+    delete destinationDirectory
+}
+//</editor-fold>
+
+//<editor-fold desc="Configure: ProcessResources">
+static def configureProcessResources(AbstractCopyTask task, String fileName, Map<String, ?> baseProps) {
+    def props = new LinkedHashMap(baseProps)
+
+    task.project.properties.each { key, value ->
+        def name = key.toString()
+        if (name.startsWith("version") && (name.length() <= 7 || name.charAt(7).isUpperCase())) {
+            props[name] = value.toString()
+        }
+    }
+
+    task.inputs.properties(props)
+    task.filteringCharset = 'UTF-8'
+    task.filesMatching(fileName) {
+        expand props
+    }
+}
+ext {
+    configureProcessResources = this.&configureProcessResources
+}
+//</editor-fold>
+
+//<editor-fold desc="Configure: Jars project combine">
+def projectCombineJars(Project target) {
+    tasks.withType(org.gradle.jvm.tasks.Jar).configureEach { it ->
+        def jars = target.tasks.withType(org.gradle.jvm.tasks.Jar)
+        jars.named {jit -> jit == it.name }.forEach {dependTask ->
+            it.dependsOn dependTask
+            it.from {
+                zipTree(dependTask.archiveFile)
+            }
+        }
+    }
+}
+ext {
+    projectCombineJars = this.&projectCombineJars
+}
+//</editor-fold>

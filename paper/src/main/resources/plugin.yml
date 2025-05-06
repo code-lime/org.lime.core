@@ -1,0 +1,10 @@
+name: ${group}.core
+version: ${version}
+main: org.lime.core.paper.CoreInstancePlugin
+api-version: 1.13
+authors: [Lime]
+softdepend: [ProtocolLib]
+libraries:
+  - org.graalvm.js:js:pom:${versionGraalVm}
+  - org.graalvm.js:js-scriptengine:${versionGraalVm}
+  - org.graalvm.truffle:truffle-api:${versionGraalVm}

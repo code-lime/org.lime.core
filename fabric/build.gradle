@@ -1,0 +1,60 @@
+plugins {
+    id 'java'
+    id 'fabric-loom' version '+'
+}
+
+apply from: '../global.gradle'
+
+dependencies {
+    implementation project(':common')
+}
+
+projectCombineJars(project(':common'))
+
+//<editor-fold desc="Settings: Mod">
+var modId = "${group}/${pathName}".toLowerCase().replaceAll("[.:/]", "-");
+
+loom {
+    splitEnvironmentSourceSets()
+    mods {
+        "${modId}" {
+            sourceSet sourceSets.main
+            sourceSet sourceSets.client
+        }
+    }
+}
+
+dependencies {
+    minecraft "com.mojang:minecraft:${versionMinecraft}"
+    mappings loom.officialMojangMappings()
+    modImplementation "net.fabricmc:fabric-loader:${versionLoader}"
+
+    modImplementation "net.fabricmc.fabric-api:fabric-api:${versionFabric}"
+}
+
+processResources {
+    configureProcessResources(delegate, "fabric.mod.json", [
+            modId: "${modId}",
+            group: "${project.group}",
+    ])
+}
+//</editor-fold>
+
+//<editor-fold desc="Settings: Libraries">
+//<editor-fold desc="Settings: Libraries: Adventure">
+repositories {
+    maven {
+        name = "sonatype-oss-snapshots1"
+        url = "https://s01.oss.sonatype.org/content/repositories/snapshots/"
+        mavenContent { snapshotsOnly() }
+    }
+    mavenCentral()
+}
+
+dependencies {
+    modImplementation include("net.kyori:adventure-platform-fabric:${versionAdventure}")
+}
+//</editor-fold>
+//</editor-fold>
+
+println("FABRIC: ${group}/${pathName}#${version}")

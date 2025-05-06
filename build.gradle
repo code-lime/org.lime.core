@@ -1,90 +1,69 @@
 plugins {
     id 'java-library'
     id 'maven-publish'
-    id "io.papermc.paperweight.userdev" version "+"
     id "fr.brouillard.oss.gradle.jgitver" version "+"
 }
 
-//<editor-fold desc="Settings: Plugin">
-import io.papermc.paperweight.userdev.ReobfArtifactConfiguration
-
-dependencies {
-    paperweight.paperDevBundle("${versionPaper}")
-}
-
-version = "$version";
-boolean hasPostfixOriginal = false;
-if (version.contains('-')) {
-    hasPostfixOriginal = true;
-    String[] argsVersion = version.split('-', 2);
-    if (argsVersion[1] == "0") {
-        version = argsVersion[0];
-    } else {
-        version = "${argsVersion[0]}-alpha.${argsVersion[1]}";
+static Map<String, ?> parseAttributes(byte[] bytes) {
+    try (def input = new ByteArrayInputStream(bytes)) {
+        def jdkManifest = new java.util.jar.Manifest(input)
+        return jdkManifest.mainAttributes.entrySet().collectEntries { Map.Entry<java.util.jar.Attributes.Name, Object> e ->
+            Map.entry(e.key.toString(), e.value)
+        }
     }
 }
-var globalProps = getProperties();
-boolean isTagCommit = "LIGHTWEIGHT" == globalProps["base_tag_type"];
-if (!hasPostfixOriginal && !isTagCommit) {
-    var argsVersion = version.split('\\.');
-    int lastIndex = argsVersion.length - 1;
-    String lastValue = argsVersion[lastIndex];
-    try {
-        lastValue = Integer.toString(Integer.parseUnsignedInt(lastValue) + 1) + "-alpha.0";
-    } catch (ignored) {
-        lastValue = lastValue + "-unsafe";
-    }
-    argsVersion[lastIndex] = lastValue;
-    version = String.join(".", argsVersion);
+static Iterable<org.gradle.jvm.tasks.Jar> jarTasks(Project target, String name) {
+    def remapName = "remap${name.capitalize()}"
+    return target.tasks
+            .withType(org.gradle.jvm.tasks.Jar)
+            .named { jit -> jit == name || jit == remapName }
 }
 
-task printVersion {
-    println "Project version: $version"
-}
+TaskProvider<Jar> registerResultJarTask(String prefix) {
+    def taskName = prefix.isEmpty() ? "jar" : "${prefix}Jar"
+    def resultTaskName = "result${taskName.capitalize()}"
+    return tasks.register(resultTaskName, Jar) {
+        archiveClassifier.set(prefix)
+        destinationDirectory.set(layout.buildDirectory.dir("libs"))
+        dependsOn subprojects.collect { jarTasks(it, taskName) }
 
-paperweight.reobfArtifactConfiguration = ReobfArtifactConfiguration.getMOJANG_PRODUCTION()
+        duplicatesStrategy = DuplicatesStrategy.EXCLUDE
 
-processResources {
-    def props =
-    [
-        group: "${project.group}",
-        version: "${version}",
-        versionGraalVm: "${versionGraalVm}"
-    ]
+        from {
+            subprojects.collect {
+                jarTasks(it, taskName).collect {
+                    zipTree(it.archiveFile)
+                }
+            }
+        }
 
-    inputs.properties(props)
-    filteringCharset = 'UTF-8'
-    filesMatching('plugin.yml') {
-        expand(props)
-    }
-}
-//</editor-fold>
-
-//<editor-fold desc="Settings: Java">
-int targetJavaVersion = 23
-java {
-    def javaVersion = JavaVersion.toVersion(targetJavaVersion)
-    sourceCompatibility = javaVersion
-    targetCompatibility = javaVersion
-    if (JavaVersion.current() < javaVersion) {
-        toolchain.languageVersion = JavaLanguageVersion.of(targetJavaVersion)
-    }
-    withSourcesJar()
-}
-
-tasks.withType(JavaCompile).configureEach {
-    if (targetJavaVersion >= 10 || JavaVersion.current().isJava10Compatible()) {
-        options.release = targetJavaVersion
+        manifest {
+            from {
+                subprojects.forEach { proj ->
+                    jarTasks(proj, taskName).forEach { v ->
+                        zipTree(v.archiveFile)
+                                .matching { include 'META-INF/MANIFEST.MF' }
+                                .forEach { manifest.attributes(parseAttributes(it.readBytes())) }
+                    }
+                }
+                project.resources.text.fromString("")
+            }
+        }
     }
 }
 
-jar {
-    archiveFileName = "${project.group}.${archiveFileName.get()}"
+def jarTasks = [
+        registerResultJarTask("").name,
+        registerResultJarTask("sources").name,
+]
+
+allprojects {
+    repositories {
+        mavenCentral()
+    }
 }
-sourcesJar {
-    archiveFileName = "${project.group}.${archiveFileName.get()}"
-}
-//</editor-fold>
+
+apply from: 'global.gradle'
 
 //<editor-fold desc="Settings: Maven">
 publishing {
@@ -106,36 +85,37 @@ publishing {
 }
 //</editor-fold>
 
-//<editor-fold desc="Settings: SourceGenerator">
-apply from: 'sourcegenerator.gradle'
-//</editor-fold>
-
-//<editor-fold desc="Settings: Libraries">
-//<editor-fold desc="Settings: Libraries: GraalJS">
-dependencies {
-    implementation "org.graalvm.js:js:${versionGraalVm}"
-    implementation "org.graalvm.js:js-scriptengine:${versionGraalVm}"
-    implementation "org.graalvm.truffle:truffle-api:${versionGraalVm}"
-}
-//</editor-fold>
-
-//<editor-fold desc="Settings: Libraries: ProtocolLib">
-repositories {
-    maven {
-        url = "https://repo.dmulloy2.net/repository/public/"
+//<editor-fold desc="Settings: Version">
+version = "$version"
+boolean hasPostfixOriginal = false
+if (version.contains('-')) {
+    hasPostfixOriginal = true
+    String[] argsVersion = version.split('-', 2)
+    if (argsVersion[1] == "0") {
+        version = argsVersion[0]
+    } else {
+        version = "${argsVersion[0]}-alpha.${argsVersion[1]}"
     }
 }
-
-dependencies {
-    compileOnly "com.comphenix.protocol:ProtocolLib:${versionProtocolLib}"
+var globalProps = getProperties()
+boolean isTagCommit = "LIGHTWEIGHT" == globalProps["base_tag_type"]
+if (!hasPostfixOriginal && !isTagCommit) {
+    var argsVersion = version.split('\\.')
+    int lastIndex = argsVersion.length - 1
+    String lastValue = argsVersion[lastIndex]
+    try {
+        lastValue = Integer.toString(Integer.parseUnsignedInt(lastValue) + 1) + "-alpha.0"
+    } catch (ignored) {
+        lastValue = lastValue + "-unsafe"
+    }
+    argsVersion[lastIndex] = lastValue
+    version = String.join(".", argsVersion)
+}
+allprojects {
+    version = "${version}"
 }
 //</editor-fold>
-//</editor-fold>
 
-//<editor-fold desc="Settings: Clean output folder">
-task cleanJarOutput(type: Delete) {
-    delete jar.destinationDirectory
+build {
+    dependsOn(jarTasks)
 }
-
-jar.dependsOn(cleanJarOutput)
-//</editor-fold>
