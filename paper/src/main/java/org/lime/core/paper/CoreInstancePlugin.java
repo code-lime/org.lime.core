@@ -20,7 +20,11 @@ public class CoreInstancePlugin extends JavaPlugin {
         MutatePatcher.register();
     }
 
-    protected final CoreInstance loader = new CoreInstance();
+    protected final CoreInstance loader;
+
+    public CoreInstancePlugin() {
+        loader = new CoreInstance(this);
+    }
 
     public CoreInstance loader() {
         return loader;
@@ -44,10 +48,16 @@ public class CoreInstancePlugin extends JavaPlugin {
 
     protected void init() {}
 
-    public final class CoreInstance
+    public static final class CoreInstance
             extends BaseCoreInstance<CoreCommand.Register, CoreInstance>
             implements PaperState, PaperLogger, PaperElementAccess, PaperCommandAccess {
         public static CoreInstance core;
+
+        private final CoreInstancePlugin plugin;
+
+        public CoreInstance(CoreInstancePlugin plugin) {
+            this.plugin = plugin;
+        }
 
         private ScheduleTaskService taskService;
 
@@ -65,15 +75,15 @@ public class CoreInstancePlugin extends JavaPlugin {
 
         @Override
         public CoreInstancePlugin plugin() {
-            return CoreInstancePlugin.this;
+            return plugin;
         }
         @Override
         public ClassLoader classLoader() {
-            return CoreInstancePlugin.this.getClassLoader();
+            return plugin.getClassLoader();
         }
         @Override
         public File pluginFile() {
-            return CoreInstancePlugin.this.getFile();
+            return plugin.getFile();
         }
         @Override
         public ScheduleTaskService taskService() {
@@ -81,7 +91,7 @@ public class CoreInstancePlugin extends JavaPlugin {
         }
         @Override
         public String name() {
-            return CoreInstancePlugin.this.getName();
+            return plugin.getName();
         }
         @Override
         public CoreInstance self() {
@@ -100,13 +110,13 @@ public class CoreInstancePlugin extends JavaPlugin {
 
         @Override
         public void init() {
-            CoreInstancePlugin.this.init();
+            plugin.init();
         }
 
         @Override
         protected void preInitCore() {
             Patcher.patch(plugin().getLogger()::warning);
-            taskService = new BukkitScheduleTaskService(CoreInstancePlugin.this);
+            taskService = new BukkitScheduleTaskService(plugin);
             super.preInitCore();
         }
         @Override
