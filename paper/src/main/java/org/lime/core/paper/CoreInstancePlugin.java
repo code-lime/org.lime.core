@@ -2,6 +2,7 @@ package org.lime.core.paper;
 
 import org.bukkit.Bukkit;
 import org.bukkit.plugin.java.JavaPlugin;
+import org.jetbrains.annotations.Nullable;
 import org.lime.core.common.BaseCoreInstance;
 import org.lime.core.common.UnsafeMappings;
 import org.lime.core.common.api.tasks.ScheduleTaskService;
@@ -11,6 +12,7 @@ import patch.core.MutatePatcher;
 
 import java.io.File;
 import java.util.Arrays;
+import java.util.Objects;
 import java.util.stream.Stream;
 
 public class CoreInstancePlugin extends JavaPlugin {
@@ -19,6 +21,13 @@ public class CoreInstancePlugin extends JavaPlugin {
     }
 
     protected final CoreInstance instance = new CoreInstance();
+
+    public @Nullable String logPrefix() {
+        return null;
+    }
+    public @Nullable String configFile() {
+        return null;
+    }
 
     @Override
     public void onEnable() {
@@ -43,8 +52,15 @@ public class CoreInstancePlugin extends JavaPlugin {
             return CoreCommand.Register.create(cmd);
         }
 
+        @Override public String logPrefix() {
+            return Objects.requireNonNull(plugin().logPrefix(), super::logPrefix);
+        }
+        @Override public String configFile() {
+            return Objects.requireNonNull(plugin().configFile(), super::configFile);
+        }
+
         @Override
-        public JavaPlugin plugin() {
+        public CoreInstancePlugin plugin() {
             return CoreInstancePlugin.this;
         }
         @Override
