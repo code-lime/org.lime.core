@@ -38,7 +38,7 @@ public class CoreInstancePlugin extends JavaPlugin {
         instance.onDisable();
     }
 
-    public void init() {}
+    protected void init() {}
 
     public final class CoreInstance
             extends BaseCoreInstance<CoreCommand.Register, CoreInstance>
