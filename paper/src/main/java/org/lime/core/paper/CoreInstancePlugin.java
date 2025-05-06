@@ -127,9 +127,10 @@ public class CoreInstancePlugin extends JavaPlugin {
 
         @Override
         protected Stream<CoreInstance> globalInstances() {
-            return Arrays.stream(Bukkit.getPluginManager()
-                            .getPlugins())
-                    .flatMap(v -> v instanceof CoreInstancePlugin plugin ? Stream.of(plugin.loader) : Stream.empty());
+            return Arrays.stream(Bukkit.getPluginManager().getPlugins())
+                    .filter(CoreInstancePlugin.class::isInstance)
+                    .map(CoreInstancePlugin.class::cast)
+                    .map(CoreInstancePlugin::loader);
         }
 
         @Override
