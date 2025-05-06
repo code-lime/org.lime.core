@@ -20,7 +20,11 @@ public class CoreInstancePlugin extends JavaPlugin {
         MutatePatcher.register();
     }
 
-    protected final CoreInstance instance = new CoreInstance();
+    protected final CoreInstance loader = new CoreInstance();
+
+    public CoreInstance loader() {
+        return loader;
+    }
 
     public @Nullable String logPrefix() {
         return null;
@@ -31,11 +35,11 @@ public class CoreInstancePlugin extends JavaPlugin {
 
     @Override
     public void onEnable() {
-        instance.onEnable();
+        loader.onEnable();
     }
     @Override
     public void onDisable() {
-        instance.onDisable();
+        loader.onDisable();
     }
 
     protected void init() {}
@@ -113,7 +117,7 @@ public class CoreInstancePlugin extends JavaPlugin {
         protected Stream<CoreInstance> globalInstances() {
             return Arrays.stream(Bukkit.getPluginManager()
                             .getPlugins())
-                    .flatMap(v -> v instanceof CoreInstancePlugin plugin ? Stream.of(plugin.instance) : Stream.empty());
+                    .flatMap(v -> v instanceof CoreInstancePlugin plugin ? Stream.of(plugin.loader) : Stream.empty());
         }
 
         @Override
