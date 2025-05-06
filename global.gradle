@@ -2,7 +2,8 @@ static String getPathName(Project current) {
     Project parent = current.parent
     return parent == null ? current.name : "${parent.name}.${current.name}"
 }
-pathName = "${getPathName(project)}"
+if (project.hasProperty('pathName'))
+    pathName = "${getPathName(project)}"
 
 //<editor-fold desc="Settings: SourceGenerator">
 apply from: 'https://raw.githubusercontent.com/code-lime/org.lime.core/2e5bd21e194bd61edd90aa4f3438d91547b9561f/sourcegenerator.gradle'
