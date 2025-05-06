@@ -37,4 +37,8 @@ public final class CoreElement<T>
     public CoreCommand.Register command(String cmd) {
         return CoreCommand.Register.create(cmd);
     }
+
+    public static <T>CoreElement<T> create(Class<T> tClass) {
+        return new CoreElement<>(tClass);
+    }
 }
