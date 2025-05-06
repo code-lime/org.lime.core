@@ -35,63 +35,18 @@ public class Unsafe {
         return field;
     }
 
-    /*
-    private record MemberInfo(String name, String desc, boolean isMethod) {}
-    private static Closeable loadDeobf() throws Throwable {
-        TinyUtils.createMappingProvider()
-        MappingTree tree = FabricLauncherBase.getLauncher().getMappingConfiguration().getMappings();
-        //tree.mapClassName()
-        for (MappingTree.ClassMapping classMapping : tree.getClasses()) {
-            Map<MemberInfo, String> mojang_to_mapped_members = new HashMap<>();
-            Map<MemberInfo, String> mapped_to_mojang_members = new HashMap<>();
-            /*MOJANG+YARN - ORIGINAL*/
-    /*SPIGOT - MAPPED*//*
-            for (MappingTree.MethodMapping member : classMapping.getMethods()) {
-                mojang_to_mapped_members.put(new MemberInfo(member..getOriginal(), member.getMappedDescriptor(), true), member.getMapped());
-                mapped_to_mojang_members.put(new MemberInfo(member.getMapped(), member.getMappedDescriptor(), true), member.getOriginal());
-            }
-            for (MappingTree.FieldMapping member : classMapping.getFields()) {
-                mojang_to_mapped_members.put(new MemberInfo(member.getOriginal(), member.getMappedDescriptor(), false), member.getMapped());
-                mapped_to_mojang_members.put(new MemberInfo(member.getMapped(), member.getMappedDescriptor(), false), member.getOriginal());
-            }
-            String class_key = classMapping.getMapped().replace('/', '.');
-            mojang_to_mapped.put(class_key, mojang_to_mapped_members);
-            mapped_to_mojang.put(class_key, mapped_to_mojang_members);
-        }
-        return mappingsInputStream;
-    }
-    private static final List<Class<?>> dat = new ArrayList<>();
-
     public static String ofMojang(Class<?> tClass, String name, String desc, boolean isMethod) {
-        Map<MemberInfo, String> mapping = mojang_to_mapped.get(tClass.getName());
-        if (mapping == null) return name;
-        if (dat.contains(tClass)) {
-            System.out.println("Class " + tClass.getName() + " with found " + (isMethod ? "method" : "field") + " " + name + desc + "\n" + mapping.entrySet().stream().map(v -> v.getKey().toString() + ": " + v.getValue()).collect(Collectors.joining(",")));
-            dat.add(tClass);
-        }
-        String src_name = mapping.get(new MemberInfo(name, desc, isMethod));
-        if (src_name == null) src_name = name;
-        return src_name;
+        return MAPPINGS.ofMojang(tClass, name, desc, isMethod);
     }
     public static String ofMojang(Class<?> tClass, String name, Type desc, boolean isMethod) {
-        return ofMojang(tClass, name, desc.getDescriptor(), isMethod);
+        return MAPPINGS.ofMojang(tClass, name, desc, isMethod);
     }
 
     public static Optional<String> ofMapped(Class<?> tClass, String name, String desc, boolean isMethod) {
-        Map<MemberInfo, String> mapped = mapped_to_mojang.get(tClass.getName());
-        if (mapped == null) return Optional.empty();
-        return Optional.ofNullable(mapped.get(new MemberInfo(name, desc, isMethod)));
+        return MAPPINGS.ofMapped(tClass, name, desc, isMethod);
     }
     public static Optional<String> ofMapped(Class<?> tClass, String name, Type desc, boolean isMethod) {
-        return ofMapped(tClass, name, desc.getDescriptor(), isMethod);
-    }*/
-
-
-    public static Optional<String> ofMapped(Class<?> tClass, String name, String desc, boolean isMethod) {
-        return Optional.empty();
-    }
-    public static Optional<String> ofMapped(Class<?> tClass, String name, Type desc, boolean isMethod) {
-        return Optional.empty();
+        return MAPPINGS.ofMapped(tClass, name, desc, isMethod);
     }
 
     static final sun.misc.Unsafe unsafe;
@@ -99,7 +54,7 @@ public class Unsafe {
         return unsafe;
     }
     static {
-        try/* (Closeable ignored = loadDeobf()) */{
+        try {
             Field sif = sun.misc.Unsafe.class.getDeclaredField("theUnsafe");
             sif.setAccessible(true);
             unsafe = (sun.misc.Unsafe)sif.get(null);
