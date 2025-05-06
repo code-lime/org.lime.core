@@ -111,8 +111,10 @@ if (!hasPostfixOriginal && !isTagCommit) {
     argsVersion[lastIndex] = lastValue
     version = String.join(".", argsVersion)
 }
+
+def versionShare = version
 allprojects {
-    version = "${version}"
+    version = "${versionShare}"
 }
 //</editor-fold>
 
