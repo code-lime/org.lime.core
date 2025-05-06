@@ -1,4 +1,5 @@
-import com.oracle.truffle.js.scriptengine.GraalJSScriptEngine
+import com.oracle.truffle.js.scriptengine.*
+import org.graalvm.polyglot.*
 
 import javax.script.ScriptEngine
 import java.nio.file.Paths
