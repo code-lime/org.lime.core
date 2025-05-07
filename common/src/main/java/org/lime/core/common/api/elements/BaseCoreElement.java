@@ -89,5 +89,6 @@ public abstract class BaseCoreElement<T, Command extends BaseCoreCommandRegister
             init.invoke(owner);
         resources.forEach(data -> data.read(owner, false));
         commands.forEach(owner::addCommand);
+        $register(owner);
     }
 }
