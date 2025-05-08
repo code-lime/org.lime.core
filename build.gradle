@@ -16,9 +16,14 @@ static Map<String, ?> parseAttributes(byte[] bytes) {
 }
 static Iterable<org.gradle.jvm.tasks.Jar> jarTasks(Project target, String name) {
     def remapName = "remap${name.capitalize()}"
+    def remapTasks = target.tasks
+            .withType(org.gradle.jvm.tasks.Jar)
+            .named { jit -> jit == remapName }
+    if (!remapTasks.isEmpty())
+        return remapTasks;
     return target.tasks
             .withType(org.gradle.jvm.tasks.Jar)
-            .named { jit -> jit == name || jit == remapName }
+            .named { jit -> jit == name }
 }
 
 TaskProvider<Jar> registerResultJarTask(String prefix) {
