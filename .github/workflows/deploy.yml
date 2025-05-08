@@ -8,8 +8,8 @@ on:
     branches: [ "master" ]
 
 permissions:
-  packages: 
-    write
+  contents: write
+  packages: write
 
 env:
   GITHUB_OWNER: ${{ github.repository_owner }}
@@ -43,3 +43,10 @@ jobs:
 
       - name: Publish
         run: gradle publish
+
+      - name: Release
+        uses: softprops/action-gh-release@v2
+        if: github.ref_type == 'tag'
+        with:
+          files: |
+            build/libs/*.jar
