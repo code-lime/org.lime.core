@@ -8,6 +8,8 @@ import java.lang.invoke.MethodType;
 import java.lang.invoke.VarHandle;
 import java.lang.reflect.*;
 import java.util.Objects;
+import java.util.function.Function;
+import java.util.stream.Stream;
 
 public class Native {
     private static final VarHandle MODIFIERS;
@@ -114,13 +116,36 @@ public class Native {
         }
     }
 
-    private static final Method lookupOfMethod = ThrowableExecute.of(() ->
-            access(MethodHandles.class.getDeclaredMethod("lookup", Class.class)));
-    public static MethodHandles.Lookup lookup(Class<?> tClass) {
+    private static final Function<Class<?>, MethodHandles.Lookup> lookupOfMethod;
+    static {
+        Function<Class<?>, MethodHandles.Lookup> lookup;
         try {
-            return (MethodHandles.Lookup) lookupOfMethod.invoke(null, tClass);
-        } catch (Throwable e) {
-            throw new RuntimeException(e);
+            Method method = access(MethodHandles.class.getDeclaredMethod("lookup", Class.class));
+            lookup = tClass -> {
+                try {
+                    return (MethodHandles.Lookup) method.invoke(null, tClass);
+                } catch (Exception e) {
+                    throw new RuntimeException(e);
+                }
+            };
+        } catch (NoSuchMethodException e) {
+            try {
+                Constructor<MethodHandles.Lookup> constructor = access(MethodHandles.Lookup.class.getDeclaredConstructor(Class.class));
+                lookup = tClass -> {
+                    try {
+                        return (MethodHandles.Lookup) constructor.newInstance(tClass);
+                    } catch (Exception _e) {
+                        throw new RuntimeException(_e);
+                    }
+                };
+            } catch (Exception _e) {
+                throw new RuntimeException(_e);
+            }
         }
+        lookupOfMethod = lookup;
+    }
+
+    public static MethodHandles.Lookup lookup(Class<?> tClass) {
+        return lookupOfMethod.apply(tClass);
     }
 }
