@@ -29,4 +29,13 @@ dependencies {
     implementation "org.graalvm.truffle:truffle-api:${versionGraalVm}"
 }
 
+jar {
+    manifest {
+        attributes(
+                'Premain-Class': 'org.lime.core.common.OpenAllAgent',
+                'Can-Redefine-Classes': 'true',
+        )
+    }
+}
+
 println("COMMON: ${group}/${pathName}#${version}")
