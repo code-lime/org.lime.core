@@ -5,8 +5,6 @@ import javax.script.ScriptEngine
 import java.nio.file.Paths
 
 class SourceGenerator {
-    public static final SourceGenerator Instance = new SourceGenerator()
-
     class PackageName {
         PackageName parent
         String fullName
@@ -27,6 +25,12 @@ class SourceGenerator {
         }
     }
 
+    final Project project;
+
+    SourceGenerator(Project project) {
+        this.project = project;
+    }
+
     private String executeJs(String packageName, String js) {
         ScriptEngine engine = GraalJSScriptEngine.create(
                 Engine.newBuilder()
@@ -36,6 +40,7 @@ class SourceGenerator {
                         .allowHostAccess(HostAccess.ALL)
                         .allowHostClassLookup(v -> true))
         engine.put("PACKAGE", new PackageName(packageName.split("\\.")))
+        engine.put("PROPERTIES", project.getProperties())
         return engine.eval(js)
     }
     private static String getFileExtension(File file) {
@@ -154,6 +159,7 @@ class SourceGenerator {
         }
     }
 }
+final SourceGenerator instance = new SourceGenerator(project);
 
 buildscript {
     repositories {
@@ -173,7 +179,7 @@ def generator = tasks.register('generator') {
             it.allSource.sourceDirectories.files.forEach { root ->
                 fileTree(root).files.forEach {
                     String packageName = root.relativePath(it).replaceAll("\\.(\\w+)+\$", "").replaceAll("/(\\w|\\.)+\$", "").replaceAll("[/\\\\]", ".")
-                    SourceGenerator.Instance.executeGenerator(packageName, it)
+                    instance.executeGenerator(packageName, it)
                 }
             }
         }
