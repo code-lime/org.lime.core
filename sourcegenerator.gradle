@@ -167,13 +167,18 @@ buildscript {
     }
 }
 
-tasks.register('generator') {
-    sourceSets.forEach {
-        it.allSource.sourceDirectories.files.forEach { root ->
-            fileTree(root).files.forEach {
-                String packageName = root.relativePath(it).replaceAll("\\.(\\w+)+\$", "").replaceAll("/(\\w|\\.)+\$", "").replaceAll("[/\\\\]", ".")
-                SourceGenerator.Instance.executeGenerator(packageName, it)
+def generator = tasks.register('generator') {
+    doLast {
+        sourceSets.forEach {
+            it.allSource.sourceDirectories.files.forEach { root ->
+                fileTree(root).files.forEach {
+                    String packageName = root.relativePath(it).replaceAll("\\.(\\w+)+\$", "").replaceAll("/(\\w|\\.)+\$", "").replaceAll("[/\\\\]", ".")
+                    SourceGenerator.Instance.executeGenerator(packageName, it)
+                }
             }
         }
     }
+}
+compileJava {
+    dependsOn generator
 }
