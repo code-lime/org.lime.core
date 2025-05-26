@@ -14,6 +14,11 @@ apply from: 'https://raw.githubusercontent.com/code-lime/org.lime.core/refs/tags
 
 //<editor-fold desc="Settings: Java">
 int targetJavaVersion = 23
+if (project.hasProperty('overrideJavaVersion')) {
+    def overrideJavaVersion = project.property('overrideJavaVersion').toString()
+    if (!overrideJavaVersion.isBlank())
+        targetJavaVersion = Integer.parseInt(overrideJavaVersion)
+}
 java {
     def javaVersion = JavaVersion.toVersion(targetJavaVersion)
     sourceCompatibility = javaVersion
