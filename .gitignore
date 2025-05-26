@@ -80,5 +80,5 @@ build/
 .gradle/
 .idea/
 
-.env
+*.env
 .vscode/
