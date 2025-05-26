@@ -14,16 +14,22 @@ static Map<String, ?> parseAttributes(byte[] bytes) {
         }
     }
 }
-static Iterable<org.gradle.jvm.tasks.Jar> jarTasks(Project target, String name) {
-    def remapName = "remap${name.capitalize()}"
-    def remapTasks = target.tasks
-            .withType(org.gradle.jvm.tasks.Jar)
-            .named { jit -> jit == remapName }
-    if (!remapTasks.isEmpty())
-        return remapTasks;
-    return target.tasks
+static java.util.Optional<Iterable<org.gradle.jvm.tasks.Jar>> optionalJarTasks(Project target, String name) {
+    def tasks = target.tasks
             .withType(org.gradle.jvm.tasks.Jar)
             .named { jit -> jit == name }
+    return tasks.isEmpty()
+            ? java.util.Optional.<Iterable<org.gradle.jvm.tasks.Jar>>empty()
+            : java.util.Optional.<Iterable<org.gradle.jvm.tasks.Jar>>of(tasks)
+}
+static Iterable<org.gradle.jvm.tasks.Jar> jarTasks(Project target, String name) {
+    for (def prefix : ["remap",""]) {
+        def taskName = prefix.isEmpty() ? name : "${prefix}${name.capitalize()}"
+        def tasks = optionalJarTasks(target, taskName)
+        if (tasks.isPresent())
+            return tasks.get();
+    }
+    return []
 }
 
 TaskProvider<Jar> registerResultJarTask(String prefix) {
