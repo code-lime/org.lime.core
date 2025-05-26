@@ -65,7 +65,7 @@ public class CoreInstance
             this.server = server;
             enableInstance();
         });
-        ServerLifecycleEvents.SERVER_STOPPING.register(_ -> disableInstance());
+        ServerLifecycleEvents.SERVER_STOPPING.register(v0 -> disableInstance());
     }
 
     public void onLoad() {}
@@ -74,7 +74,7 @@ public class CoreInstance
     protected void preInitCore() {
         FabricScheduleTaskService fabricTaskService = new FabricScheduleTaskService(this);
         taskService = fabricTaskService;
-        ServerTickEvents.END_SERVER_TICK.register(_ -> fabricTaskService.serverTick());
+        ServerTickEvents.END_SERVER_TICK.register(v0 -> fabricTaskService.serverTick());
         super.preInitCore();
     }
     @Override

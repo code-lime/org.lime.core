@@ -10,16 +10,16 @@ public interface CoreCommandExecutor<Sender, Data, Self extends CoreCommandExecu
 
     @Override
     default Self withExecutorSimple(Func1<String[], Boolean> executor) {
-        return withExecutor((_, args) -> executor.invoke(args));
+        return withExecutor((v0, args) -> executor.invoke(args));
     }
     default Self withExecutor(Func2<Sender, String[], Boolean> executor) {
-        return withExecutor((v0, _, v3) -> executor.invoke((Sender) v0, v3));
+        return withExecutor((v0, v1, v3) -> executor.invoke((Sender) v0, v3));
     }
     default Self withExecutor(Func1<Sender, Boolean> executor) {
-        return withExecutor((v0, _, _) -> executor.invoke((Sender) v0));
+        return withExecutor((v0, v1, v3) -> executor.invoke((Sender) v0));
     }
     @Override
     default Self withExecutor(Func0<Boolean> executor) {
-        return withExecutor((_, _, _) -> executor.invoke());
+        return withExecutor((v0, v1, v3) -> executor.invoke());
     }
 }

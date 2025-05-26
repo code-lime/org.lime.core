@@ -6,6 +6,7 @@ import org.lime.core.common.json.builder.Json;
 import org.lime.core.common.system.ListBuilder;
 import org.lime.core.common.system.tuple.*;
 
+import java.io.Closeable;
 import java.io.InputStream;
 import java.math.BigInteger;
 import java.net.URI;
@@ -65,13 +66,22 @@ public class Web {
             private static <T> Executor<T> of(HttpRequest.Builder base, HttpResponse.BodyHandler<T> handler) {
                 return new Executor<>() {
                     @Override public Tuple3<T, Integer, Map<String, List<String>>> executeHeaders() {
-                        try (HttpClient client = HttpClient.newBuilder()
-                                    .version(Version.HTTP_1_1)
-                                    .followRedirects(HttpClient.Redirect.ALWAYS)
-                                    .build()) {
+                        HttpClient client = HttpClient.newBuilder()
+                                .version(Version.HTTP_1_1)
+                                .followRedirects(HttpClient.Redirect.ALWAYS)
+                                .build();
+                        try {
                             return of(client.send(base.build(), handler));
+                        } catch (Exception e) {
+                            throw new IllegalArgumentException(e);
+                        } finally {
+                            try {
+                                if (client instanceof AutoCloseable)
+                                    ((AutoCloseable)client).close();
+                            } catch (Exception e) {
+                                throw new IllegalArgumentException(e);
+                            }
                         }
-                        catch (Exception e) { throw new IllegalArgumentException(e); }
                     }
                     @Override public void executeHeadersAsync(Action3<T, Integer, Map<String, List<String>>> callback) {
                         BaseCoreInstance.global.$invokeAsync(this::executeHeaders, data -> callback.invoke(data.val0, data.val1, data.val2));

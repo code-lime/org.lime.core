@@ -67,6 +67,11 @@ public class FabricScheduleTaskService implements ScheduleTaskService, Closeable
 
     @Override
     public void close() throws IOException {
-        scheduler.close();
+        try {
+            if (scheduler instanceof AutoCloseable)
+                ((AutoCloseable)scheduler).close();
+        } catch (Exception e) {
+            throw new IOException(e);
+        }
     }
 }

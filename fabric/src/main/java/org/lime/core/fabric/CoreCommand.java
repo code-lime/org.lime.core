@@ -25,7 +25,7 @@ public abstract class CoreCommand<T extends CommandSource, Self>
 
     @Override
     public CommandAction<T, CommandSourceStack, Boolean> operator() {
-        return (_,source,_) -> source.hasPermission(3);
+        return (v0,source,v3) -> source.hasPermission(3);
     }
 
     public static class Register
@@ -53,7 +53,7 @@ public abstract class CoreCommand<T extends CommandSource, Self>
         }
 
         LiteralArgumentBuilder<CommandSourceStack> build() {
-            CommandAction<CommandSource, CommandSourceStack, Boolean> check = this.check == null ? (_, _, _) -> true : this.check;
+            CommandAction<CommandSource, CommandSourceStack, Boolean> check = this.check == null ? (v0, v1, v3) -> true : this.check;
             CommandAction<CommandSource, CommandSourceStack, Boolean> execute = combine(check, executor);
 
             return Commands.literal(cmd)

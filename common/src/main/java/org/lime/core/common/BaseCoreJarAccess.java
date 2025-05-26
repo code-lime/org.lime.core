@@ -50,7 +50,7 @@ public interface BaseCoreJarAccess {
         return jarClasses((FuncEx2<JarEntry, JarInputStream, Boolean>) null);
     }
     default Stream<String> jarClasses(Func0<AcceptClassVisitor> acceptVisitor) {
-        return jarClasses((_, zis) -> {
+        return jarClasses((v0, zis) -> {
             ClassReader reader = new ClassReader(zis.readAllBytes());
             AcceptClassVisitor visitor = acceptVisitor.invoke();
             reader.accept(visitor, 0);

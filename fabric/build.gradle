@@ -3,6 +3,8 @@ plugins {
     id 'fabric-loom' version '+'
 }
 
+overrideJavaVersion = 17
+
 apply from: '../global.gradle'
 
 dependencies {

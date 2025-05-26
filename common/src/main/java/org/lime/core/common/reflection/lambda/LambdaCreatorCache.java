@@ -21,12 +21,12 @@ public class LambdaCreatorCache implements LambdaCreator {
     public <T, J extends Executable> T executable(J executable, Class<T> tClass, Method invoke) {
         return tClass.cast(cache.computeIfAbsent(
                 Tuple.of(tClass, executable, null),
-                _ -> other.executable(executable, tClass, invoke)));
+                v0 -> other.executable(executable, tClass, invoke)));
     }
     @Override
     public <T> T field(Field field, boolean isGetter, Class<T> tClass, Method invoke) {
         return tClass.cast(cache.computeIfAbsent(
                 Tuple.of(tClass, field, isGetter),
-                _ -> other.field(field, isGetter, tClass, invoke)));
+                v0 -> other.field(field, isGetter, tClass, invoke)));
     }
 }

@@ -21,7 +21,7 @@ public class Lambda {
                 .toList();
         if (samMethods.size() != 1)
             throw new IllegalArgumentException("Interface " + tClass + " not functional");
-        return samMethods.getFirst();
+        return samMethods.get(0);
     }
 
     public static Callable lambda(Method method) {

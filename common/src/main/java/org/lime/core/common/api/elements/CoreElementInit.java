@@ -8,6 +8,6 @@ public interface CoreElementInit<Command extends BaseCoreCommandRegister<Owner, 
     Self withInit(Action1<Owner> init);
 
     default Self withInit(Action0 init) {
-        return withInit(_ -> init.invoke());
+        return withInit(v0 -> init.invoke());
     }
 }

@@ -52,7 +52,7 @@ public abstract class BaseCoreCommand<Sender, Data, Self extends BaseCoreCommand
 
     protected static <Sender, Data>CommandAction<Sender, Data, Boolean> combine(CommandAction<Sender, Data, Boolean> executor1, CommandAction<Sender, Data, Boolean> executor2) {
         return executor1 == null
-                ? (executor2 == null ? (_, _, _) -> true : executor2)
+                ? (executor2 == null ? (v0, v1, v3) -> true : executor2)
                 : (executor2 == null ? executor1 : (v0, v1, v3) -> executor1.action(v0, v1, v3) && executor2.action(v0, v1, v3));
     }
 }

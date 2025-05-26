@@ -3,6 +3,8 @@ plugins {
     id 'maven-publish'
 }
 
+overrideJavaVersion = 17
+
 apply from: '../global.gradle'
 
 //<editor-fold desc="Settings: Lib">

@@ -12,25 +12,25 @@ public interface CoreCommandCheck<Sender, Data, Self extends CoreCommandCheck<Se
 
     @Override
     default Self addCheckSimple(Func1<String[], Boolean> check) {
-        return addCheck((_,args) -> check.invoke(args));
+        return addCheck((v0, args) -> check.invoke(args));
     }
     @Override
     default Self addOperatorOnly() {
         return addCheck(operator());
     }
     default Self addCheck(Func2<Sender, String[], Boolean> check) {
-        return addCheck((v0, _, v3) -> check.invoke((Sender)v0, v3));
+        return addCheck((v0, v1, v3) -> check.invoke((Sender)v0, v3));
     }
     default Self addCheck(Func1<Sender, Boolean> check) {
-        return addCheck((v0, _, _) -> check.invoke((Sender)v0));
+        return addCheck((v0, v1, v3) -> check.invoke((Sender)v0));
     }
     @Override
     default Self addCheck(Func0<Boolean> check) {
-        return addCheck((_, _, _) -> check.invoke());
+        return addCheck((v0, v1, v3) -> check.invoke());
     }
     @Override
     default Self addCheck(String... permissions) {
-        return addCheck((s, _, _) -> {
+        return addCheck((s, v1, v3) -> {
             if (!(s instanceof Pointered pointered))
                 return false;
             PermissionChecker checker = pointered.get(PermissionChecker.POINTER).orElse(null);

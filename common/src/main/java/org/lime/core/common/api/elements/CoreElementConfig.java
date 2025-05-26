@@ -15,9 +15,9 @@ public interface CoreElementConfig<Self extends CoreElementConfig<Self>> {
     }
 
     default Self addEmpty(String key, Action0 callback) {
-        return addFile("", key, CoreResource.none().withInvoke(_ -> callback.invoke()));
+        return addFile("", key, CoreResource.none().withInvoke(v0 -> callback.invoke()));
     }
     default Self addEmptyInit(String key, Action0 callback) {
-        return addFile("", key, CoreResource.init().withInvoke(_ -> callback.invoke()));
+        return addFile("", key, CoreResource.init().withInvoke(v0 -> callback.invoke()));
     }
 }

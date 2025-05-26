@@ -44,7 +44,7 @@ public abstract class BaseCoreLoader<
 
         preInitInstance();
 
-        try { getClass().getDeclaredField("instance").set(null, this); } catch (Exception _) { }
+        try { getClass().getDeclaredField("instance").set(null, this); } catch (Exception ignored) { }
 
         File dir = $configFile("");
         if (!dir.exists()) dir.mkdir();
