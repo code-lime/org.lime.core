@@ -137,6 +137,7 @@ public abstract class BaseCoreLoader<
 
         commands().values().forEach(cmd -> cmd.register(self));
         flushCommands();
+        $logConsole("Core loaded");
     }
     protected abstract void preInitInstance();
 
