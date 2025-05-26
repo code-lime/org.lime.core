@@ -9,7 +9,7 @@ if (project.hasProperty('pathName'))
     pathName = resultPathName = "${getPathName(project)}"
 
 //<editor-fold desc="Settings: SourceGenerator">
-apply from: 'https://raw.githubusercontent.com/code-lime/org.lime.core/refs/tags/2.0.2/sourcegenerator.gradle'
+apply from: 'https://raw.githubusercontent.com/code-lime/org.lime.core/refs/tags/2.0.3/sourcegenerator.gradle'
 //</editor-fold>
 
 //<editor-fold desc="Settings: Java">
