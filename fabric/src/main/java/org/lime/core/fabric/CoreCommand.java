@@ -70,7 +70,7 @@ public abstract class CoreCommand<T extends CommandSource, Self>
 
                                 CommandSourceStack source = context.getSource();
                                 CommandSource src = ((AdventureCommandSourceStackInternal)source).adventure$source();
-                                if (tab == null || this.sender.isInstance(src))
+                                if (tab == null || !this.sender.isInstance(src))
                                     return offsetSuggestionsBuilder.buildFuture();
                                 if (!check.action(src, source, args))
                                     return offsetSuggestionsBuilder.buildFuture();
