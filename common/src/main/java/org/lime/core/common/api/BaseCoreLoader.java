@@ -5,6 +5,7 @@ import org.lime.core.common.*;
 import org.lime.core.common.api.commands.*;
 import org.lime.core.common.api.elements.BaseCoreElement;
 import org.lime.core.common.invokable.BaseInvokable;
+import org.lime.core.common.system.execute.Action0;
 
 import java.io.File;
 import java.util.*;
@@ -114,7 +115,7 @@ public abstract class BaseCoreLoader<
                             })));
                             corePlugin.$logOP("Update files: " + String.join(" & ", _files));
                             try {
-                                corePlugin.config().ifPresent(config -> config.updateConfigAsync(_files, () -> {
+                                Action0 then = () -> {
                                     try {
                                         files.forEach(file -> corePlugin.elements().forEach(element -> element.resources.forEach(data -> {
                                             if (!data.getFiles().contains(file)) return;
@@ -123,7 +124,8 @@ public abstract class BaseCoreLoader<
                                     } catch (Exception e) {
                                         corePlugin.$logStackTrace(e);
                                     }
-                                }));
+                                };
+                                corePlugin.config().ifPresentOrElse(config -> config.updateConfigAsync(_files, then), then);
                             } catch (Exception e) {
                                 corePlugin.$logStackTrace(e);
                                 return true;
