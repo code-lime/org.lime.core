@@ -56,8 +56,51 @@ class SourceGenerator {
         int size = lines.size()
         for (int i = 0; i < size; i++) {
             String line = lines.get(i)
+            int start = line.indexOf("/*<g")
+            if (start >= 0) {
+                int endCode = line.indexOf("*/", start)
+                if (endCode >= 0) {
+                    int endGen = line.indexOf("/*</g>*/", endCode);
+
+                    if (endGen >= 0) {
+                        if (code != null) throw new IllegalArgumentException("<g> in line '" + (i + 1) + "'")
+
+                        int startCode = start + "/*<g".length();
+
+                        String singleCode = line.substring(startCode, endCode);
+
+                        if (singleCode.startsWith(">") || singleCode.startsWith(" name=\"")) {
+                            if (singleCode.startsWith(">")) {
+                                startCode++
+                                singleCode = singleCode.substring(1)
+                                startCode += singleCode.length()
+                            } else if (singleCode.startsWith(" name=\"")) {
+                                String fileName = singleCode.substring(7)
+                                int fileEnd = fileName.indexOf("\">")
+                                startCode += 7 + fileEnd + 2
+                                fileName = fileName.substring(0, fileEnd)
+                                String[] args = fileName.split(':')
+                                if (args.length > 1) {
+                                    System.out.println('Execute file function: ' + args[0] + " : " + args[1])
+                                    singleCode = Paths.get(dir.absolutePath, args[0]).toFile().text + "\n" + args[1]
+                                } else {
+                                    System.out.println('Execute single file: ' + fileName)
+                                    singleCode = Paths.get(dir.absolutePath, fileName).toFile().text
+                                }
+                            }
+
+                            String preGen = line.substring(0, startCode)
+                            String postGen = line.substring(endGen)
+
+                            output.add("$preGen*/${executeJs(packageName, String.join("\n", singleCode))}$postGen")
+                            edited = true
+                            continue
+                        }
+                    }
+                }
+            }
             String trim_line = line.trim()
-            int start = trim_line.indexOf("//")
+            start = trim_line.indexOf("//")
             if (start != 0) {
                 if (code != null) continue
                 output.add(line)
