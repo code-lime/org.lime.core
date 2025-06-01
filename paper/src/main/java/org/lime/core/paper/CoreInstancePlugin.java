@@ -67,10 +67,10 @@ public class CoreInstancePlugin extends JavaPlugin {
         }
 
         @Override public String logPrefix() {
-            return Objects.requireNonNull(plugin().logPrefix(), super::logPrefix);
+            return Objects.requireNonNullElseGet(plugin().logPrefix(), super::logPrefix);
         }
         @Override public String configFile() {
-            return Objects.requireNonNull(plugin().configFile(), super::configFile);
+            return Objects.requireNonNullElseGet(plugin().configFile(), super::configFile);
         }
 
         @Override
