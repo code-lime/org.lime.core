@@ -179,7 +179,12 @@ def generator = tasks.register('generator') {
             it.allSource.sourceDirectories.files.forEach { root ->
                 fileTree(root).files.forEach {
                     String packageName = root.relativePath(it).replaceAll("\\.(\\w+)+\$", "").replaceAll("/(\\w|\\.)+\$", "").replaceAll("[/\\\\]", ".")
-                    instance.executeGenerator(packageName, it)
+                    try {
+                        instance.executeGenerator(packageName, it)
+                    } catch (err) {
+                        err.printStackTrace(System.err)
+                        throw err
+                    }
                 }
             }
         }
