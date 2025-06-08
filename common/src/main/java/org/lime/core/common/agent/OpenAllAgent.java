@@ -59,7 +59,11 @@ public class OpenAllAgent {
                             .collect(Collectors.toMap(pkg -> pkg, pkg -> all));
                     instrumentation.redefineModule(javaBase, Set.of(), Map.of(), opens, Set.of(), Map.of());
                     seen.addAll(newbies);
-                    System.out.println("[Agent] Opened java.base to " + newbies);
+                    System.out.println("[Agent] Opened java.base to " + newbies
+                            .stream()
+                            .map(v -> v.isNamed() ? v.getName() : "@" + Integer.toHexString(System.identityHashCode(v)))
+                            .sorted()
+                            .toList());
                 }
                 TimeUnit.MILLISECONDS.sleep(40);
             } catch (Throwable t) {
