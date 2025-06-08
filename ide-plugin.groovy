@@ -13,6 +13,8 @@ if (vf != null) {
             output = 'org.lime.core.paper';
         } else if (names.contains('versionFabric')) {
             output = 'org.lime.core.fabric';
+        } else if (names.contains('versionVelocity')) {
+            output = 'org.lime.core.velocity';
         } else {
             output = 'org.lime.core.UNDEFINED';
         } 
