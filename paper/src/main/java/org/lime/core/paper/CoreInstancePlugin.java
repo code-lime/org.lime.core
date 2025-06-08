@@ -142,6 +142,9 @@ public class CoreInstancePlugin extends JavaPlugin {
 
         public void onDisable() {
             super.disableInstance();
+
+            if (core == this)
+                Agents.unload();
         }
     }
 }

@@ -9,8 +9,18 @@ import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
-public class OpenAllAgent {
-    public static void load(Instrumentation instrumentation) {
+class OpenAllAgent
+        implements Agent {
+    private final ScheduledExecutorService exec;
+    OpenAllAgent() {
+        exec = Executors.newSingleThreadScheduledExecutor(r -> {
+            Thread t = new Thread(r, "open-all-agent");
+            t.setDaemon(true);
+            return t;
+        });
+    }
+    @Override
+    public void run(Instrumentation instrumentation) {
         System.out.println("[Agent] Begin all-open agent");
 
         Module javaBase = ModuleLayer.boot()
@@ -26,6 +36,10 @@ public class OpenAllAgent {
         Loader loader = new Loader(instrumentation, javaBase);
         loader.tick();
         exec.scheduleAtFixedRate(loader::tick, 1, 1, TimeUnit.SECONDS);
+    }
+    @Override
+    public void close() {
+        exec.close();
     }
 
     private static class Loader {
