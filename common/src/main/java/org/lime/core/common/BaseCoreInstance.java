@@ -3,6 +3,7 @@ package org.lime.core.common;
 import org.lime.core.common.api.*;
 import org.lime.core.common.api.commands.BaseCoreCommandRegister;
 import org.lime.core.common.api.elements.BaseCoreElement;
+import org.lime.core.common.system.Lazy;
 
 import java.util.*;
 import java.util.stream.Stream;
@@ -18,7 +19,24 @@ public abstract class BaseCoreInstance<
         global = baseCore;
     }
 
-    @Override public String logPrefix() { return "L:" + this.name().toUpperCase(); }
+    private final Lazy<String> logPrefixLazy = Lazy.of(() -> {
+        String[] args = this.name().toUpperCase().split("[ ./]");
+        if (args.length == 1)
+            return args[0];
+
+        StringBuilder result = new StringBuilder();
+
+        int lastIndex = args.length - 1;
+        for (int i = 0; i < lastIndex; i++)
+            if (!args[i].isEmpty())
+                result.append(args[i].charAt(0));
+
+        return result
+                .append(":")
+                .append(args[lastIndex])
+                .toString();
+    });
+    @Override public String logPrefix() { return logPrefixLazy.value(); }
     @Override public String configFile() { return "config/" + this.name().toLowerCase() + "/"; }
 
     @Override
