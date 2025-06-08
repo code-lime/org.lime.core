@@ -13,9 +13,6 @@
       "org.lime.core.fabric.CoreInstance"
     ]
   },
-  "mixins": [
-    "test.mixins.json"
-  ],
   "depends": {
     "fabricloader": ">=${versionLoader}",
     "fabric": "*",
