@@ -1,4 +1,4 @@
-package org.lime.core.common;
+package org.lime.core.common.agent;
 
 import java.lang.instrument.Instrumentation;
 import java.lang.ModuleLayer;
@@ -10,7 +10,7 @@ import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 public class OpenAllAgent {
-    public static void premain(String args, Instrumentation instrumentation) {
+    public static void load(Instrumentation instrumentation) {
         System.out.println("[Agent] Begin all-open agent");
 
         Module javaBase = ModuleLayer.boot()

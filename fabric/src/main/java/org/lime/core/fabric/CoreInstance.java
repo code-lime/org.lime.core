@@ -7,6 +7,7 @@ import net.fabricmc.loader.impl.FabricLoaderImpl;
 import net.minecraft.server.MinecraftServer;
 import org.lime.core.common.BaseCoreInstance;
 import org.lime.core.common.UnsafeMappings;
+import org.lime.core.common.agent.Agents;
 import org.lime.core.common.api.tasks.ScheduleTaskService;
 import org.lime.core.fabric.tasks.FabricScheduleTaskService;
 
@@ -15,6 +16,10 @@ import java.util.stream.Stream;
 public class CoreInstance
         extends BaseCoreInstance<CoreCommand.Register, CoreInstance>
         implements ModInitializer, FabricState, FabricLogger, FabricElementAccess, FabricCommandAccess {
+    static {
+        Agents.load();
+    }
+
     public static CoreInstance core;
 
     private ScheduleTaskService taskService;

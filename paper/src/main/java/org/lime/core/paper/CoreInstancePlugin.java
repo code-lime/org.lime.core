@@ -5,6 +5,7 @@ import org.bukkit.plugin.java.JavaPlugin;
 import org.jetbrains.annotations.Nullable;
 import org.lime.core.common.BaseCoreInstance;
 import org.lime.core.common.UnsafeMappings;
+import org.lime.core.common.agent.Agents;
 import org.lime.core.common.api.tasks.ScheduleTaskService;
 import org.lime.core.paper.tasks.BukkitScheduleTaskService;
 import patch.Patcher;
@@ -18,6 +19,7 @@ import java.util.stream.Stream;
 public class CoreInstancePlugin extends JavaPlugin {
     static {
         MutatePatcher.register();
+        Agents.load();
     }
 
     protected final CoreInstance loader;

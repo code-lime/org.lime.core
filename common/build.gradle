@@ -24,18 +24,10 @@ dependencies {
     implementation "org.ow2.asm:asm:9.7.1"
 }
 dependencies {
+    implementation "net.bytebuddy:byte-buddy-agent:${versionByteBuddyAgent}"
     implementation "org.graalvm.js:js:${versionGraalVm}"
     implementation "org.graalvm.js:js-scriptengine:${versionGraalVm}"
     implementation "org.graalvm.truffle:truffle-api:${versionGraalVm}"
-}
-
-jar {
-    manifest {
-        attributes(
-                'Premain-Class': 'org.lime.core.common.OpenAllAgent',
-                'Can-Redefine-Classes': 'true',
-        )
-    }
 }
 
 println("COMMON: ${group}/${pathName}#${version}")

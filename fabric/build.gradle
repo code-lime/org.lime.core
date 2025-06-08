@@ -11,6 +11,8 @@ dependencies {
     implementation project(':common')
 }
 
+versionByteBuddyAgent = project(":common").versionByteBuddyAgent
+
 projectCombineJars(project(':common'))
 
 //<editor-fold desc="Settings: Mod">
@@ -43,6 +45,11 @@ processResources {
 //</editor-fold>
 
 //<editor-fold desc="Settings: Libraries">
+//<editor-fold desc="Settings: Libraries: ByteBuddyAgent">
+dependencies {
+    modImplementation include("net.bytebuddy:byte-buddy-agent:${versionByteBuddyAgent}")
+}
+//</editor-fold>
 //<editor-fold desc="Settings: Libraries: Adventure">
 repositories {
     maven {
