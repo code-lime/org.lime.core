@@ -24,8 +24,8 @@ public class OpenAllAgent {
         });
 
         Loader loader = new Loader(instrumentation, javaBase);
-
-        exec.scheduleWithFixedDelay(loader::tick, 0, 1, TimeUnit.SECONDS);
+        loader.tick();
+        exec.scheduleAtFixedRate(loader::tick, 1, 1, TimeUnit.SECONDS);
     }
 
     private static class Loader {
