@@ -1,0 +1,79 @@
+plugins {
+    id 'java'
+}
+
+overrideJavaVersion = 17
+
+apply from: '../global.gradle'
+
+dependencies {
+    implementation project(':common')
+}
+
+versionByteBuddyAgent = project(":common").versionByteBuddyAgent
+
+projectCombineJars(project(':common'))
+
+//<editor-fold desc="Settings: Plugin">
+ext {
+    pluginName = "${group}.core"
+    pluginId = "${group}.${pathName}".toLowerCase().replaceAll("[.:/]", "-")
+}
+
+repositories {
+    maven {
+        name = 'papermc'
+        url = 'https://repo.papermc.io/repository/maven-public/'
+    }
+}
+
+dependencies {
+    compileOnly "com.velocitypowered:velocity-api:${versionVelocity}"
+    annotationProcessor "com.velocitypowered:velocity-api:${versionVelocity}"
+}
+
+processResources {
+    configureProcessResources(delegate, "velocity-dependency.json", [
+            group: "${project.group}",
+    ])
+}
+//</editor-fold>
+
+configurations {
+    embedded
+}
+
+//<editor-fold desc="Settings: Libraries">
+//<editor-fold desc="Settings: Libraries: ByteBuddyAgent">
+dependencies {
+    embedded "net.bytebuddy:byte-buddy-agent:${versionByteBuddyAgent}"
+}
+//</editor-fold>
+//<editor-fold desc="Settings: Libraries: Libby">
+repositories {
+    maven {
+        url = "https://s01.oss.sonatype.org/content/repositories/snapshots/"
+    }
+}
+
+dependencies {
+    implementation "com.alessiodp.libby:libby-velocity:${versionLibby}"
+    embedded "com.alessiodp.libby:libby-velocity:${versionLibby}"
+}
+//</editor-fold>
+//<editor-fold desc="Settings: Libraries: ObjectWebAsm">
+dependencies {
+    implementation "org.ow2.asm:asm:${versionObjectWebAsm}"
+}
+//</editor-fold>
+//</editor-fold>
+
+jar {
+    into("velocity-libs") {
+        from {
+            configurations.embedded.filter { it.name.endsWith(".jar") }
+        }
+    }
+}
+
+println("VELOCITY: ${group}/${pathName}#${version}")

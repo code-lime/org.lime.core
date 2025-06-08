@@ -1,0 +1,6 @@
+{
+  "maven": {},
+  "libraries": [
+    "org.ow2.asm:asm:${versionObjectWebAsm}"
+  ]
+}
