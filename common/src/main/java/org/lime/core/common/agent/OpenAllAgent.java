@@ -39,7 +39,7 @@ class OpenAllAgent
     }
     @Override
     public void close() {
-        exec.close();
+        exec.shutdown();
     }
 
     private static class Loader {
