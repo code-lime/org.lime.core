@@ -55,7 +55,10 @@ public class CoreInstance
         this.server = server;
         this.logger = logger;
         this.dataDirectory = dataDirectory;
-        this.dataDirectoryFile = dataDirectory.toAbsolutePath().toString();
+        String dataDirectoryFile = dataDirectory.toAbsolutePath().toString();
+        if (!dataDirectoryFile.endsWith("/"))
+            dataDirectoryFile = dataDirectoryFile + "/";
+        this.dataDirectoryFile = dataDirectoryFile;
         this.taskService = new VelocityScheduleTaskService(this);
     }
 
