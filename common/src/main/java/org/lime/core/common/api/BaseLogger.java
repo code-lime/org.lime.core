@@ -18,11 +18,20 @@ import java.util.Arrays;
 import java.util.Calendar;
 import java.util.List;
 
-public interface BaseLogger extends BaseState {
+public interface BaseLogger extends BaseState, BaseIdentity {
     String logPrefix();
 
     Audience consoleAudiences();
     Audience playersAudiences(boolean operatorsOnly);
+
+    private Component prefix() {
+        return Component.empty()
+                .append(Component.text("["))
+                .append(Component.text(logPrefix())
+                        .hoverEvent(HoverEvent.showText(Component.empty()
+                                .append(Component.text("Plugin: " + name())))))
+                .append(Component.text("] "));
+    }
 
     default void $logToFile(String key, String text) {
         final DateFormat formatter = new SimpleDateFormat("yyyy-MM-dd");
@@ -59,13 +68,13 @@ public interface BaseLogger extends BaseState {
     }
     default void $log(String log) {
         consoleAudiences()
-                .sendMessage(Component.text("["+ logPrefix()+"] " + log));
+                .sendMessage(prefix().append(Component.text(log)));
     }
     default void $logBroadcast(String log) {
         $logToFile("log_admin", "[{time}] " + log);
         $log(log);
         playersAudiences(false)
-                .sendMessage(Component.text("["+ logPrefix()+"] " + log));
+                .sendMessage(prefix().append(Component.text(log)));
     }
     default void $logConsole(String log) {
         $logToFile("log_admin", "[{time}] " + log);
@@ -75,14 +84,14 @@ public interface BaseLogger extends BaseState {
         $logToFile("log_admin", "[{time}] " + log);
         $log(log);
         playersAudiences(true)
-                .sendMessage(Component.text("["+ logPrefix()+"] ").color(NamedTextColor.YELLOW).append(Component.text(log).color(NamedTextColor.WHITE)));
+                .sendMessage(prefix().color(NamedTextColor.YELLOW).append(Component.text(log).color(NamedTextColor.WHITE)));
     }
     default void $logOP(Component log) {
         String plain_log = PlainTextComponentSerializer.plainText().serialize(log);
         $logToFile("log_admin", "[{time}] " + plain_log);
         $log(plain_log);
         playersAudiences(true)
-                .sendMessage(Component.text("["+ logPrefix()+"] ").color(NamedTextColor.YELLOW).append(Component.empty().append(log).color(NamedTextColor.WHITE)));
+                .sendMessage(prefix().color(NamedTextColor.YELLOW).append(Component.empty().append(log).color(NamedTextColor.WHITE)));
     }
     default void $logWithoutPrefix(String log) {
         consoleAudiences().sendMessage(Component.text(log));
@@ -108,7 +117,7 @@ public interface BaseLogger extends BaseState {
     }
     default void $logStackTrace(StackTraceElement[] stackTraceElements) {
         if (stackTraceElements.length > 30) {
-            Component client = Component.text("["+ logPrefix()+"] ")
+            Component client = prefix()
                     .color(NamedTextColor.YELLOW)
                     .append(Component.text(" StackTraceList:"));
             playersAudiences(true).sendMessage(client);
@@ -124,7 +133,7 @@ public interface BaseLogger extends BaseState {
                 lines.add(line);
                 client = client.append(Component.text("  " + line));
             }
-            client = Component.text("["+ logPrefix()+"] ")
+            client = prefix()
                     .color(NamedTextColor.YELLOW)
                     .append(Component.text("[StackTrace]")
                             .hoverEvent(HoverEvent.showText(client))
