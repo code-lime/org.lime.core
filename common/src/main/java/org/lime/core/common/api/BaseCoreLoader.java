@@ -1,6 +1,7 @@
 package org.lime.core.common.api;
 
 import net.minecraft.unsafe.GlobalConfigure;
+import org.jetbrains.annotations.Nullable;
 import org.lime.core.common.*;
 import org.lime.core.common.api.commands.*;
 import org.lime.core.common.api.elements.BaseCoreElement;
@@ -79,11 +80,12 @@ public abstract class BaseCoreLoader<
     protected abstract Stream<Self> globalInstances();
 
     protected abstract UnsafeMappings mappings();
+    protected abstract @Nullable String coreCommandsPostfix();
     protected void preInitCore() {
         Unsafe.MAPPINGS = mappings();
         GlobalConfigure.configure();
 
-        addCommand("update.data", cmd -> {
+        addCommand("update.data" + Objects.requireNonNullElse(coreCommandsPostfix(), ""), cmd -> {
             if (cmd instanceof CoreCommandSimple<?> simple)
                 simple
                         .addOperatorOnly()
@@ -133,6 +135,8 @@ public abstract class BaseCoreLoader<
                             corePlugin.$logOP("Updated!");
                             return true;
                         });
+            else
+                throw new IllegalArgumentException("Command type not " + CoreCommandSimple.class);
         });
 
         Self self = self();

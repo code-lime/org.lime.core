@@ -139,6 +139,10 @@ public class CoreInstancePlugin extends JavaPlugin {
         protected UnsafeMappings mappings() {
             return PaperUnsafeMappings.instance();
         }
+        @Override
+        protected @Nullable String coreCommandsPostfix() {
+            return null;
+        }
 
         public void onDisable() {
             super.disableInstance();

@@ -218,4 +218,8 @@ public class CoreInstance
     protected UnsafeMappings mappings() {
         return VelocityUnsafeMappings.instance();
     }
+    @Override
+    protected String coreCommandsPostfix() {
+        return "-velocity";
+    }
 }

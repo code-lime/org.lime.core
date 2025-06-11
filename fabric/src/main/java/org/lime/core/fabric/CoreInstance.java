@@ -5,6 +5,7 @@ import net.fabricmc.fabric.api.event.lifecycle.v1.ServerLifecycleEvents;
 import net.fabricmc.fabric.api.event.lifecycle.v1.ServerTickEvents;
 import net.fabricmc.loader.impl.FabricLoaderImpl;
 import net.minecraft.server.MinecraftServer;
+import org.jetbrains.annotations.Nullable;
 import org.lime.core.common.BaseCoreInstance;
 import org.lime.core.common.UnsafeMappings;
 import org.lime.core.common.agent.Agents;
@@ -98,5 +99,9 @@ public class CoreInstance
     @Override
     protected UnsafeMappings mappings() {
         return FabricUnsafeMappings.instance();
+    }
+    @Override
+    protected @Nullable String coreCommandsPostfix() {
+        return null;
     }
 }
