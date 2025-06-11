@@ -11,6 +11,8 @@ dependencies {
 }
 
 versionByteBuddyAgent = project(":common").versionByteBuddyAgent
+versionCommonsIO = project(":common").versionCommonsIO
+versionCommonsLang3 = project(":common").versionCommonsLang3
 
 projectCombineJars(project(':common'))
 
@@ -64,6 +66,12 @@ dependencies {
 //<editor-fold desc="Settings: Libraries: ObjectWebAsm">
 dependencies {
     implementation "org.ow2.asm:asm:${versionObjectWebAsm}"
+}
+//</editor-fold>
+//<editor-fold desc="Settings: Libraries: Apache Commons">
+dependencies {
+    implementation "commons-io:commons-io:${versionCommonsIO}"
+    implementation "org.apache.commons:commons-lang3:${versionCommonsLang3}"
 }
 //</editor-fold>
 //</editor-fold>

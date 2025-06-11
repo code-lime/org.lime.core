@@ -18,9 +18,8 @@ dependencies {
     implementation "net.kyori:adventure-text-serializer-plain:4.14.0"
     implementation "com.google.guava:guava:31.1-jre"
     implementation "com.google.code.gson:gson:2.10"
-    implementation "org.joml:joml:1.10.5"
-    implementation "commons-io:commons-io:2.17.0"
-    implementation "org.apache.commons:commons-lang3:3.12.0"
+    implementation "commons-io:commons-io:${versionCommonsIO}"
+    implementation "org.apache.commons:commons-lang3:${versionCommonsLang3}"
     implementation "org.ow2.asm:asm:9.7.1"
 }
 dependencies {

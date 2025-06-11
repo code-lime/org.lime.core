@@ -1,6 +1,8 @@
 {
   "maven": {},
   "libraries": [
-    "org.ow2.asm:asm:${versionObjectWebAsm}"
+    "org.ow2.asm:asm:${versionObjectWebAsm}",
+    "commons-io:commons-io:${versionCommonsIO}",
+    "org.apache.commons:commons-lang3:${versionCommonsLang3}"
   ]
 }
