@@ -7,6 +7,8 @@ import com.mojang.brigadier.suggestion.SuggestionsBuilder;
 import com.velocitypowered.api.command.BrigadierCommand;
 import com.velocitypowered.api.command.CommandSource;
 import net.kyori.adventure.text.Component;
+import org.apache.commons.lang3.ArrayUtils;
+import org.apache.commons.lang3.StringUtils;
 import org.lime.core.common.api.commands.BaseCoreCommand;
 import org.lime.core.common.api.commands.BaseCoreCommandRegister;
 import org.lime.core.common.api.commands.CommandAction;
@@ -62,14 +64,12 @@ public abstract class CoreCommand<T extends CommandSource, Self>
             return BrigadierCommand.literalArgumentBuilder(cmd)
                     .then(BrigadierCommand.requiredArgumentBuilder("args", StringArgumentType.greedyString())
                             .suggests((context, suggestionsBuilder) -> {
-                                var rawArgs = splitUtils(suggestionsBuilder.getRemaining(), " ");
+                                String[] args = StringUtils.split(suggestionsBuilder.getRemaining());
                                 if (suggestionsBuilder.getRemaining().endsWith(" "))
-                                    rawArgs.add("");
+                                    args = ArrayUtils.add(args, "");
 
-                                if (rawArgs.isEmpty())
-                                    rawArgs.add("");
-
-                                var args = rawArgs.toArray(String[]::new);
+                                if (args.length == 0)
+                                    args = new String[]{""};
 
                                 final SuggestionsBuilder offsetSuggestionsBuilder = suggestionsBuilder.createOffset(suggestionsBuilder.getInput().lastIndexOf(' ') + 1);
 
@@ -91,7 +91,7 @@ public abstract class CoreCommand<T extends CommandSource, Self>
                             })
                             .executes((stack) -> {
                                 CommandSource source = stack.getSource();
-                                if (this.sender.isInstance(source) && !execute.action(source, source, splitUtils(stack.getArgument("args", String.class), " ").toArray(String[]::new)) && usage != null)
+                                if (this.sender.isInstance(source) && !execute.action(source, source, StringUtils.split(stack.getArgument("args", String.class), ' ')) && usage != null)
                                     source.sendMessage(Component.text(usage));
                                 return Command.SINGLE_SUCCESS;
                             }))
@@ -101,21 +101,6 @@ public abstract class CoreCommand<T extends CommandSource, Self>
                             source.sendMessage(Component.text(usage));
                         return Command.SINGLE_SUCCESS;
                     });
-        }
-        public static List<String> splitUtils(String str, String separator) {
-            if (str == null)
-                return null;
-
-            if (str.isEmpty())
-                return new ArrayList<>();
-
-            String[] raw = separator == null
-                    ? str.trim().split("\\s+")
-                    : str.split(Pattern.quote(separator));
-
-            return Arrays.stream(raw)
-                    .filter(v -> v.isEmpty())
-                    .collect(Collectors.toList());
         }
     }
 }
