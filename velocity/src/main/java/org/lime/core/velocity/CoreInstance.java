@@ -209,7 +209,7 @@ public class CoreInstance
         return server.getPluginManager()
                 .getPlugins()
                 .stream()
-                .map(v -> v.getInstance().stream())
+                .flatMap(v -> v.getInstance().stream())
                 .filter(CoreInstance.class::isInstance)
                 .map(CoreInstance.class::cast);
     }
