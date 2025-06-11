@@ -6,7 +6,6 @@ import org.lime.core.common.json.builder.Json;
 import org.lime.core.common.system.ListBuilder;
 import org.lime.core.common.system.tuple.*;
 
-import java.io.Closeable;
 import java.io.InputStream;
 import java.math.BigInteger;
 import java.net.URI;
@@ -18,6 +17,7 @@ import java.net.http.HttpClient.Version;
 import java.nio.charset.StandardCharsets;
 import java.time.Duration;
 import java.util.*;
+import java.util.concurrent.CompletableFuture;
 import java.util.stream.Stream;
 
 public class Web {
@@ -83,6 +83,14 @@ public class Web {
                             }
                         }
                     }
+                    @Override public CompletableFuture<Tuple3<T, Integer, Map<String, List<String>>>> executeHeadersFuture() {
+                        return HttpClient.newBuilder()
+                                .version(Version.HTTP_1_1)
+                                .followRedirects(HttpClient.Redirect.ALWAYS)
+                                .build()
+                                .sendAsync(base.build(), handler)
+                                .thenApply(Builder::of);
+                    }
                     @Override public void executeHeadersAsync(Action3<T, Integer, Map<String, List<String>>> callback) {
                         BaseCoreInstance.global.$invokeAsync(this::executeHeaders, data -> callback.invoke(data.val0, data.val1, data.val2));
                     }
@@ -91,10 +99,14 @@ public class Web {
 
             public interface Executor<T> {
                 Tuple3<T, Integer, Map<String, List<String>>> executeHeaders();
+                CompletableFuture<Tuple3<T, Integer, Map<String, List<String>>>> executeHeadersFuture();
                 void executeHeadersAsync(Action3<T, Integer, Map<String, List<String>>> callback);
 
                 default Tuple2<T, Integer> execute() {
                     return executeHeaders().invokeGet((a,b,c) -> Tuple.of(a,b));
+                }
+                default CompletableFuture<Tuple2<T, Integer>> executeFuture() {
+                    return executeHeadersFuture().thenApply(v -> v.invokeGet((a,b,c) -> Tuple.of(a,b)));
                 }
                 default void executeAsync(Action2<T, Integer> callback) {
                     executeHeadersAsync((a,b,c) -> callback.invoke(a,b));
@@ -104,6 +116,9 @@ public class Web {
                     return new Executor<>() {
                         @Override public Tuple3<R, Integer, Map<String, List<String>>> executeHeaders() {
                             return Executor.this.executeHeaders().map(map, v -> v, v -> v);
+                        }
+                        @Override public CompletableFuture<Tuple3<R, Integer, Map<String, List<String>>>> executeHeadersFuture() {
+                            return Executor.this.executeHeadersFuture().thenApply(v -> v.map(map, vv -> vv, vv -> vv));
                         }
                         @Override public void executeHeadersAsync(Action3<R, Integer, Map<String, List<String>>> callback) {
                             Executor.this.executeHeadersAsync((a, b, c) -> callback.invoke(map.invoke(a), b, c));
