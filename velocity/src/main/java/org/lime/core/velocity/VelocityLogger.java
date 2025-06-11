@@ -6,7 +6,7 @@ import org.lime.core.common.api.BaseLogger;
 public interface VelocityLogger extends BaseLogger, VelocityServer {
     @Override
     default Audience consoleAudiences() {
-        return server();
+        return server().getConsoleCommandSource();
     }
     @Override
     default Audience playersAudiences(boolean operatorsOnly) {
