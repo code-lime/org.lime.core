@@ -15,7 +15,9 @@ public final class CoreElement<T>
 
     @Override
     protected void $register(CoreInstance instance) {
-
+        if (this.instance != null) {
+            instance.server().getEventManager().register(instance, this.instance);
+        }
     }
 
     @Override
