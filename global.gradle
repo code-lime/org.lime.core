@@ -70,6 +70,29 @@ ext {
 }
 //</editor-fold>
 
+//<editor-fold desc="Configure: Templates">
+def configureTemplates(Map<String, ?> baseProps) {
+    def props = new LinkedHashMap(baseProps)
+
+    project.properties.each { key, value ->
+        def name = key.toString()
+        if (name.startsWith("version") && (name.length() <= 7 || name.charAt(7).isUpperCase())) {
+            props[name] = value.toString()
+        }
+    }
+
+    def generateTemplates = tasks.register("generateTemplates", Sync) {
+        from(file('src/main/templates'))
+        into(project.layout.buildDirectory.dir('generated/sources/templates'))
+        expand(props)
+    }
+    sourceSets.main.java.srcDir(generateTemplates.map { it.outputs })
+}
+ext {
+    configureTemplates = this.&configureTemplates
+}
+//</editor-fold>
+
 //<editor-fold desc="Configure: Jars project combine">
 def projectCombineJars(Project target) {
     tasks.withType(org.gradle.jvm.tasks.Jar).configureEach { it ->
