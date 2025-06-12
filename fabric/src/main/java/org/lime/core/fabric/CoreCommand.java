@@ -52,7 +52,7 @@ public abstract class CoreCommand<T extends CommandSource, Self>
                     .register(build());
         }
 
-        LiteralArgumentBuilder<CommandSourceStack> build() {
+        public LiteralArgumentBuilder<CommandSourceStack> build() {
             CommandAction<CommandSource, CommandSourceStack, Boolean> check = this.check == null ? (v0, v1, v3) -> true : this.check;
             CommandAction<CommandSource, CommandSourceStack, Boolean> execute = combine(check, executor);
 

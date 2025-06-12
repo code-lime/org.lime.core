@@ -47,7 +47,7 @@ public abstract class CoreCommand<T extends CommandSender, Self>
             Bukkit.getCommandMap().register(plugin.getName(), build(plugin));
         }
 
-        Command build(Plugin plugin) {
+        public Command build(Plugin plugin) {
             CommandAction<CommandSender, Command, Boolean> check = this.check == null ? (_, _, _) -> true : this.check;
             CommandAction<CommandSender, Command, Boolean> execute = combine(check, executor);
 

@@ -13,12 +13,7 @@ import org.lime.core.common.api.commands.BaseCoreCommand;
 import org.lime.core.common.api.commands.BaseCoreCommandRegister;
 import org.lime.core.common.api.commands.CommandAction;
 
-import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.Collection;
-import java.util.List;
-import java.util.regex.Pattern;
-import java.util.stream.Collectors;
 
 public abstract class CoreCommand<T extends CommandSource, Self>
         extends BaseCoreCommand<T, CommandSource, CoreCommand<T, Self>> {
@@ -57,7 +52,7 @@ public abstract class CoreCommand<T extends CommandSource, Self>
             commands.register(meta, new BrigadierCommand(build()));
         }
 
-        LiteralArgumentBuilder<CommandSource> build() {
+        public LiteralArgumentBuilder<CommandSource> build() {
             CommandAction<CommandSource, CommandSource, Boolean> check = this.check == null ? (v0, v1, v3) -> true : this.check;
             CommandAction<CommandSource, CommandSource, Boolean> execute = combine(check, executor);
 
