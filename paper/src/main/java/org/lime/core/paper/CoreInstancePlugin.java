@@ -18,8 +18,8 @@ import java.util.stream.Stream;
 
 public class CoreInstancePlugin extends JavaPlugin {
     static {
-        MutatePatcher.register();
         Agents.load();
+        MutatePatcher.register();
     }
 
     protected final CoreInstance loader;
