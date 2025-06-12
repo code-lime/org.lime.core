@@ -51,8 +51,25 @@ public final class ClassPatcher<T> {
                 }
                 super.visit(version, access, name, signature, superName, interfaces);
             }
+
+            private final Set<String> updatedFields = new HashSet<>();
+
+            @Override
+            public FieldVisitor visitField(int access, String name, String descriptor, String signature, Object value) {
+                return appendFields.stream().filter(v -> v.val1.equals(name))
+                        .findFirst()
+                        .map(field -> {
+                            Native.log("Update field: " + field.val1 + field.val2 + "...");
+                            updatedFields.add(field.val1);
+                            return field.invokeGet(super::visitField);
+                        })
+                        .orElseGet(() -> super.visitField(access, name, descriptor, signature, value));
+            }
+
             @Override public void visitEnd() {
                 appendFields.forEach(field -> {
+                    if (updatedFields.contains(field.val1))
+                        return;
                     Native.log("Append field: " + field.val1 + field.val2 + "...");
                     field.invokeGet(super::visitField).visitEnd();
                 });
