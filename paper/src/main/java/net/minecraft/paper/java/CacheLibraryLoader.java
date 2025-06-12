@@ -3,7 +3,6 @@ package net.minecraft.paper.java;
 import com.google.common.collect.Streams;
 import net.minecraft.paper.java.view.OtherView;
 import net.minecraft.unsafe.GlobalConfigure;
-import net.minecraft.unsafe.Native;
 import org.bukkit.plugin.PluginDescriptionFile;
 import org.bukkit.plugin.java.LibraryLoader;
 import org.eclipse.aether.DefaultRepositorySystemSession;
@@ -16,7 +15,6 @@ import org.eclipse.aether.util.repository.AuthenticationBuilder;
 
 import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
-import java.lang.reflect.Field;
 import java.net.URL;
 import java.net.URLClassLoader;
 import java.nio.file.Files;
@@ -35,19 +33,6 @@ public class CacheLibraryLoader extends LibraryLoader {
 
     private final RepositorySystem repository;
     private final DefaultRepositorySystemSession session;
-
-    private static final Field repositoryField;
-    private static final Field sessionField;
-    private static final Field repositoriesField;
-    static {
-        try {
-            repositoryField = Native.access(Native.nonFinal(LibraryLoader.class.getDeclaredField("repository")));
-            sessionField = Native.access(Native.nonFinal(LibraryLoader.class.getDeclaredField("session")));
-            repositoriesField = Native.access(Native.nonFinal(LibraryLoader.class.getDeclaredField("repositories")));
-        } catch (Exception e) {
-            throw new RuntimeException(e);
-        }
-    }
 
     private static final BiFunction<URL[], ClassLoader, URLClassLoader> defaultFactory;
     private static final ReentrantLock cacheLock = new ReentrantLock();
@@ -77,15 +62,14 @@ public class CacheLibraryLoader extends LibraryLoader {
         }
     }
 
+    private final RepositoryLibraryLoader access;
+
     public CacheLibraryLoader(Logger logger) {
         super(logger);
         this.logger = logger;
-        try {
-            this.repository = (RepositorySystem)repositoryField.get(this);
-            this.session = (DefaultRepositorySystemSession)sessionField.get(this);
-        } catch (Exception e) {
-            throw new RuntimeException(e);
-        }
+        this.access = (RepositoryLibraryLoader)this;
+        this.repository = this.access.repository();
+        this.session = this.access.session();
     }
 
     private Optional<RawPluginMeta> getRawMeta(Object data) {
@@ -226,11 +210,11 @@ public class CacheLibraryLoader extends LibraryLoader {
                         this.logger.log(Level.INFO, "[{0}] Registered repository {1}", new Object[] { LOG_PREFIX, repo.getId() + "::" + repo.getUrl() });
                     });
 
-                    try {
-                        repositoriesField.set(this, repository.newResolutionRepositories(session, repositories));
-                    } catch (Exception e) {
-                        throw new RuntimeException(e);
-                    }
+                    var newList = repository.newResolutionRepositories(session, repositories);
+
+                    var list = this.access.repositories();
+                    list.clear();
+                    list.addAll(newList);
                 });
 
         List<String> rawJars = new ArrayList<>();

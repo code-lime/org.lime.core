@@ -4,11 +4,15 @@ import io.papermc.paper.plugin.provider.type.spigot.SpigotPluginProvider;
 import net.minecraft.paper.java.CacheLibraryLoader;
 import net.minecraft.paper.java.OptionSetUtils;
 import net.minecraft.paper.java.RawPluginMeta;
+import net.minecraft.paper.java.RepositoryLibraryLoader;
 import net.minecraft.server.Main;
 import net.minecraft.server.players.PlayerList;
 import org.bukkit.plugin.PluginDescriptionFile;
 import org.bukkit.plugin.java.JavaPluginLoader;
 import org.bukkit.plugin.java.LibraryLoader;
+import org.eclipse.aether.DefaultRepositorySystemSession;
+import org.eclipse.aether.RepositorySystem;
+import org.eclipse.aether.repository.RemoteRepository;
 import org.lime.core.common.system.execute.Execute;
 import org.lime.core.common.system.execute.Callable;
 import org.lime.core.paper.CoreInstancePlugin;
@@ -160,5 +164,34 @@ public class MutatePatcher extends BasePluginPatcher {
                             }
                         }))
                 .patch();
+
+        var libraryLoaderPatcher = archive
+                .of(LibraryLoader.class)
+                .addInterface(Type.getInternalName(RepositoryLibraryLoader.class));
+        addGetter(libraryLoaderPatcher, "repository", RepositorySystem.class);
+        addGetter(libraryLoaderPatcher, "session", DefaultRepositorySystemSession.class);
+        addGetter(libraryLoaderPatcher, "repositories", List.class, signatureType(Type.getDescriptor(List.class), Type.getDescriptor(RemoteRepository.class)));
+        libraryLoaderPatcher.patch();
+    }
+    private <T>void addGetter(ClassPatcher<T> patcher, String name, Class<?> getClass) {
+        addGetter(patcher, name, getClass, Type.getDescriptor(getClass));
+    }
+    private <T>void addGetter(ClassPatcher<T> patcher, String name, Class<?> getClass, String getSignature) {
+        patcher.addMethod(MethodPatcher.mutate(v -> new ProgressMethodVisitor(v, v) {
+            @Override protected List<String> createProgressList() {
+                return List.of("Method.Append");
+            }
+
+            @Override public void visitCode() {
+                super.visitCode();
+                super.visitIntInsn(Opcodes.ALOAD, 0);
+                super.visitFieldInsn(Opcodes.GETFIELD, Type.getInternalName(patcher.tClass()), name, Type.getDescriptor(getClass));
+                super.visitInsn(Opcodes.ARETURN);
+                super.visitMaxs(0, 0);
+                super.visitEnd();
+
+                setProgress("Method.Append");
+            }
+        }), Opcodes.ACC_PUBLIC, name, Type.getMethodDescriptor(Type.getType(getClass)), signatureMethod(getSignature), new String[0]);
     }
 }
