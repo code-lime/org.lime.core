@@ -21,6 +21,10 @@ public final class ClassPatcher<T> {
         this.tClass = tClass;
     }
 
+    public Class<T> tClass() {
+        return tClass;
+    }
+
     public ClassPatcher<T> addInterface(String interfaceClass) {
         this.appendInterfaces.add(interfaceClass);
         return this;
