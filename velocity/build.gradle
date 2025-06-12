@@ -39,6 +39,10 @@ processResources {
             group: "${project.group}",
     ])
 }
+configureTemplates([
+        pluginName: "${group}.core",
+        pluginId: "${group}.${pathName}".toLowerCase().replaceAll("[.:/]", "-")
+])
 //</editor-fold>
 
 configurations {
