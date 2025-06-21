@@ -7,6 +7,8 @@ import org.lime.core.common.Web;
 public class Skin {
     private static final String API_BASE = "https://api.mineskin.org/generate/url";
 
+    private static final int DEFAULT_RETRY = 5;
+
     private static JsonObject getBody(String url, SkinVariant variant) {
         JsonObject json = new JsonObject();
         json.addProperty("visibility", 0);
@@ -25,6 +27,15 @@ public class Skin {
         return json;
     }
     public static SkinData upload(String url, SkinVariant variant) {
+        return upload(url, DEFAULT_RETRY);
+    }
+    public static SkinData upload(String url) {
+        return upload(url, SkinVariant.Auto, DEFAULT_RETRY);
+    }
+
+    public static SkinData upload(String url, SkinVariant variant, int retry) {
+        if (retry < 0)
+            throw new IllegalArgumentException("Many retry");
         BaseCoreInstance.global.$logOP("Upload skin: " + url);
         try {
             Thread.sleep(500);
@@ -48,7 +59,7 @@ public class Skin {
                         Thread.sleep(ms);
                     } catch (Exception ignored) {
                     }
-                    return upload(url, variant);
+                    return upload(url, variant, retry - 1);
                 }
                 case "Failed to find image from url" -> {
                     BaseCoreInstance.global.$logOP("Not found image from url '" + url + "'! Skip and get template...");
@@ -61,7 +72,7 @@ public class Skin {
         BaseCoreInstance.global.$logOP("Uploaded!");
         return new SkinData(data);
     }
-    public static SkinData upload(String url) {
-        return upload(url, SkinVariant.Auto);
+    public static SkinData upload(String url, int retry) {
+        return upload(url, SkinVariant.Auto, retry);
     }
 }
