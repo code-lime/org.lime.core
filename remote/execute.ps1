@@ -21,23 +21,38 @@ Get-Content $envFile | ForEach-Object {
 }
 
 # Check for required variables
-if (-not $REMOTE_USER -or -not $REMOTE_PASSWORD -or -not $REMOTE_ADDRESS) {
+if (-not $REMOTE_USER -or -not $REMOTE_ADDRESS) {
     Write-Host "Missing required environment variables in .env file."
     exit 1
 }
 
+# Allow remote_path in .env (optional)
+$remotePathFromEnv = $null
+if (Get-Variable -Name REMOTE_PATH -Scope Script -ErrorAction SilentlyContinue) {
+    $remotePathFromEnv = $REMOTE_PATH
+}
+
 # Validate arguments and provide default for file pattern
-if ($args.Count -lt 1) {
+if ($args.Count -lt 1 -and -not $remotePathFromEnv) {
     Write-Host "Usage: .\execute.ps1 [<file_pattern>] <remote_path>"
+    Write-Host "Or specify REMOTE_PATH in your .env file."
     exit 1
 }
 
-if ($args.Count -eq 1) {
+if ($args.Count -eq 0) {
+    $filePattern = ".\build\libs\*.jar"
+    $remotePath = $remotePathFromEnv
+} elseif ($args.Count -eq 1) {
     $filePattern = ".\build\libs\*.jar"
     $remotePath = $args[0]
 } else {
     $filePattern = $args[0]
     $remotePath = $args[1]
+}
+
+if (-not $remotePath) {
+    Write-Host "Remote path is not specified. Provide as argument or set REMOTE_PATH in .env."
+    exit 1
 }
 
 # Find files matching the given pattern and ignore *-sources.jar if more than one
@@ -79,16 +94,49 @@ if (-not (Get-Module -ListAvailable -Name Posh-SSH)) {
 }
 Import-Module Posh-SSH
 
-# Create SSH credentials
-$SecurePassword = ConvertTo-SecureString $REMOTE_PASSWORD -AsPlainText -Force
-$Credential = New-Object System.Management.Automation.PSCredential ($REMOTE_USER, $SecurePassword)
-
-# Create an SFTP session with key acceptance (equivalent to -o StrictHostKeyChecking=no)
-try {
-    $sftpSession = New-SFTPSession -ComputerName $REMOTE_ADDRESS -Credential $Credential -AcceptKey -ErrorAction Stop
+# Prepare SFTP parameters
+$SftpParams = @{
+    ComputerName = $REMOTE_ADDRESS
+    AcceptKey = $true
+    ErrorAction = 'Stop'
 }
-catch {
-    Write-Host "Failed to create SFTP session: $_"
+if ($REMOTE_PORT) {
+    $SftpParams.Port = [int]$REMOTE_PORT
+}
+
+# Prepare credentials: support either REMOTE_PASSWORD or REMOTE_SSH_KEY
+$sftpSession = $null
+if ($REMOTE_SSH_KEY) {
+    # Use key authentication
+    if (-not (Test-Path $REMOTE_SSH_KEY)) {
+        Write-Host "Specified REMOTE_SSH_KEY file not found: $REMOTE_SSH_KEY"
+        exit 1
+    }
+    $EmptyPassword = [System.Security.SecureString]::new()
+    $Credential = New-Object System.Management.Automation.PSCredential($REMOTE_USER, $EmptyPassword)
+    $SftpParams.Credential = $Credential
+    $SftpParams.KeyFile = $REMOTE_SSH_KEY
+    try {
+        $sftpSession = New-SFTPSession @SftpParams
+    }
+    catch {
+        Write-Host "Failed to create SFTP session with SSH key: $_"
+        exit 1
+    }
+} elseif ($REMOTE_PASSWORD) {
+    # Use password authentication
+    $SecurePassword = ConvertTo-SecureString $REMOTE_PASSWORD -AsPlainText -Force
+    $Credential = New-Object System.Management.Automation.PSCredential ($REMOTE_USER, $SecurePassword)
+    $SftpParams.Credential = $Credential
+    try {
+        $sftpSession = New-SFTPSession @SftpParams
+    }
+    catch {
+        Write-Host "Failed to create SFTP session: $_"
+        exit 1
+    }
+} else {
+    Write-Host "Neither REMOTE_PASSWORD nor REMOTE_SSH_KEY specified in .env file."
     exit 1
 }
 
