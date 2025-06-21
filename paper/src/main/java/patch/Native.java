@@ -1,11 +1,6 @@
 package patch;
 
-import com.google.common.collect.BiMap;
-import com.google.common.collect.HashBiMap;
-import io.papermc.paper.util.MappingEnvironment;
-import net.neoforged.srgutils.IMappingFile;
 import org.jetbrains.annotations.NotNull;
-import org.lime.core.common.json.builder.Json;
 import org.lime.core.common.reflection.LambdaInfo;
 import org.lime.core.common.system.execute.*;
 import org.objectweb.asm.*;
@@ -15,7 +10,6 @@ import javax.annotation.Nullable;
 import java.io.*;
 import java.lang.invoke.MethodHandleInfo;
 import java.lang.invoke.SerializedLambda;
-import java.util.*;
 
 public class Native {
     static @NotNull Action1<String> logger = System.out::println;
@@ -98,59 +92,5 @@ public class Native {
         return field.owner().equals(owner)
                 && field.name().equals(name)
                 && Type.getType(field.descriptor()).equals(Type.getType(descriptor));
-    }
-
-    private record MappingInfo(String name, String description, boolean isMethod) { }
-    public static Closeable loadDeobf() throws Throwable {
-        InputStream mappingsInputStream = MappingEnvironment.mappingsStreamIfPresent();
-        if (mappingsInputStream == null) return () -> {};
-        IMappingFile tree = IMappingFile.load(mappingsInputStream);
-        for (IMappingFile.IClass classMapping : tree.getClasses()) {
-            BiMap<MappingInfo, MappingInfo> members = HashBiMap.create();
-            /*MOJANG+YARN - ORIGINAL*/
-            /*SPIGOT - MAPPED*/
-            for (IMappingFile.IMethod member : classMapping.getMethods())
-                members.put(
-                        new MappingInfo(member.getOriginal(), member.getMappedDescriptor(), true),
-                        new MappingInfo(member.getMapped(), member.getMappedDescriptor(), true)
-                );
-
-            for (IMappingFile.IField member : classMapping.getFields())
-                members.put(
-                        new MappingInfo(member.getOriginal(), member.getMappedDescriptor(), false),
-                        new MappingInfo(member.getMapped(), member.getMappedDescriptor(), false)
-                );
-
-            classesSpigotToMojang.put(classMapping.getMapped().replace('/', '.'), members);
-        }
-        return mappingsInputStream;
-    }
-    private static final Map<String, BiMap<MappingInfo, MappingInfo>> classesSpigotToMojang = new HashMap<>();
-    private static final List<Class<?>> dat = new ArrayList<>();
-    private static String getRawName(Class<?> tClass, String name, String desc, boolean isMethod, boolean getSpigotName) {
-        BiMap<MappingInfo, MappingInfo> mapping = classesSpigotToMojang.get(tClass.getName());
-        if (!getSpigotName) mapping = mapping.inverse();
-        if (mapping == null) return name;
-        if (dat.contains(tClass)) {
-            log("Class " + tClass.getName() + " with found " + (isMethod ? "method" : "field") + " " + name + desc + "\n" + Json.object().add(mapping, Record::toString, v -> v).build().toString());
-            dat.add(tClass);
-        }
-        MappingInfo src_info = mapping.get(new MappingInfo(name, desc, isMethod));
-        return src_info == null ? name : src_info.name();
-    }
-    private static String getRawName(Class<?> tClass, String name, Type desc, boolean isMethod, boolean getSpigotName) {
-        return getRawName(tClass, name, desc.getDescriptor(), isMethod, getSpigotName);
-    }
-    public static String getMojangName(Class<?> tClass, String name, String desc, boolean isMethod) {
-        return getRawName(tClass, name, desc, isMethod, false);
-    }
-    public static String getMojangName(Class<?> tClass, String name, Type desc, boolean isMethod) {
-        return getRawName(tClass, name, desc, isMethod, false);
-    }
-    public static String getSpigotName(Class<?> tClass, String name, String desc, boolean isMethod) {
-        return getRawName(tClass, name, desc, isMethod, true);
-    }
-    public static String getSpigotName(Class<?> tClass, String name, Type desc, boolean isMethod) {
-        return getRawName(tClass, name, desc, isMethod, true);
     }
 }
