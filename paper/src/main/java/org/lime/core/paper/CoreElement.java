@@ -1,7 +1,6 @@
 package org.lime.core.paper;
 
 import org.bukkit.Bukkit;
-import org.bukkit.boss.BossBar;
 import org.bukkit.event.Listener;
 import org.bukkit.permissions.Permission;
 import org.bukkit.plugin.PluginManager;

@@ -22,7 +22,6 @@ import org.lime.core.common.system.Lazy;
 
 import java.util.Collection;
 import java.util.Collections;
-import java.util.Objects;
 import java.util.stream.Collectors;
 
 public abstract class CoreCommand<T extends CommandSender, Self extends CoreCommand<T, Self>>
