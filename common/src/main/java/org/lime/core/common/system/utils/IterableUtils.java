@@ -1,5 +1,8 @@
 package org.lime.core.common.system.utils;
 
+import com.google.common.collect.Iterables;
+import org.checkerframework.checker.nullness.qual.Nullable;
+import org.jetbrains.annotations.NotNull;
 import org.lime.core.common.system.execute.Action1;
 import org.lime.core.common.system.execute.Action2;
 import org.lime.core.common.system.execute.Func0;
@@ -92,5 +95,76 @@ public class IterableUtils {
     }
     public static <T>Stream<Tuple2<Integer, T>> streamIndexed(List<T> list) {
         return IntStream.range(0, list.size()).mapToObj(i -> Tuple.of(i, list.get(i)));
+    }
+
+    @SafeVarargs
+    public static <T extends @Nullable Object> Collection<T> concat(Collection<? extends T>... inputs) {
+        return new CombineCollection<>(inputs);
+    }
+
+    private static class CombineCollection<T> extends AbstractCollection<T> {
+        private final Collection<? extends T>[] inputs;
+        @SafeVarargs
+        public CombineCollection(Collection<? extends T>... inputs) {
+            this.inputs = inputs;
+        }
+        @Override
+        public int size() {
+            int size = 0;
+            for (var input : inputs)
+                size += input.size();
+            return size;
+        }
+        @Override
+        public boolean isEmpty() {
+            for (var input : inputs)
+                if (!input.isEmpty())
+                    return false;
+            return true;
+        }
+        @Override
+        public boolean contains(Object o) {
+            for (var input : inputs)
+                if (input.contains(o))
+                    return true;
+            return false;
+        }
+        @Override
+        public @NotNull Iterator<T> iterator() {
+            return Iterables.concat(inputs).iterator();
+        }
+        @Override
+        public boolean remove(Object o) {
+            for (var input : inputs)
+                if (input.remove(o))
+                    return true;
+            return false;
+        }
+        @Override
+        public boolean containsAll(@NotNull Collection<?> c) {
+            for (Object e : c)
+                if (!contains(e))
+                    return false;
+            return true;
+        }
+        @Override
+        public boolean removeAll(@NotNull Collection<?> c) {
+            boolean modified = false;
+            for (var input : inputs)
+                modified = input.removeAll(c) || modified;
+            return modified;
+        }
+        @Override
+        public boolean retainAll(@NotNull Collection<?> c) {
+            boolean modified = false;
+            for (var input : inputs)
+                modified = input.retainAll(c) || modified;
+            return modified;
+        }
+        @Override
+        public void clear() {
+            for (var input : inputs)
+                input.clear();
+        }
     }
 }
