@@ -11,7 +11,7 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 
-public abstract class BaseCoreElement<T, Command extends BaseCoreCommandRegister<Owner, Command>, Owner extends BaseCoreCommandAccess<Command, Owner> & BaseConfig, Self extends BaseCoreElement<T, Command, Owner, Self>>
+public abstract class BaseCoreElement<T, Command extends BaseCoreCommandRegister<Owner>, Owner extends BaseCoreCommandAccess<Command, Owner> & BaseConfig, Self extends BaseCoreElement<T, Command, Owner, Self>>
         implements CoreElementIdentity<T>,
         CoreElementInstance<T, Self>,
         CoreElementInit<Command, Owner, Self>,

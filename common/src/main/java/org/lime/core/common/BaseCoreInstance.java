@@ -9,7 +9,7 @@ import java.util.*;
 import java.util.stream.Stream;
 
 public abstract class BaseCoreInstance<
-        Command extends BaseCoreCommandRegister<Self, Command>,
+        Command extends BaseCoreCommandRegister<Self>,
         Self extends BaseCoreInstance<Command, Self>>
         extends BaseCoreLoader<Command, Self> {
     public static BaseGlobal global;

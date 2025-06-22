@@ -1,6 +1,8 @@
 package org.lime.core.common.api.commands;
 
+import com.mojang.brigadier.builder.ArgumentBuilder;
 import org.jetbrains.annotations.Nullable;
+import org.lime.core.common.system.execute.Action1;
 
 import java.util.Collection;
 
@@ -13,6 +15,7 @@ public abstract class BaseCoreCommand<Sender, Data, Self extends BaseCoreCommand
     protected @Nullable CommandAction<Sender, Data, Boolean> check = null;
     protected @Nullable CommandAction<Sender, Data, Collection<String>> tab = null;
     protected @Nullable CommandAction<Sender, Data, Boolean> executor = null;
+    protected @Nullable Action1<ArgumentBuilder<Data, ?>> nativeCommand = null;
 
     public String cmd() {
         return cmd;
@@ -47,6 +50,10 @@ public abstract class BaseCoreCommand<Sender, Data, Self extends BaseCoreCommand
     }
     public Self withUsage(String usage) {
         this.usage = usage;
+        return self();
+    }
+    public Self withNative(Action1<ArgumentBuilder<Data, ?>> nativeCommand) {
+        this.nativeCommand = nativeCommand;
         return self();
     }
 

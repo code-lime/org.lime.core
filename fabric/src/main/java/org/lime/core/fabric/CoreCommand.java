@@ -2,6 +2,7 @@ package org.lime.core.fabric;
 
 import com.mojang.brigadier.Command;
 import com.mojang.brigadier.arguments.StringArgumentType;
+import com.mojang.brigadier.builder.ArgumentBuilder;
 import com.mojang.brigadier.builder.LiteralArgumentBuilder;
 import com.mojang.brigadier.suggestion.SuggestionsBuilder;
 import net.kyori.adventure.platform.fabric.impl.AdventureCommandSourceStackInternal;
@@ -30,7 +31,7 @@ public abstract class CoreCommand<T extends CommandSource, Self>
 
     public static class Register
             extends CoreCommand<CommandSource, Register>
-            implements BaseCoreCommandRegister<CoreInstance, Register> {
+            implements BaseCoreCommandRegister<CoreInstance> {
         @Override
         protected Register self() {
             return this;
@@ -53,10 +54,17 @@ public abstract class CoreCommand<T extends CommandSource, Self>
         }
 
         public LiteralArgumentBuilder<CommandSourceStack> build() {
+            LiteralArgumentBuilder<CommandSourceStack> root = LiteralArgumentBuilder.literal(cmd);
+
+            if (nativeCommand != null) {
+                nativeCommand.invoke(root);
+                return root;
+            }
+
             CommandAction<CommandSource, CommandSourceStack, Boolean> check = this.check == null ? (v0, v1, v3) -> true : this.check;
             CommandAction<CommandSource, CommandSourceStack, Boolean> execute = combine(check, executor);
 
-            return Commands.literal(cmd)
+            return root
                     .then(Commands.argument("args", StringArgumentType.greedyString())
                             .suggests((context, suggestionsBuilder) -> {
                                 String[] args = StringUtils.split(suggestionsBuilder.getRemaining());

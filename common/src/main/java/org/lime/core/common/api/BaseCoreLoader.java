@@ -15,7 +15,7 @@ import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 public abstract class BaseCoreLoader<
-        Command extends BaseCoreCommandRegister<Self, Command>,
+        Command extends BaseCoreCommandRegister<Self>,
         Self extends BaseCoreLoader<Command, Self>>
         implements BaseGlobal, BaseCoreJarAccess, BaseCoreCommandAccess<Command, Self>, BaseCoreElementAccess<Command, Self>, BaseInvokeProgress {
     protected abstract void setBaseCore(Self baseCore);

@@ -8,7 +8,6 @@ import net.minecraft.paper.java.RepositoryLibraryLoader;
 import net.minecraft.server.Main;
 import net.minecraft.server.players.PlayerList;
 import org.bukkit.plugin.PluginDescriptionFile;
-import org.bukkit.plugin.java.JavaPluginLoader;
 import org.bukkit.plugin.java.LibraryLoader;
 import org.eclipse.aether.DefaultRepositorySystemSession;
 import org.eclipse.aether.RepositorySystem;
@@ -26,6 +25,7 @@ import java.io.File;
 import java.util.List;
 import java.util.Map;
 
+@SuppressWarnings("removal")
 public class MutatePatcher extends BasePluginPatcher {
     public static void register() {
         Patcher.addPatcher(new MutatePatcher());
@@ -65,7 +65,7 @@ public class MutatePatcher extends BasePluginPatcher {
         archive
                 .patchMethod(MethodFilter.of(SpigotPluginProvider.class, MethodInfo.STATIC_CONSTRUCTOR, false),
                         mutateCacheLibraryLoader)
-                .patchMethod(MethodFilter.of(JavaPluginLoader.class, MethodInfo.OBJECT_CONSTRUCTOR, false),
+                .patchMethod(MethodFilter.of(org.bukkit.plugin.java.JavaPluginLoader.class, MethodInfo.OBJECT_CONSTRUCTOR, false),
                         mutateCacheLibraryLoader)
                 .patchMethod(MethodFilter.of(Execute.actionEx(Main::main)),
                         MethodPatcher.mutate(v -> new ProgressMethodVisitor(v, v) {

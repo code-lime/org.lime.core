@@ -28,7 +28,7 @@ public abstract class CoreCommand<T extends CommandSource, Self>
 
     public static class Register
             extends CoreCommand<CommandSource, Register>
-            implements BaseCoreCommandRegister<CoreInstance, Register> {
+            implements BaseCoreCommandRegister<CoreInstance> {
         @Override
         protected Register self() {
             return this;
@@ -53,10 +53,17 @@ public abstract class CoreCommand<T extends CommandSource, Self>
         }
 
         public LiteralArgumentBuilder<CommandSource> build() {
+            LiteralArgumentBuilder<CommandSource> root = LiteralArgumentBuilder.literal(cmd);
+
+            if (nativeCommand != null) {
+                nativeCommand.invoke(root);
+                return root;
+            }
+
             CommandAction<CommandSource, CommandSource, Boolean> check = this.check == null ? (v0, v1, v3) -> true : this.check;
             CommandAction<CommandSource, CommandSource, Boolean> execute = combine(check, executor);
 
-            return BrigadierCommand.literalArgumentBuilder(cmd)
+            return root
                     .then(BrigadierCommand.requiredArgumentBuilder("args", StringArgumentType.greedyString())
                             .suggests((context, suggestionsBuilder) -> {
                                 String[] args = StringUtils.split(suggestionsBuilder.getRemaining());

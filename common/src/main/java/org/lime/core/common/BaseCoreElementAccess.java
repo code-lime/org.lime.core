@@ -17,7 +17,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.stream.Stream;
 
-public interface BaseCoreElementAccess<Command extends BaseCoreCommandRegister<Self, Command>, Self extends BaseCoreElementAccess<Command, Self>>
+public interface BaseCoreElementAccess<Command extends BaseCoreCommandRegister<Self>, Self extends BaseCoreElementAccess<Command, Self>>
         extends BaseCoreJarAccess, BaseCoreCommandAccess<Command, Self>, BaseConfig {
     <T, Element extends BaseCoreElement<T, Command, Self, Element>> CoreElementLoaded<T, Element> addElement(Element element);
     Class<? super BaseCoreElement<?, Command, Self, ?>> elementClass();
