@@ -55,7 +55,7 @@ public abstract class BaseCoreInstance<
     }
     @Override
     public void addCommand(Command command) {
-        commands.put(command.cmd(), command);
+        commands.compute(command.cmd(), (cmd, other) -> other == null ? command : other.join(command, this));
     }
     @Override
     public Stream<BaseCoreElement<?, Command, Self, ?>> elements() {
