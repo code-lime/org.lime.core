@@ -18,8 +18,8 @@ import org.lime.core.common.api.commands.CommandAction;
 
 import java.util.Collection;
 
-public abstract class CoreCommand<T extends CommandSource, Self>
-        extends BaseCoreCommand<T, CommandSourceStack, CoreCommand<T, Self>> {
+public abstract class CoreCommand<T extends CommandSource, Self extends CoreCommand<T, Self>>
+        extends BaseCoreCommand<T, CommandSourceStack, Self> {
     CoreCommand(String cmd, Class<T> sender) {
         super(cmd, sender);
     }
@@ -31,7 +31,7 @@ public abstract class CoreCommand<T extends CommandSource, Self>
 
     public static class Register
             extends CoreCommand<CommandSource, Register>
-            implements BaseCoreCommandRegister<CoreInstance> {
+            implements BaseCoreCommandRegister<CoreInstance, Register> {
         @Override
         protected Register self() {
             return this;

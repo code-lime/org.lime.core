@@ -25,8 +25,8 @@ import java.util.Collections;
 import java.util.Objects;
 import java.util.stream.Collectors;
 
-public abstract class CoreCommand<T extends CommandSender, Self>
-        extends BaseCoreCommand<T, CommandSourceStack, CoreCommand<T, Self>> {
+public abstract class CoreCommand<T extends CommandSender, Self extends CoreCommand<T, Self>>
+        extends BaseCoreCommand<T, CommandSourceStack, Self> {
     CoreCommand(String cmd, Class<T> sender) {
         super(cmd, sender);
     }
@@ -38,7 +38,7 @@ public abstract class CoreCommand<T extends CommandSender, Self>
 
     public static class Register
             extends CoreCommand<CommandSender, Register>
-            implements BaseCoreCommandRegister<CoreInstancePlugin.CoreInstance> {
+            implements BaseCoreCommandRegister<CoreInstancePlugin.CoreInstance, Register> {
         @Override
         protected Register self() {
             return this;
