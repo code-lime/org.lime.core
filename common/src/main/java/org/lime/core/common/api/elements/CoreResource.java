@@ -1,8 +1,6 @@
 package org.lime.core.common.api.elements;
 
-import com.google.gson.JsonElement;
-import com.google.gson.JsonObject;
-import com.google.gson.JsonPrimitive;
+import com.google.gson.*;
 import org.lime.core.common.api.BaseConfig;
 import org.lime.core.common.system.execute.Action1;
 import org.lime.core.common.system.execute.Func0;
@@ -58,6 +56,18 @@ public class CoreResource<T> {
     @SuppressWarnings("unchecked")
     public static <T extends JsonElement> CoreResource<T> json() {
         return create(Type.Json, text -> (T) Json.parse(text), Json::format);
+    }
+
+    public static <T> CoreResource<T> gson(Class<T> rawClass, Func1<GsonBuilder, GsonBuilder> configure) {
+        GsonBuilder builder = new GsonBuilder()
+                .setFieldNamingPolicy(FieldNamingPolicy.LOWER_CASE_WITH_UNDERSCORES)
+                .serializeNulls()
+                .disableHtmlEscaping();
+        builder = configure.invoke(builder);
+        Gson gson = builder.create();
+        return create(Type.Json,
+                v -> gson.fromJson(v, rawClass),
+                v -> Json.format(gson.toJsonTree(v, rawClass)));
     }
 
     public static CoreResource<String> text() {

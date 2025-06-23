@@ -1,5 +1,6 @@
 package org.lime.core.common.api.elements;
 
+import com.google.gson.GsonBuilder;
 import com.google.gson.JsonElement;
 import org.lime.core.common.system.execute.Action0;
 import org.lime.core.common.system.execute.Func1;
@@ -12,6 +13,12 @@ public interface CoreElementConfig<Self extends CoreElementConfig<Self>> {
     }
     default <J extends JsonElement> Self addConfig(String config, Func1<CoreResource<J>, CoreResource<J>> builder) {
         return addFile(config + ".json", config, builder.invoke(CoreResource.json()));
+    }
+    default <J>Self addConfig(String config, Class<J> rawClass, Func1<CoreResource<J>, CoreResource<J>> builder) {
+        return addConfig(config, rawClass, v -> v, builder);
+    }
+    default <J>Self addConfig(String config, Class<J> rawClass, Func1<GsonBuilder, GsonBuilder> configure, Func1<CoreResource<J>, CoreResource<J>> builder) {
+        return addFile(config + ".json", config, builder.invoke(CoreResource.gson(rawClass, configure)));
     }
 
     default Self addEmpty(String key, Action0 callback) {
