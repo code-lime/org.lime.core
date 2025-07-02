@@ -27,12 +27,6 @@ class OpenAllAgent
                 .findModule("java.base")
                 .orElseThrow(() -> new IllegalStateException("java.base not found"));
 
-        ScheduledExecutorService exec = Executors.newSingleThreadScheduledExecutor(r -> {
-            Thread t = new Thread(r, "open-all-agent");
-            t.setDaemon(true);
-            return t;
-        });
-
         Loader loader = new Loader(instrumentation, javaBase);
         loader.tick();
         exec.scheduleAtFixedRate(loader::tick, 1, 1, TimeUnit.SECONDS);
