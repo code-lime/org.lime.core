@@ -5,23 +5,22 @@ import com.comphenix.protocol.ProtocolLibrary;
 import com.comphenix.protocol.events.PacketAdapter;
 import com.comphenix.protocol.events.PacketEvent;
 import com.google.common.collect.Streams;
-import net.minecraft.network.ProtocolInfo;
+import com.google.gson.JsonElement;
+import net.minecraft.data.info.PacketReport;
 import net.minecraft.network.protocol.Packet;
-import net.minecraft.network.protocol.configuration.ConfigurationProtocols;
-import net.minecraft.network.protocol.game.GameProtocols;
-import net.minecraft.network.protocol.handshake.HandshakeProtocols;
-import net.minecraft.network.protocol.login.LoginProtocols;
-import net.minecraft.network.protocol.status.StatusProtocols;
 import net.minecraft.server.network.ServerPlayerConnection;
 import org.bukkit.craftbukkit.entity.CraftPlayer;
 import org.bukkit.entity.Player;
 import org.bukkit.plugin.Plugin;
+import org.lime.core.common.BaseCoreInstance;
 import org.lime.core.common.Unsafe;
+import org.lime.core.common.reflection.ReflectionMethod;
 import org.lime.core.common.system.ListBuilder;
 import org.lime.core.common.system.execute.*;
 import org.lime.core.common.system.tuple.*;
 
 import java.util.*;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.ConcurrentMap;
 import java.util.stream.Collectors;
@@ -76,44 +75,40 @@ public class PacketManager {
                 return add(Collections.singletonList(type), func);
             }
 
-            private static Optional<Integer> findPacketIndex(
-                    net.minecraft.network.protocol.PacketType<?> type,
-                    ProtocolInfo.Unbound<?, ?> template) {
-                List<Integer> indexList = new ArrayList<>();
+            private record PacketIndex(String protocol, String flow, String type) {
+                public static PacketIndex of(PacketType.Protocol protocol, net.minecraft.network.protocol.PacketType<?> type) {
+                    return new PacketIndex(protocol.getMojangName(), type.flow().id(), type.id().toString());
+                }
+            }
 
-                template.listPackets((packetType, index) -> {
-                    if (packetType.equals(type))
-                        indexList.add(index);
-                });
-
-                return indexList.isEmpty() ? Optional.empty() : Optional.of(indexList.getFirst());
+            private static final Map<PacketIndex, Integer> packetIndexes;
+            static {
+                JsonElement result = (JsonElement)ReflectionMethod.ofMojang(PacketReport.class, "serializePackets")
+                    .call(new PacketReport(null), new Object[0]);
+                packetIndexes = new ConcurrentHashMap<>();
+                result.getAsJsonObject()
+                        .asMap()
+                        .forEach((protocol, unbound) -> unbound
+                                .getAsJsonObject()
+                                .asMap()
+                                .forEach((flow, packets) -> packets
+                                        .getAsJsonObject()
+                                        .asMap()
+                                        .forEach((type, data) -> packetIndexes.put(
+                                                new PacketIndex(protocol, flow, type),
+                                                data.getAsJsonObject()
+                                                        .get("protocol_id")
+                                                        .getAsInt()))));
             }
             private static Optional<Tuple2<Integer, PacketType.Protocol>> findPacketData(
                     net.minecraft.network.protocol.PacketType<?> type) {
-                Map<PacketType.Protocol, ProtocolInfo.Unbound<?, ?>> templates = new HashMap<>();
-                switch (type.flow()) {
-                    case CLIENTBOUND -> {
-                        templates.put(PacketType.Protocol.STATUS, StatusProtocols.CLIENTBOUND_TEMPLATE);
-                        templates.put(PacketType.Protocol.LOGIN, LoginProtocols.CLIENTBOUND_TEMPLATE);
-                        templates.put(PacketType.Protocol.CONFIGURATION, ConfigurationProtocols.CLIENTBOUND_TEMPLATE);
-                        templates.put(PacketType.Protocol.PLAY, GameProtocols.CLIENTBOUND_TEMPLATE);
-                    }
-                    case SERVERBOUND -> {
-                        templates.put(PacketType.Protocol.HANDSHAKING, HandshakeProtocols.SERVERBOUND_TEMPLATE);
-                        templates.put(PacketType.Protocol.STATUS, StatusProtocols.SERVERBOUND_TEMPLATE);
-                        templates.put(PacketType.Protocol.LOGIN, LoginProtocols.SERVERBOUND_TEMPLATE);
-                        templates.put(PacketType.Protocol.CONFIGURATION, ConfigurationProtocols.SERVERBOUND_TEMPLATE);
-                        templates.put(PacketType.Protocol.PLAY, GameProtocols.SERVERBOUND_TEMPLATE);
-                    }
-                }
-                for (var kv : templates.entrySet()) {
-                    var index = findPacketIndex(type, kv.getValue());
-                    if (index.isPresent())
-                        return Optional.of(Tuple.of(index.get(), kv.getKey()));
+                for (PacketType.Protocol protocol : PacketType.Protocol.values()) {
+                    var index = packetIndexes.get(PacketIndex.of(protocol, type));
+                    if (index != null)
+                        return Optional.of(Tuple.of(index, protocol));
                 }
                 return Optional.empty();
             }
-
             @SuppressWarnings("unchecked")
             public <T extends Packet<?>>Builder add(Class<T> packetClass, Action2<T, PacketEvent> func) {
                 var types = classToPacketTypes.get(packetClass);
