@@ -9,7 +9,7 @@ dependencies {
     implementation project(':common')
 }
 
-versionByteBuddyAgent = project(":common").versionByteBuddyAgent
+versionByteBuddy = project(":common").versionByteBuddy
 versionGraalVm = project(":common").versionGraalVm
 
 projectCombineJars(project(':common'))
