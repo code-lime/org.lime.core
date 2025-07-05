@@ -177,6 +177,8 @@ class SourceGenerator {
                     String _text = _kv.getValue()
                     var _filePath = Paths.get(file.parentFile.absolutePath, _kv.getKey()).toAbsolutePath()
                     var _file = _filePath.toFile()
+                    if (!_file.exists())
+                        _file.createNewFile()
                     if (_file.text == _text) {
                         //System.out.println("EQUALS EDITED: " + filePath);
                     } else {
