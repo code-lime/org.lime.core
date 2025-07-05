@@ -16,7 +16,7 @@ import java.util.stream.Stream;
 
 public class CoreInstance
         extends BaseCoreInstance<CoreCommand.Register, CoreInstance>
-        implements ModInitializer, FabricState, FabricLogger, FabricElementAccess, FabricCommandAccess {
+        implements ModInitializer, FabricBrigadier, FabricState, FabricLogger, FabricElementAccess, FabricCommandAccess {
     static {
         Agents.load();
     }

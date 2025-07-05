@@ -38,7 +38,7 @@ import java.util.stream.Stream;
 )
 public class CoreInstance
         extends BaseCoreInstance<CoreCommand.Register, CoreInstance>
-        implements VelocityState, VelocityLogger, VelocityElementAccess, VelocityCommandAccess {
+        implements VelocityBrigadier, VelocityState, VelocityLogger, VelocityElementAccess, VelocityCommandAccess {
     public static CoreInstance core;
 
     private final ProxyServer server;

@@ -25,6 +25,9 @@ public abstract class BaseCoreCommand<Sender, Data, Self extends BaseCoreCommand
     public String cmd() {
         return cmd;
     }
+    public Class<Sender> sender() {
+        return sender;
+    }
 
     protected BaseCoreCommand(String cmd, Class<Sender> sender) {
         this.cmd = cmd;

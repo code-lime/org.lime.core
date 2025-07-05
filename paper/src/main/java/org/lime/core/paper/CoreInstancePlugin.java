@@ -52,7 +52,7 @@ public class CoreInstancePlugin extends JavaPlugin {
 
     public static final class CoreInstance
             extends BaseCoreInstance<CoreCommand.Register, CoreInstance>
-            implements PaperState, PaperLogger, PaperElementAccess, PaperCommandAccess {
+            implements PaperBrigadier, PaperState, PaperLogger, PaperElementAccess, PaperCommandAccess {
         public static CoreInstance core;
 
         private final CoreInstancePlugin plugin;

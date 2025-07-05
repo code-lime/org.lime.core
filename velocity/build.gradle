@@ -55,6 +55,11 @@ dependencies {
     embedded "net.bytebuddy:byte-buddy-agent:${versionByteBuddy}"
 }
 //</editor-fold>
+//<editor-fold desc="Settings: Libraries: ByteBuddyt">
+dependencies {
+    implementation "net.bytebuddy:byte-buddy:${versionByteBuddy}"
+}
+//</editor-fold>
 //<editor-fold desc="Settings: Libraries: Libby">
 repositories {
     maven {
