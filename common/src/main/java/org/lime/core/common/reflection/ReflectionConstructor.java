@@ -15,6 +15,11 @@ public record ReflectionConstructor<T>(Constructor<T> constructor) {
         return of(Reflection.constructor(tClass, args));
     }
 
+    public ReflectionConstructor<T> access() {
+        Reflection.access(constructor);
+        return this;
+    }
+
     public T newInstance(Object... args) {
         try {
             return constructor.newInstance(args);
