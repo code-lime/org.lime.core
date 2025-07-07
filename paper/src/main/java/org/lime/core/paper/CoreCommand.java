@@ -27,7 +27,7 @@ import java.util.stream.Collectors;
 public abstract class CoreCommand<T extends CommandSender, Self extends CoreCommand<T, Self>>
         extends BaseCoreCommand<T, CommandSourceStack, Self> {
     CoreCommand(String cmd, Class<T> sender) {
-        super(cmd, sender);
+        super(cmd, sender, CommandSourceStack.class);
     }
 
     @Override

@@ -15,6 +15,7 @@ public abstract class BaseCoreCommand<Sender, Data, Self extends BaseCoreCommand
         implements CoreCommandTab<Sender, Data, Self>, CoreCommandCheck<Sender, Data, Self>, CoreCommandExecutor<Sender, Data, Self>, CoreCommandSimple<Self> {
     public final String cmd;
     protected final Class<Sender> sender;
+    protected final Class<Data> data;
     protected @Nullable String description = null;
     protected @Nullable String usage = null;
     protected @Nullable CommandAction<Sender, Data, Boolean> check = null;
@@ -25,13 +26,14 @@ public abstract class BaseCoreCommand<Sender, Data, Self extends BaseCoreCommand
     public String cmd() {
         return cmd;
     }
-    public Class<Sender> sender() {
-        return sender;
+    public Class<Data> source() {
+        return data;
     }
 
-    protected BaseCoreCommand(String cmd, Class<Sender> sender) {
+    protected BaseCoreCommand(String cmd, Class<Sender> sender, Class<Data> data) {
         this.cmd = cmd;
         this.sender = sender;
+        this.data = data;
     }
 
     protected abstract Self self();

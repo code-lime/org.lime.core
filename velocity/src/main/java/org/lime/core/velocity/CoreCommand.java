@@ -18,7 +18,7 @@ import java.util.Collection;
 public abstract class CoreCommand<T extends CommandSource, Self extends CoreCommand<T, Self>>
         extends BaseCoreCommand<T, CommandSource, Self> {
     CoreCommand(String cmd, Class<T> sender) {
-        super(cmd, sender);
+        super(cmd, sender, CommandSource.class);
     }
 
     @Override
