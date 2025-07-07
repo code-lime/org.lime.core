@@ -5,7 +5,8 @@
   "compatibilityLevel": "JAVA_17",
   "mixins": [
     "ArgumentCommandNodeMixin",
-    "ArgumentTypeInfosMixin"
+    "ArgumentTypeInfosMixin",
+    "RequiredArgumentBuilderMixin"
   ],
   "injectors": {
     "defaultRequire": 1

@@ -26,9 +26,6 @@ loom {
             sourceSet sourceSets.client
         }
     }
-    layered {
-        officialMojangMappings()
-    }
 }
 
 dependencies {
