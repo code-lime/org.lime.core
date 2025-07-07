@@ -51,7 +51,6 @@ public class Commands {
                 @SuperCall Callable<?> superCall) throws Exception {
             if (instance instanceof RequiredArgumentBuilder<?,?> requiredArgumentBuilder)
                 if (requiredArgumentBuilder.getType() instanceof CustomArgumentType customArgumentType) {
-                    System.out.println("BUILD: " + customArgumentType);
                     return of(customArgumentType, requiredArgumentBuilder);
                 }
             return superCall.call();
