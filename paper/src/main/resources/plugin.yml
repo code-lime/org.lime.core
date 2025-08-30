@@ -1,6 +1,6 @@
 name: ${group}.core
 version: ${version}
-main: org.lime.core.paper.CoreInstancePlugin
+main: org.lime.core.paper.CorePaperPlugin
 api-version: 1.13
 authors: [Lime]
 softdepend: [ProtocolLib]
