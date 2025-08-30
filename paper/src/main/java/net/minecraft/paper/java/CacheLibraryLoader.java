@@ -197,7 +197,7 @@ public class CacheLibraryLoader extends LibraryLoader {
         return meta
                 .map(v -> v.get("custom-libraries"))
                 .map(v -> {
-                    var customLibraries = (List<?>)v;
+                    var customLibraries = (Collection<?>)v;
                     List<String> libraries = new ArrayList<>(desc.getLibraries());
                     customLibraries.forEach(customLibrary -> libraries.add(customLibrary.toString()));
                     return libraries;
