@@ -3,7 +3,6 @@ package org.lime.core.common;
 import com.google.inject.Guice;
 import com.google.inject.Injector;
 import net.minecraft.unsafe.GlobalConfigure;
-import org.lime.core.common.api.BindService;
 import org.lime.core.common.reflection.ReflectionField;
 import org.lime.core.common.reflection.ReflectionMethod;
 import org.lime.core.common.api.RequireCommand;
@@ -19,18 +18,11 @@ import java.lang.annotation.Annotation;
 import java.lang.reflect.Field;
 import java.lang.reflect.Method;
 import java.nio.file.Path;
-import java.util.Optional;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.function.BiConsumer;
-import java.util.function.Function;
 import java.util.stream.Stream;
 
 public abstract class BaseInstance<Instance extends BaseInstance<Instance>> {
-    static {
-        GlobalConfigure.configure();
-    }
-
     public BaseInstanceModule<?> module;
 
     protected abstract boolean isCore();
@@ -61,6 +53,9 @@ public abstract class BaseInstance<Instance extends BaseInstance<Instance>> {
     protected void disableService(Service service) {}
 
     public void enable() {
+        if (isCore())
+            GlobalConfigure.configure();
+
         module = createModule();
         if (isCore())
             module.executeCore();
