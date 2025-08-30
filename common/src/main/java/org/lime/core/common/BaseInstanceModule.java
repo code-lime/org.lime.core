@@ -305,6 +305,10 @@ public abstract class BaseInstanceModule<Instance extends BaseInstance<Instance>
         bind(LiteCommandConsumer.Factory.class).toInstance(liteCommandFactory());
         bind(NativeCommandConsumer.Factory.class).toInstance(nativeCommandFactory());
 
+        bind(new TypeLiteral<BaseInstance<?>>() {}).toInstance(instance);
+        bind(new TypeLiteral<LiteCommandConsumer.Factory<?,?,?>>() {}).toInstance(liteCommandFactory());
+        bind(new TypeLiteral<NativeCommandConsumer.Factory<?,?>>() {}).toInstance(nativeCommandFactory());
+
         bindCustom(UpdateConfigService.class);
 
         instance

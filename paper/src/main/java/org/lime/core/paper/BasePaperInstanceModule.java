@@ -1,5 +1,6 @@
 package org.lime.core.paper;
 
+import com.google.inject.TypeLiteral;
 import org.bukkit.Bukkit;
 import org.bukkit.plugin.Plugin;
 import org.bukkit.plugin.PluginBase;
@@ -47,6 +48,8 @@ public class BasePaperInstanceModule<Instance extends BasePaperInstance<Instance
         bind(PluginBase.class).toInstance(instance.plugin);
         bind(JavaPlugin.class).toInstance(instance.plugin);
         bind(BasePaperPlugin.class).toInstance(instance.plugin);
+
+        bind(new TypeLiteral<BasePaperInstance<?>>(){}).toInstance(instance);
 
         bind(BukkitScheduler.class).toInstance(Bukkit.getScheduler());
         bind(ScheduleTaskService.class).to(BukkitScheduleTaskService.class);
