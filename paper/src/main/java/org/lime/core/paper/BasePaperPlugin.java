@@ -6,24 +6,17 @@ import dev.rollczi.litecommands.bukkit.LiteBukkitSettings;
 import io.papermc.paper.plugin.lifecycle.event.types.LifecycleEvents;
 import org.bukkit.command.CommandSender;
 import org.bukkit.plugin.java.JavaPlugin;
-import org.lime.core.common.agent.Agents;
 import org.lime.core.common.api.commands.CommandConsumer;
 import org.lime.core.common.api.commands.LiteCommandConsumer;
 import org.lime.core.common.api.commands.NativeCommandConsumer;
 import org.lime.core.common.utils.Disposable;
 import org.lime.core.paper.commands.LiteCommandConsumerFactory;
 import org.lime.core.paper.commands.NativeCommandConsumerFactory;
-import patch.core.MutatePatcher;
 
 import java.io.File;
 
 public abstract class BasePaperPlugin
         extends JavaPlugin {
-    static {
-        Agents.load();
-        MutatePatcher.register();
-    }
-
     protected final BasePaperInstance<?> instance;
     protected BasePaperPlugin() {
         this.instance = instance();
@@ -87,8 +80,5 @@ public abstract class BasePaperPlugin
     @Override
     public void onDisable() {
         instance.disable();
-
-        if (instance.isCore())
-            Agents.unload();
     }
 }
