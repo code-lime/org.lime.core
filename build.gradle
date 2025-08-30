@@ -75,6 +75,7 @@ allprojects {
 }
 
 apply from: 'global.gradle'
+apply from: 'remote.gradle'
 
 //<editor-fold desc="Settings: Maven">
 publishing {

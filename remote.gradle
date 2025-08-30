@@ -1,0 +1,116 @@
+import com.jcraft.jsch.*
+
+interface PropertiesAccess {
+    Object findRawProperty(String name);
+
+    default String findProperty(String name) {
+        def value = findRawProperty(name)
+        if (!value)
+            return null
+        return value.toString()
+    }
+    default String findPropertyOrThrow(String name) {
+        def value = findProperty(name)
+        if (!value)
+            throw new GradleException("$name not specified")
+        return value
+    }
+}
+
+PropertiesAccess loadEnv() {
+    def envFile = file("${projectDir}/remote/.env")
+    if (envFile.exists()) {
+        def props = new Properties()
+        envFile.withInputStream { props.load(it) }
+        return new PropertiesAccess() {
+            @Override
+            Object findRawProperty(String name) {
+                return props.get(name) ?: project.findProperty(name)
+            }
+        }
+    } else {
+        return new PropertiesAccess() {
+            @Override
+            Object findRawProperty(String name) {
+                return project.findProperty(name)
+            }
+        }
+    }
+}
+
+tasks.register("upload") {
+    description = "Upload built jar to remote server via scp"
+
+    dependsOn(build)
+
+    doLast {
+        PropertiesAccess props = loadEnv()
+
+        def remoteAddress  = props.findPropertyOrThrow("REMOTE_ADDRESS")
+        def remotePort     = props.findProperty("REMOTE_PORT")
+
+        def remotePath     = props.findPropertyOrThrow("REMOTE_PATH")
+
+        def remoteUser     = props.findPropertyOrThrow("REMOTE_USER")
+        def remotePassword = props.findProperty("REMOTE_PASSWORD")
+        def remoteKey      = props.findProperty("REMOTE_SSH_KEY")
+
+        def buildDir = project.layout.buildDirectory.dir("libs").get().asFile
+
+        def jars = buildDir.listFiles(new FilenameFilter() {
+            @Override
+            boolean accept(File dir, String name) {
+                return name.endsWith(".jar") && !name.endsWith("-sources.jar")
+            }
+        })
+
+        if (!jars || jars.size() == 0)
+            throw new GradleException("No jar found in ${buildDir}")
+        if (jars.size() > 1)
+            throw new GradleException("More than one jar found, refine selection: ${jars*.name}")
+
+        def jarFile = jars[0]
+
+        if (remotePath.endsWith("/") || remotePath.endsWith("\\")) {
+            def baseName = jarFile.name.replaceAll(/-.+\.jar$/, ".jar")
+            remotePath = remotePath + baseName
+        }
+
+        println "Uploading ${jarFile.name} to remote ${remotePath}"
+
+        JSch jsch = new JSch()
+
+        if (remoteKey)
+            jsch.addIdentity(file(remoteKey).absolutePath)
+
+        Session session = remotePort
+                ? jsch.getSession(remoteUser, remoteAddress, Integer.parseInt(remotePort))
+                : jsch.getSession(remoteUser, remoteAddress)
+
+        if (remotePassword)
+            session.setPassword(remotePassword)
+
+        session.setConfig("StrictHostKeyChecking", "no")
+        session.connect()
+
+        Channel channel = session.openChannel("sftp")
+        channel.connect()
+        ChannelSftp sftp = (ChannelSftp) channel
+
+        sftp.put(jarFile.absolutePath, remotePath)
+
+        sftp.disconnect()
+        session.disconnect()
+
+        println "Upload finished"
+    }
+}
+
+buildscript {
+    repositories {
+        mavenCentral()
+    }
+    dependencies {
+        classpath "com.github.mwiede:jsch:2.27.3"
+    }
+}
