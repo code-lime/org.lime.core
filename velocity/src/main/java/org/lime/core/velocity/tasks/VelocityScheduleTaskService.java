@@ -1,23 +1,23 @@
 package org.lime.core.velocity.tasks;
 
 import com.velocitypowered.api.scheduler.Scheduler;
-import org.lime.core.common.api.tasks.ScheduleTask;
-import org.lime.core.common.api.tasks.ScheduleTaskService;
-import org.lime.core.common.system.execute.Action0;
-import org.lime.core.velocity.CoreInstance;
+import org.lime.core.common.utils.ScheduleTask;
+import org.lime.core.common.services.ScheduleTaskService;
+import org.lime.core.common.utils.system.execute.Action0;
+import org.lime.core.velocity.BaseVelocityPlugin;
 
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 
 public class VelocityScheduleTaskService
         implements ScheduleTaskService {
-    private final CoreInstance plugin;
+    private final BaseVelocityPlugin plugin;
     private final Scheduler scheduler;
     private final AtomicInteger taskIdIterator = new AtomicInteger(0);
 
-    public VelocityScheduleTaskService(CoreInstance plugin) {
+    public VelocityScheduleTaskService(BaseVelocityPlugin plugin) {
         this.plugin = plugin;
-        this.scheduler = plugin.server().getScheduler();
+        this.scheduler = plugin.server.getScheduler();
     }
 
     @Override

@@ -1,6 +1,6 @@
 package org.lime.core.common.reflection;
 
-import org.lime.core.common.system.execute.Callable;
+import org.lime.core.common.utils.system.execute.Callable;
 
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
@@ -8,7 +8,8 @@ import java.lang.reflect.Modifier;
 import java.util.Arrays;
 import java.util.stream.Collectors;
 
-public record ReflectionMethod(Method method) {
+public record ReflectionMethod(Method target)
+        implements ReflectionAccessible<Method, ReflectionMethod>, ReflectionMember<Method, ReflectionMethod> {
     public static ReflectionMethod of(Method method) {
         return new ReflectionMethod(method);
     }
@@ -27,18 +28,23 @@ public record ReflectionMethod(Method method) {
                 .collect(Collectors.joining(",", "(", ")")));
     }
 
-    public static ReflectionMethod ofMojang(Class<?> tClass, String mojang_name, Class<?>... args) {
-        return of(Reflection.getFirst(tClass, m -> Reflection.name(m).equals(mojang_name), args)
-                .orElseThrow(() -> new IllegalArgumentException(new NoSuchMethodException(methodToString(tClass, mojang_name, args)))));
+    public static ReflectionMethod ofMojang(Class<?> tClass, String mojangName, Class<?>... args) {
+        return of(Reflection.getFirst(tClass, m -> Reflection.name(m).equals(mojangName), args)
+                .orElseThrow(() -> new IllegalArgumentException(new NoSuchMethodException(methodToString(tClass, mojangName, args)))));
+    }
+
+    @Override
+    public ReflectionMethod self() {
+        return this;
     }
 
     public boolean isStatic() {
-        return Modifier.isStatic(method.getModifiers());
+        return Modifier.isStatic(target.getModifiers());
     }
 
     public Object call(Object instance, Object[] args) {
         try {
-            return method.invoke(instance, args);
+            return target.invoke(instance, args);
         } catch (IllegalAccessException | InvocationTargetException e) {
             throw new IllegalArgumentException(e);
         }
@@ -51,12 +57,12 @@ public record ReflectionMethod(Method method) {
     }
 
     public Callable lambda() {
-        return Lambda.lambda(method);
+        return Lambda.lambda(target);
     }
     public <J> J lambda(Class<J> tClass) {
-        return Lambda.lambda(method, tClass);
+        return Lambda.lambda(target, tClass);
     }
     public <J> J lambda(Class<J> tClass, Method invoke) {
-        return Lambda.lambda(method, tClass, invoke);
+        return Lambda.lambda(target, tClass, invoke);
     }
 }

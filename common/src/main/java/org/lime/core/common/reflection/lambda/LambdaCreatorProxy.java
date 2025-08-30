@@ -9,7 +9,7 @@ import java.lang.invoke.MethodHandles;
 import java.lang.reflect.*;
 
 public class LambdaCreatorProxy implements LambdaCreator {
-    private static final Method toStringMethod = ReflectionMethod.of(Object.class, "toString").method();
+    private static final Method toStringMethod = ReflectionMethod.of(Object.class, "toString").target();
 
     private static Object invokeDynamic(MethodHandle handle, @Nullable Object[] args) throws Throwable {
         return switch (args == null ? 0 : args.length) {

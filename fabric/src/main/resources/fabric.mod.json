@@ -9,8 +9,8 @@
   "license": "unlicense",
   "environment": "server",
   "entrypoints": {
-    "main": [
-      "org.lime.core.fabric.CoreInstance"
+    "server": [
+      "org.lime.core.fabric.CoreFabricMod"
     ]
   },
   "mixins": [

@@ -1,10 +1,10 @@
 package org.lime.core.fabric.tasks;
 
 import org.jetbrains.annotations.Nullable;
-import org.lime.core.common.api.tasks.ScheduleTask;
-import org.lime.core.common.system.execute.Action0;
-import org.lime.core.common.system.tuple.LockTuple1;
-import org.lime.core.common.system.tuple.Tuple;
+import org.lime.core.common.utils.ScheduleTask;
+import org.lime.core.common.utils.system.execute.Action0;
+import org.lime.core.common.utils.system.tuple.LockTuple1;
+import org.lime.core.common.utils.system.tuple.Tuple;
 
 import java.util.concurrent.atomic.AtomicLong;
 

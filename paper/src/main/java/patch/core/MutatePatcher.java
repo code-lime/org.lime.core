@@ -12,9 +12,9 @@ import org.bukkit.plugin.java.LibraryLoader;
 import org.eclipse.aether.DefaultRepositorySystemSession;
 import org.eclipse.aether.RepositorySystem;
 import org.eclipse.aether.repository.RemoteRepository;
-import org.lime.core.common.system.execute.Execute;
-import org.lime.core.common.system.execute.Callable;
-import org.lime.core.paper.CoreInstancePlugin;
+import org.lime.core.common.utils.system.execute.Execute;
+import org.lime.core.common.utils.system.execute.Callable;
+import org.lime.core.paper.CorePaperPlugin;
 import org.objectweb.asm.Label;
 import org.objectweb.asm.Opcodes;
 import org.objectweb.asm.Type;
@@ -22,6 +22,7 @@ import patch.*;
 import patch.JarArchiveAuto;
 
 import java.io.File;
+import java.nio.file.Path;
 import java.util.List;
 import java.util.Map;
 
@@ -32,7 +33,7 @@ public class MutatePatcher extends BasePluginPatcher {
     }
 
     private MutatePatcher() {
-        super(CoreInstancePlugin.class);
+        super(CorePaperPlugin.class);
     }
 
     @Override public void patch(JarArchiveAuto archive) {
@@ -167,7 +168,23 @@ public class MutatePatcher extends BasePluginPatcher {
 
         var libraryLoaderPatcher = archive
                 .of(LibraryLoader.class)
-                .addInterface(Type.getInternalName(RepositoryLibraryLoader.class));
+                .addInterface(Type.getInternalName(RepositoryLibraryLoader.class))
+                .patchMethod(MethodFilter.of(Execute.<LibraryLoader, PluginDescriptionFile, List<Path>, ClassLoader>func(LibraryLoader::createLoader)),
+                        MethodPatcher.mutate(v -> new ProgressMethodVisitor(v, v) {
+                            @Override
+                            protected List<String> createProgressList() {
+                                return List.of("Replace.getLibraries");
+                            }
+
+                            @Override public void visitMethodInsn(int opcode, String owner, String name, String descriptor, boolean isInterface) {
+                                if (Native.isMethod(Execute.func(PluginDescriptionFile::getLibraries), owner, name, descriptor)) {
+                                    setProgressDuplicate("Replace.getLibraries");
+                                    Native.writeMethod(Execute.func(CacheLibraryLoader::getCustomLibraries), super::visitMethodInsn);
+                                } else {
+                                    super.visitMethodInsn(opcode, owner, name, descriptor, isInterface);
+                                }
+                            }
+                        }));
         addGetter(libraryLoaderPatcher, "repository", RepositorySystem.class);
         addGetter(libraryLoaderPatcher, "session", DefaultRepositorySystemSession.class);
         addGetter(libraryLoaderPatcher, "repositories", List.class, signatureType(Type.getDescriptor(List.class), Type.getDescriptor(RemoteRepository.class)));

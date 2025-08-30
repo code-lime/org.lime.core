@@ -3,10 +3,10 @@ package patch;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import org.bukkit.plugin.java.JavaPlugin;
-import org.lime.core.common.json.builder.Json;
-import org.lime.core.common.system.Regex;
-import org.lime.core.common.system.tuple.Tuple;
-import org.lime.core.common.system.utils.IterableUtils;
+import org.lime.core.common.utils.json.builder.Json;
+import org.lime.core.common.utils.system.Regex;
+import org.lime.core.common.utils.system.tuple.Tuple;
+import org.lime.core.common.utils.system.utils.IterableUtils;
 
 import javax.annotation.Nullable;
 import java.net.URL;

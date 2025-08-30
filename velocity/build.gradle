@@ -13,6 +13,8 @@ dependencies {
 versionByteBuddy = project(":common").versionByteBuddy
 versionCommonsIO = project(":common").versionCommonsIO
 versionCommonsLang3 = project(":common").versionCommonsLang3
+versionGuice = project(":common").versionGuice
+versionLiteCommands = project(":common").versionLiteCommands
 
 projectCombineJars(project(':common'))
 
@@ -81,6 +83,22 @@ dependencies {
 dependencies {
     implementation "commons-io:commons-io:${versionCommonsIO}"
     implementation "org.apache.commons:commons-lang3:${versionCommonsLang3}"
+}
+//</editor-fold>
+//<editor-fold desc="Settings: Libraries: com.google.inject#guice">
+dependencies {
+    implementation "com.google.inject:guice:${versionGuice}"
+}
+//</editor-fold>
+//<editor-fold desc="Settings: Libraries: LiteCommands">
+repositories {
+    maven {
+        url "https://repo.panda-lang.org/releases"
+    }
+}
+
+dependencies {
+    implementation "dev.rollczi:litecommands-velocity:${versionLiteCommands}"
 }
 //</editor-fold>
 //</editor-fold>

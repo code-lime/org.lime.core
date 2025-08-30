@@ -2,8 +2,8 @@ package org.lime.core.common.reflection;
 
 import com.google.common.collect.Streams;
 import net.minecraft.unsafe.Native;
-import org.lime.core.common.system.execute.Func1;
-import org.lime.core.common.Unsafe;
+import org.lime.core.common.utils.system.execute.Func1;
+import org.lime.core.common.utils.Unsafe;
 import org.objectweb.asm.Type;
 
 import java.lang.invoke.MethodHandles;

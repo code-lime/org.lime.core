@@ -1,9 +1,9 @@
 package org.lime.core.fabric.tasks;
 
-import org.lime.core.common.api.BaseLogger;
-import org.lime.core.common.api.tasks.ScheduleTask;
-import org.lime.core.common.api.tasks.ScheduleTaskService;
-import org.lime.core.common.system.execute.Action0;
+import org.lime.core.common.utils.ScheduleTask;
+import org.lime.core.common.services.ScheduleTaskService;
+import org.lime.core.common.utils.system.execute.Action0;
+import org.slf4j.Logger;
 
 import java.io.Closeable;
 import java.io.IOException;
@@ -13,7 +13,8 @@ import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 
-public class FabricScheduleTaskService implements ScheduleTaskService, Closeable {
+public class FabricScheduleTaskService
+        implements ScheduleTaskService, Closeable {
     private final ScheduledExecutorService scheduler = Executors.newScheduledThreadPool(1);
 
     private final AtomicInteger taskIdentifier = new AtomicInteger();
@@ -21,9 +22,9 @@ public class FabricScheduleTaskService implements ScheduleTaskService, Closeable
     private final ConcurrentHashMap<Integer, ScheduleTickTask> syncTasks = new ConcurrentHashMap<>();
     private final ConcurrentHashMap<Integer, ScheduleTickTask> asyncTasks = new ConcurrentHashMap<>();
 
-    private final BaseLogger logger;
+    private final Logger logger;
 
-    public FabricScheduleTaskService(BaseLogger logger) {
+    public FabricScheduleTaskService(Logger logger) {
         this.logger = logger;
         scheduler.scheduleAtFixedRate(() -> tick(asyncTasks), 0, 50, TimeUnit.MILLISECONDS);
     }
@@ -55,8 +56,7 @@ public class FabricScheduleTaskService implements ScheduleTaskService, Closeable
             try {
                 return v.isTickRemove();
             } catch (Exception e) {
-                logger.$log("Error tick: " + v.getTaskId());
-                logger.$logStackTrace(e);
+                logger.error("Error tick {}", v.getTaskId(), e);
                 return false;
             }
         });

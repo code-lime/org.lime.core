@@ -17,10 +17,14 @@ repositories {
     maven {
         url "https://libraries.minecraft.net"
     }
+    maven {
+        url "https://repo.panda-lang.org/releases"
+    }
 }
 
 dependencies {
     implementation "net.kyori:adventure-api:${versionAdventureApi}"
+    implementation "net.kyori:adventure-text-minimessage:${versionAdventureApi}"
     implementation "net.kyori:adventure-text-serializer-plain:${versionAdventureApi}"
     implementation "com.mojang:brigadier:${versionBrigadierApi}"
     implementation "com.google.guava:guava:31.1-jre"
@@ -28,12 +32,15 @@ dependencies {
     implementation "commons-io:commons-io:${versionCommonsIO}"
     implementation "org.apache.commons:commons-lang3:${versionCommonsLang3}"
     implementation "org.ow2.asm:asm:9.7.1"
+    implementation 'org.slf4j:slf4j-api:2.0.1'
 }
 dependencies {
     implementation "net.bytebuddy:byte-buddy-agent:${versionByteBuddy}"
     implementation "org.graalvm.js:js:${versionGraalVm}"
     implementation "org.graalvm.js:js-scriptengine:${versionGraalVm}"
     implementation "org.graalvm.truffle:truffle-api:${versionGraalVm}"
+    implementation "com.google.inject:guice:${versionGuice}"
+    implementation "dev.rollczi:litecommands-framework:${versionLiteCommands}"
 }
 
 println("COMMON: ${group}/${pathName}#${version}")

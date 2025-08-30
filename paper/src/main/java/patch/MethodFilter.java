@@ -1,11 +1,9 @@
 package patch;
 
-import net.minecraft.world.entity.player.Player;
-import org.lime.core.common.UnsafeMappings;
 import org.lime.core.common.reflection.LambdaInfo;
-import org.lime.core.common.system.execute.Execute;
-import org.lime.core.common.system.execute.Callable;
-import org.lime.core.paper.PaperUnsafeMappings;
+import org.lime.core.common.utils.system.execute.Execute;
+import org.lime.core.common.utils.system.execute.Callable;
+import org.lime.core.paper.PaperUnsafeMappingsUtility;
 import org.objectweb.asm.Type;
 
 import java.lang.invoke.SerializedLambda;
@@ -32,7 +30,7 @@ public interface MethodFilter<T> extends MethodInfo {
         return new MethodFilter<T>() {
             @Override public Class<T> tClass() { return tClass; }
             @Override public boolean test(int access, String name, String descriptor, String signature, String[] exceptions) {
-                String resultName = isMojang ? PaperUnsafeMappings.INSTANCE.ofMojang(tClass, name, descriptor, true) : name;
+                String resultName = isMojang ? PaperUnsafeMappingsUtility.INSTANCE.ofMojang(tClass, name, descriptor, true) : name;
                 return resultName.equals(methodName) && Type.getType(descriptor).equals(methodDescriptor);
             }
             @Override public String toInfo() { return tClass.getSimpleName() + "." + methodName + methodDescriptor; }
@@ -42,7 +40,7 @@ public interface MethodFilter<T> extends MethodInfo {
         return new MethodFilter<T>() {
             @Override public Class<T> tClass() { return tClass; }
             @Override public boolean test(int access, String name, String descriptor, String signature, String[] exceptions) {
-                String resultName = isMojang ? PaperUnsafeMappings.INSTANCE.ofMojang(tClass, name, descriptor, true) : name;
+                String resultName = isMojang ? PaperUnsafeMappingsUtility.INSTANCE.ofMojang(tClass, name, descriptor, true) : name;
                 return resultName.equals(methodName);
             }
             @Override public String toInfo() { return tClass.getSimpleName() + "." + methodName + "(*)*"; }

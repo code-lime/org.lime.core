@@ -2,6 +2,7 @@ package net.minecraft.paper.java;
 
 import io.papermc.paper.plugin.configuration.PluginMeta;
 
+import java.util.List;
 import java.util.Map;
 
 @SuppressWarnings("UnstableApiUsage")

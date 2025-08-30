@@ -9,7 +9,6 @@ import java.lang.invoke.VarHandle;
 import java.lang.reflect.*;
 import java.util.Objects;
 import java.util.function.Function;
-import java.util.stream.Stream;
 
 public class Native {
     private static final VarHandle MODIFIERS;

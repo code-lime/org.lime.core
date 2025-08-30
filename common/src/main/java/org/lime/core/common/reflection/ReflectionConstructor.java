@@ -1,12 +1,13 @@
 package org.lime.core.common.reflection;
 
-import org.lime.core.common.system.execute.Callable;
+import org.lime.core.common.utils.system.execute.Callable;
 
 import java.lang.reflect.Constructor;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 
-public record ReflectionConstructor<T>(Constructor<T> constructor) {
+public record ReflectionConstructor<T>(Constructor<T> target)
+        implements ReflectionAccessible<Constructor<T>, ReflectionConstructor<T>>, ReflectionMember<Constructor<T>, ReflectionConstructor<T>> {
     public static <T> ReflectionConstructor<T> of(Constructor<T> method) {
         return new ReflectionConstructor<>(method);
     }
@@ -15,14 +16,14 @@ public record ReflectionConstructor<T>(Constructor<T> constructor) {
         return of(Reflection.constructor(tClass, args));
     }
 
-    public ReflectionConstructor<T> access() {
-        Reflection.access(constructor);
+    @Override
+    public ReflectionConstructor<T> self() {
         return this;
     }
 
     public T newInstance(Object... args) {
         try {
-            return constructor.newInstance(args);
+            return target.newInstance(args);
         } catch (IllegalAccessException | InvocationTargetException | InstantiationException e) {
             throw new IllegalArgumentException(e);
         }
@@ -33,12 +34,12 @@ public record ReflectionConstructor<T>(Constructor<T> constructor) {
     }
 
     public Callable lambda() {
-        return Lambda.lambda(constructor);
+        return Lambda.lambda(target);
     }
     public <J>J lambda(Class<J> tClass) {
-        return Lambda.lambda(constructor, tClass);
+        return Lambda.lambda(target, tClass);
     }
     public <J>J lambda(Class<J> tClass, Method invoke) {
-        return Lambda.lambda(constructor, tClass, invoke);
+        return Lambda.lambda(target, tClass, invoke);
     }
 }

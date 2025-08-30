@@ -1,7 +1,7 @@
 package org.lime.core.common.api.commands.brigadier.exceptions;
 
 import com.mojang.brigadier.Message;
-import org.lime.core.common.system.execute.*;
+import org.lime.core.common.utils.system.execute.*;
 
 public class CommandExceptions {
     //<editor-fold desc="CommandExceptions">

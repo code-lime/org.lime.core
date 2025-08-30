@@ -2,20 +2,19 @@ package org.lime.core.velocity.libby;
 
 import com.alessiodp.libby.Library;
 import com.alessiodp.libby.VelocityLibraryManager;
-import org.lime.core.velocity.CoreInstance;
-import org.lime.core.velocity.VelocityDependencyLoader;
+import org.lime.core.velocity.CoreVelocityPlugin;
 import org.slf4j.Logger;
 
 import java.nio.file.Path;
 
 public class LibbyVelocityDependencyLoader
         implements VelocityDependencyLoader {
-    private final VelocityLibraryManager<? extends CoreInstance> libraryManager;
+    private final VelocityLibraryManager<? extends CoreVelocityPlugin> libraryManager;
     public LibbyVelocityDependencyLoader(
-            CoreInstance plugin,
+            CoreVelocityPlugin plugin,
             Logger logger,
             Path dataDirectory) {
-        this.libraryManager = new VelocityLibraryManager<>(plugin, logger, dataDirectory, plugin.server().getPluginManager());
+        this.libraryManager = new VelocityLibraryManager<>(plugin, logger, dataDirectory, plugin.server.getPluginManager());
         this.libraryManager.addMavenCentral();
     }
 

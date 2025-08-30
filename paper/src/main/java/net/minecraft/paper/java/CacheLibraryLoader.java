@@ -72,10 +72,20 @@ public class CacheLibraryLoader extends LibraryLoader {
         this.session = this.access.session();
     }
 
-    private Optional<RawPluginMeta> getRawMeta(Object data) {
+    private static Optional<RawPluginMeta> getRawMeta(Object data) {
         return data instanceof RawPluginMeta rpm
                 ? Optional.of(rpm)
                 : Optional.empty();
+    }
+    private static Optional<Map<?,?>> getRawMetaData(Object data) {
+        return getRawMeta(data)
+                .map(RawPluginMeta::rawData)
+                .map(v -> mapStringMap(v, str -> {
+                    if (!str.startsWith("=") || !str.endsWith("="))
+                        return str;
+                    String envName = str.substring(1, str.length() - 1);
+                    return Objects.requireNonNullElse(System.getenv(envName), str);
+                }));
     }
 
     private String readUpdatePolicy(Map<?, ?> dat) {
@@ -182,18 +192,23 @@ public class CacheLibraryLoader extends LibraryLoader {
         return OtherView.<Object>ofValues(in, v -> mapStringObject(v, modify));
     }
 
+    public static List<String> getCustomLibraries(PluginDescriptionFile desc) {
+        Optional<Map<?,?>> meta = getRawMetaData(desc);
+        return meta
+                .map(v -> v.get("custom-libraries"))
+                .map(v -> {
+                    var customLibraries = (List<?>)v;
+                    List<String> libraries = new ArrayList<>(desc.getLibraries());
+                    customLibraries.forEach(customLibrary -> libraries.add(customLibrary.toString()));
+                    return libraries;
+                })
+                .orElseGet(desc::getLibraries);
+    }
+
     @Override public @Nullable ClassLoader createLoader(@Nonnull PluginDescriptionFile desc, List<Path> paths) {
         final String LOG_PREFIX = Objects.requireNonNullElseGet(desc.getPrefix(), desc::getName);
 
-        Optional<Map<?,?>> meta = getRawMeta(desc)
-                .map(RawPluginMeta::rawData)
-                .map(v -> mapStringMap(v, str -> {
-                    if (!str.startsWith("=") || !str.endsWith("="))
-                        return str;
-                    String envName = str.substring(1, str.length() - 1);
-                    String ret = Objects.requireNonNullElse(System.getenv(envName), str);
-                    return ret;
-                }));
+        Optional<Map<?,?>> meta = getRawMetaData(desc);
 
         meta
                 .map(v -> v.get("maven"))

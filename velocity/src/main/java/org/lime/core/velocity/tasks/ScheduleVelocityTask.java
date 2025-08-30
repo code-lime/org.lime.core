@@ -2,7 +2,7 @@ package org.lime.core.velocity.tasks;
 
 import com.velocitypowered.api.scheduler.ScheduledTask;
 import com.velocitypowered.api.scheduler.TaskStatus;
-import org.lime.core.common.api.tasks.ScheduleTask;
+import org.lime.core.common.utils.ScheduleTask;
 
 public record ScheduleVelocityTask(
         int taskId,

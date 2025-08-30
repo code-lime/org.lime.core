@@ -1,7 +1,7 @@
 package org.lime.core.paper.tasks;
 
 import org.bukkit.scheduler.BukkitTask;
-import org.lime.core.common.api.tasks.ScheduleTask;
+import org.lime.core.common.utils.ScheduleTask;
 
 public record ScheduleBukkitTask(BukkitTask task)
         implements ScheduleTask {

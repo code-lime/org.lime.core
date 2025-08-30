@@ -2,7 +2,7 @@ package patch;
 
 import org.jetbrains.annotations.NotNull;
 import org.lime.core.common.reflection.LambdaInfo;
-import org.lime.core.common.system.execute.*;
+import org.lime.core.common.utils.system.execute.*;
 import org.objectweb.asm.*;
 import org.objectweb.asm.Type;
 

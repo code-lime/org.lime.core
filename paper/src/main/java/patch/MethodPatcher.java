@@ -1,6 +1,6 @@
 package patch;
 
-import org.lime.core.common.system.execute.Func1;
+import org.lime.core.common.utils.system.execute.Func1;
 import org.objectweb.asm.ClassVisitor;
 
 import javax.annotation.Nullable;

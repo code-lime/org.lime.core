@@ -11,6 +11,8 @@ dependencies {
 
 versionByteBuddy = project(":common").versionByteBuddy
 versionGraalVm = project(":common").versionGraalVm
+versionGuice = project(":common").versionGuice
+versionLiteCommands = project(":common").versionLiteCommands
 
 projectCombineJars(project(':common'))
 
@@ -40,6 +42,22 @@ repositories {
 
 dependencies {
     compileOnly "com.comphenix.protocol:ProtocolLib:${versionProtocolLib}"
+}
+//</editor-fold>
+//<editor-fold desc="Settings: Libraries: com.google.inject#guice">
+dependencies {
+    compileOnly "com.google.inject:guice:${versionGuice}"
+}
+//</editor-fold>
+//<editor-fold desc="Settings: Libraries: LiteCommands">
+repositories {
+    maven {
+        url "https://repo.panda-lang.org/releases"
+    }
+}
+
+dependencies {
+    compileOnly "dev.rollczi:litecommands-bukkit:${versionLiteCommands}"
 }
 //</editor-fold>
 //</editor-fold>

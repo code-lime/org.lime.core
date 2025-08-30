@@ -1,6 +1,6 @@
 package patch;
 
-import org.lime.core.common.system.execute.Func2;
+import org.lime.core.common.utils.system.execute.Func2;
 import org.objectweb.asm.*;
 
 import java.io.ByteArrayInputStream;

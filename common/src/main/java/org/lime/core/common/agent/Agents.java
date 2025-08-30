@@ -2,8 +2,8 @@ package org.lime.core.common.agent;
 
 import net.bytebuddy.agent.ByteBuddyAgent;
 import org.jetbrains.annotations.Nullable;
-import org.lime.core.common.system.tuple.LockTuple1;
-import org.lime.core.common.system.tuple.Tuple;
+import org.lime.core.common.utils.system.tuple.LockTuple1;
+import org.lime.core.common.utils.system.tuple.Tuple;
 
 import java.lang.instrument.Instrumentation;
 import java.util.List;

@@ -1,6 +1,8 @@
 package patch;
 
-import org.lime.core.common.system.tuple.*;
+import org.lime.core.common.utils.system.tuple.Tuple;
+import org.lime.core.common.utils.system.tuple.Tuple5;
+import org.lime.core.common.utils.system.tuple.Tuple6;
 import org.objectweb.asm.*;
 import com.google.common.collect.Lists;
 

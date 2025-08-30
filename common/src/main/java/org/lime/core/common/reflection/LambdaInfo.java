@@ -1,9 +1,9 @@
 package org.lime.core.common.reflection;
 
-import org.lime.core.common.system.execute.Execute;
-import org.lime.core.common.system.execute.Func1;
-import org.lime.core.common.system.tuple.Tuple;
-import org.lime.core.common.system.tuple.Tuple1;
+import org.lime.core.common.utils.system.execute.Execute;
+import org.lime.core.common.utils.system.execute.Func1;
+import org.lime.core.common.utils.system.tuple.Tuple;
+import org.lime.core.common.utils.system.tuple.Tuple1;
 import org.objectweb.asm.*;
 
 import java.io.InputStream;
