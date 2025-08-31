@@ -1,11 +1,13 @@
 package org.lime.core.common.services;
 
 import com.google.inject.Inject;
+import dev.rollczi.litecommands.argument.Argument;
 import dev.rollczi.litecommands.argument.ArgumentKey;
 import dev.rollczi.litecommands.argument.SimpleArgument;
 import dev.rollczi.litecommands.argument.resolver.collector.VarargsProfile;
 import dev.rollczi.litecommands.programmatic.LiteCommand;
 import dev.rollczi.litecommands.reflect.type.TypeToken;
+import dev.rollczi.litecommands.suggestion.Suggestion;
 import dev.rollczi.litecommands.suggestion.SuggestionResult;
 import org.lime.core.common.Artifact;
 import org.lime.core.common.BaseInstance;
@@ -24,8 +26,8 @@ public class UpdateConfigService
     @RequireCommand
     CommandConsumer<?> command() {
         SimpleArgument<String[]> configArgument = new SimpleArgument<>("configs", TypeToken.of(String[].class));
-        configArgument.addProfile(new VarargsProfile(TypeToken.of(String.class), " "));
         configArgument.setKey(ArgumentKey.of("update.config#configs"));
+        configArgument.addProfile(new VarargsProfile(TypeToken.of(String.class), " "));
 
         Artifact artifact = instance.artifact();
         String suffix = artifact.proxy ? "." + artifact.key : "";
@@ -39,7 +41,7 @@ public class UpdateConfigService
                     instance.module.updateConfigs(List.of(configs));
                 }))
                 .with(v -> v.argumentSuggester(
-                        String.class, configArgument.getKey(),
+                        String[].class, configArgument.getKey(),
                         (invocation, argument, context) -> SuggestionResult.of(instance.module.configKeys())));
     }
 }
