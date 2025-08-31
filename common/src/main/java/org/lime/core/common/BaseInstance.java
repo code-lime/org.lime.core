@@ -18,6 +18,7 @@ import java.lang.annotation.Annotation;
 import java.lang.reflect.Field;
 import java.lang.reflect.Method;
 import java.nio.file.Path;
+import java.util.Iterator;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.stream.Stream;
@@ -42,10 +43,23 @@ public abstract class BaseInstance<Instance extends BaseInstance<Instance>> {
     protected final Disposable.Composite compositeDisposable = Disposable.composite();
 
     private Disposable registerCommandCast(Object command) {
-        if (command instanceof CommandConsumer<?> commandConsumer)
+        if (command instanceof CommandConsumer<?> commandConsumer) {
             return registerCommand(commandConsumer);
-        else
+        } else if (command instanceof Iterable<?> commandIterable) {
+            Disposable.Composite composite = Disposable.composite();
+            commandIterable.forEach(v -> composite.add(registerCommandCast(v)));
+            return composite;
+        } else if (command instanceof Iterator<?> commandIterable) {
+            Disposable.Composite composite = Disposable.composite();
+            commandIterable.forEachRemaining(v -> composite.add(registerCommandCast(v)));
+            return composite;
+        } else if (command instanceof Stream<?> commandStream) {
+            Disposable.Composite composite = Disposable.composite();
+            commandStream.forEach(v -> composite.add(registerCommandCast(v)));
+            return composite;
+        } else {
             throw new IllegalArgumentException(command.getClass() + " is not command supplier");
+        }
     }
     protected Disposable registerCommand(CommandConsumer<?> command) {
         for (var register : commandRegisters()) {
