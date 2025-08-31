@@ -70,8 +70,10 @@ public abstract class BaseInstance<Instance extends BaseInstance<Instance>> {
             module.executeCore();
         injector = Guice.createInjector(module);
         Logger logger = logger();
+        logger.info("Load {} services", module.services.size());
         module.services
                 .forEach(serviceClass -> {
+                    logger.info(" - Loading {} ", serviceClass);
                     Service service = injector.getInstance(serviceClass);
                     if (!services.add(service))
                         return;
@@ -86,9 +88,9 @@ public abstract class BaseInstance<Instance extends BaseInstance<Instance>> {
                                 });
                         enableService(service);
                         compositeDisposable.add(service.register());
-                        logger.info("Service '{}' loaded", service.getClass().getSimpleName());
+                        logger.info("   Service '{}' loaded", service.getClass().getSimpleName());
                     } catch (Exception e) {
-                        logger.error("Service '{}' error loading", service.getClass().getSimpleName(), e);
+                        logger.error("   Service '{}' error loading", service.getClass().getSimpleName(), e);
                         throw e;
                     }
                 });
