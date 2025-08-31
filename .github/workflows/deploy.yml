@@ -33,16 +33,19 @@ jobs:
           java-version: '23'
           distribution: 'oracle'
 
+      - name: Make Gradle Wrapper Executable
+        run: chmod +x gradlew
+  
       - name: Setup Gradle
         uses: gradle/actions/setup-gradle@v4
         with:
           gradle-version: wrapper
 
       - name: Build
-        run: gradle build
+        run: ./gradlew build
 
       - name: Publish
-        run: gradle publish
+        run: ./gradlew publish
 
       - name: Release
         uses: softprops/action-gh-release@v2
