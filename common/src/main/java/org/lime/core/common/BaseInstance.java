@@ -73,7 +73,7 @@ public abstract class BaseInstance<Instance extends BaseInstance<Instance>> {
         module.services
                 .forEach(serviceClass -> {
                     Service service = injector.getInstance(serviceClass);
-                    if (services.add(service))
+                    if (!services.add(service))
                         return;
                     try {
                         AnnotationUtils.recursiveAnnotations(RequireCommand.class, serviceClass)
