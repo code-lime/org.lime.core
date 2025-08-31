@@ -12,6 +12,7 @@ import org.apache.commons.lang3.DoubleRange;
 import org.apache.commons.lang3.IntegerRange;
 import org.apache.commons.lang3.LongRange;
 import org.apache.commons.lang3.Range;
+import org.lime.core.common.utils.typeadapers.CombinedTypeAdapterFactory;
 import org.lime.core.common.utils.typeadapers.StringTypeAdapter;
 
 import java.io.IOException;
@@ -22,25 +23,11 @@ import java.time.temporal.TemporalUnit;
 import java.util.function.BiFunction;
 
 public class GsonTypeAdapters {
-    private record CombinedTypeAdapterFactory(
-            TypeAdapterFactory... factories)
-            implements TypeAdapterFactory {
-        @Override
-        public <T> TypeAdapter<T> create(Gson gson, TypeToken<T> type) {
-            for (TypeAdapterFactory factory : factories) {
-                TypeAdapter<T> adapter = factory.create(gson, type);
-                if (adapter != null)
-                    return adapter;
-            }
-            return null;
-        }
-    }
-
     @SuppressWarnings({"unchecked", "SameParameterValue"})
     private static <T, J extends T>TypeToken<J> getParameterized(Class<T> rawClass, Type... typeArguments) {
         return (TypeToken<J>)TypeToken.getParameterized(rawClass, typeArguments);
     }
-    private static TypeAdapterFactory combine(TypeAdapterFactory... factories) {
+    public static TypeAdapterFactory combine(TypeAdapterFactory... factories) {
         return new CombinedTypeAdapterFactory(factories);
     }
 
