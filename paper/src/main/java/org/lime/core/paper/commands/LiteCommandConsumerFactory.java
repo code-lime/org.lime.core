@@ -6,14 +6,14 @@ import org.bukkit.command.CommandSender;
 import org.lime.core.common.api.commands.LiteCommandConsumer;
 
 public class LiteCommandConsumerFactory
-        implements LiteCommandConsumer.Factory<CommandSender, LiteBukkitSettings, LiteCommandConsumerFactory.Register> {
+        implements LiteCommandConsumer.Factory<CommandSender, LiteBukkitSettings, LiteCommandConsumerFactory.LiteRegister> {
     public static final LiteCommandConsumerFactory INSTANCE = new LiteCommandConsumerFactory();
 
-    public record Register(LiteCommandsBuilder<CommandSender, LiteBukkitSettings, ?> builder)
-            implements LiteCommandConsumer.Register<CommandSender, LiteBukkitSettings> { }
+    public record LiteRegister(LiteCommandsBuilder<CommandSender, LiteBukkitSettings, ?> builder)
+            implements LiteCommandConsumer.LiteRegister<CommandSender, LiteBukkitSettings> { }
 
     @Override
-    public Class<Register> builderClass() {
-        return Register.class;
+    public Class<LiteRegister> registerClass() {
+        return LiteRegister.class;
     }
 }

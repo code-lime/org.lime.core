@@ -17,13 +17,13 @@ import org.lime.core.velocity.commands.brigadier.CustomArgumentType;
 import java.util.List;
 
 public class NativeCommandConsumerFactory
-        implements NativeCommandConsumer.Factory<CommandSource, NativeCommandConsumerFactory.Register> {
+        implements NativeCommandConsumer.Factory<CommandSource, NativeCommandConsumerFactory.NativeRegister> {
     public static final NativeCommandConsumerFactory INSTANCE = new NativeCommandConsumerFactory();
 
-    public record Register(
+    public record NativeRegister(
             BaseVelocityPlugin plugin,
             CommandManager commands)
-            implements NativeCommandConsumer.Register<CommandSource> {
+            implements NativeCommandConsumer.NativeRegister<CommandSource> {
         @Override
         public void register(LiteralArgumentBuilder<CommandSource> node, String command, List<String> aliases, @Nullable String description) {
             var meta = commands.metaBuilder(command)
@@ -35,8 +35,8 @@ public class NativeCommandConsumerFactory
     }
 
     @Override
-    public Class<Register> builderClass() {
-        return Register.class;
+    public Class<NativeRegister> builderClass() {
+        return NativeRegister.class;
     }
 
     @Override

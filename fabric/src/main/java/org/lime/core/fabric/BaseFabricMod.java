@@ -1,6 +1,5 @@
 package org.lime.core.fabric;
 
-import dev.rollczi.litecommands.LiteCommandsBaseBuilder;
 import dev.rollczi.litecommands.LiteCommandsBuilder;
 import dev.rollczi.litecommands.fabric.LiteFabricFactory;
 import dev.rollczi.litecommands.fabric.LiteFabricSettings;
@@ -13,11 +12,7 @@ import net.minecraft.commands.CommandSourceStack;
 import net.minecraft.server.MinecraftServer;
 import org.lime.core.common.Artifact;
 import org.lime.core.common.BaseInstance;
-import org.lime.core.common.agent.Agents;
 import org.lime.core.common.api.commands.CommandConsumer;
-import org.lime.core.common.api.commands.LiteCommandConsumer;
-import org.lime.core.common.api.commands.NativeCommandConsumer;
-import org.lime.core.common.utils.Disposable;
 import org.lime.core.fabric.commands.LiteCommandConsumerFactory;
 import org.lime.core.fabric.commands.NativeCommandConsumerFactory;
 import org.lime.core.fabric.tasks.FabricScheduleTaskService;
@@ -27,6 +22,7 @@ import org.slf4j.LoggerFactory;
 import java.io.File;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.util.List;
 import java.util.stream.Stream;
 
 public abstract class BaseFabricMod
@@ -39,8 +35,7 @@ public abstract class BaseFabricMod
     private final boolean isCore;
     protected MinecraftServer server;
     protected FabricScheduleTaskService scheduleTaskService;
-    private LiteCommandConsumerFactory.Register liteCommandsRegister;
-    private NativeCommandConsumerFactory.Register nativeCommandRegister;
+    private Iterable<CommandConsumer.BaseRegister> commandRegisters;
 
     public BaseFabricMod() {
         this.isCore = this.getClass() == CoreFabricMod.class;
@@ -72,8 +67,9 @@ public abstract class BaseFabricMod
     @Override
     public void enable() {
         LiteCommandsBuilder<CommandSourceStack, LiteFabricSettings, ?> liteCommandsBuilder = LiteFabricFactory.server();
-        liteCommandsRegister = new LiteCommandConsumerFactory.Register(liteCommandsBuilder);
-        nativeCommandRegister = new NativeCommandConsumerFactory.Register(server.getCommands().getDispatcher());
+        commandRegisters = List.of(
+                new LiteCommandConsumerFactory.LiteRegister(liteCommandsBuilder),
+                new NativeCommandConsumerFactory.NativeRegister(server.getCommands().getDispatcher()));
         super.enable();
         var liteCommands = liteCommandsBuilder.build();
         liteCommands.register();
@@ -81,6 +77,11 @@ public abstract class BaseFabricMod
         server.getPlayerList()
                 .getPlayers()
                 .forEach(server.getCommands()::sendCommands);
+    }
+
+    @Override
+    protected Iterable<CommandConsumer.BaseRegister> commandRegisters() {
+        return commandRegisters;
     }
 
     @Override
@@ -118,17 +119,5 @@ public abstract class BaseFabricMod
                 .getOrigin()
                 .getPaths()
                 .stream();
-    }
-
-    @Override
-    protected Disposable registerCommand(CommandConsumer<?> command) {
-        if (command instanceof LiteCommandConsumer<?,?,?> liteCommand) {
-            liteCommand.applyCast(liteCommandsRegister);
-            return Disposable.empty();
-        } else if (command instanceof NativeCommandConsumer<?,?> nativeCommand) {
-            nativeCommand.applyCast(nativeCommandRegister);
-            return Disposable.empty();
-        } else
-            throw new IllegalArgumentException("Not supported " + command.getClass() + " command supplier");
     }
 }

@@ -17,10 +17,7 @@ import org.lime.core.common.Artifact;
 import org.lime.core.common.BaseInstance;
 import org.lime.core.common.api.Service;
 import org.lime.core.common.api.commands.CommandConsumer;
-import org.lime.core.common.api.commands.LiteCommandConsumer;
-import org.lime.core.common.api.commands.NativeCommandConsumer;
 import org.lime.core.common.services.ScheduleTaskService;
-import org.lime.core.common.utils.Disposable;
 import org.lime.core.common.utils.json.builder.Json;
 import org.lime.core.common.utils.system.execute.ActionEx2;
 import org.lime.core.common.utils.system.tuple.Tuple;
@@ -37,6 +34,7 @@ import java.io.InputStream;
 import java.nio.ByteBuffer;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.List;
 import java.util.Objects;
 import java.util.jar.JarEntry;
 import java.util.jar.JarInputStream;
@@ -51,8 +49,7 @@ public abstract class BaseVelocityPlugin
     protected final Logger logger;
     protected final File dataFolder;
     protected final ScheduleTaskService taskService;
-    private LiteCommandConsumerFactory.Register liteCommandsRegister;
-    private NativeCommandConsumerFactory.Register nativeCommandRegister;
+    private Iterable<CommandConsumer.BaseRegister> commandRegisters;
 
     private PluginDescription description;
     private VelocityDependencyLoader dependencyLoader;
@@ -125,12 +122,18 @@ public abstract class BaseVelocityPlugin
             loadDependencies(velocityDependency.val0);
 
         LiteCommandsBuilder<CommandSource, LiteVelocitySettings, ?> liteCommandsBuilder = LiteVelocityFactory.builder(server);
-        liteCommandsRegister = new LiteCommandConsumerFactory.Register(liteCommandsBuilder);
-        nativeCommandRegister = new NativeCommandConsumerFactory.Register(this, server.getCommandManager());
+        commandRegisters = List.of(
+                new LiteCommandConsumerFactory.LiteRegister(liteCommandsBuilder),
+                new NativeCommandConsumerFactory.NativeRegister(this, server.getCommandManager()));
         super.enable();
         var liteCommands = liteCommandsBuilder.build();
         liteCommands.register();
         compositeDisposable.add(liteCommands::unregister);
+    }
+
+    @Override
+    protected Iterable<CommandConsumer.BaseRegister> commandRegisters() {
+        return commandRegisters;
     }
 
     @Override
@@ -175,17 +178,5 @@ public abstract class BaseVelocityPlugin
     protected Stream<Path> jars() {
         return description.getSource()
                 .stream();
-    }
-
-    @Override
-    protected Disposable registerCommand(CommandConsumer<?> command) {
-        if (command instanceof LiteCommandConsumer<?,?,?> liteCommand) {
-            liteCommand.applyCast(liteCommandsRegister);
-            return Disposable.empty();
-        } else if (command instanceof NativeCommandConsumer<?,?> nativeCommand) {
-            nativeCommand.applyCast(nativeCommandRegister);
-            return Disposable.empty();
-        } else
-            throw new IllegalArgumentException("Not supported " + command.getClass() + " command supplier");
     }
 }

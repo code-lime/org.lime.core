@@ -2,25 +2,30 @@ package org.lime.core.common.api.commands;
 
 import java.util.function.Consumer;
 
-public interface CommandConsumer<Builder> {
-    void apply(Builder builder);
+public interface CommandConsumer<Register extends CommandConsumer.BaseRegister> {
+    void apply(Register register);
 
-    default CommandConsumer<Builder> with(Consumer<Builder> consumer) {
+    default CommandConsumer<Register> with(Consumer<Register> consumer) {
         return new CommandConsumer<>() {
             @Override
-            public void apply(Builder builder) {
-                CommandConsumer.this.apply(builder);
-                consumer.accept(builder);
+            public void apply(Register register) {
+                CommandConsumer.this.apply(register);
+                consumer.accept(register);
             }
             @Override
-            public Class<Builder> builderClass() {
-                return CommandConsumer.this.builderClass();
+            public Class<Register> registerClass() {
+                return CommandConsumer.this.registerClass();
             }
         };
     }
 
-    Class<Builder> builderClass();
-    default void applyCast(Object factory) {
-        apply(builderClass().cast(factory));
+    Class<Register> registerClass();
+    default boolean isCast(BaseRegister register) {
+        return registerClass().isInstance(register);
     }
+    default void applyCast(BaseRegister register) {
+        apply(registerClass().cast(register));
+    }
+
+    interface BaseRegister {}
 }

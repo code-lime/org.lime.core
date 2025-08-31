@@ -11,7 +11,10 @@ import io.papermc.paper.adventure.AdventureComponent;
 import io.papermc.paper.command.brigadier.CommandSourceStack;
 import io.papermc.paper.command.brigadier.Commands;
 import io.papermc.paper.command.brigadier.argument.CustomArgumentType;
+import io.papermc.paper.plugin.lifecycle.event.LifecycleEventManager;
+import io.papermc.paper.plugin.lifecycle.event.types.LifecycleEvents;
 import net.kyori.adventure.text.Component;
+import org.bukkit.plugin.Plugin;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 import org.lime.core.common.api.commands.brigadier.arguments.BaseMappedArgument;
@@ -21,20 +24,20 @@ import java.util.List;
 import java.util.concurrent.CompletableFuture;
 
 public class NativeCommandConsumerFactory
-        implements NativeCommandConsumer.Factory<CommandSourceStack, NativeCommandConsumerFactory.Register> {
+        implements NativeCommandConsumer.Factory<CommandSourceStack, NativeCommandConsumerFactory.NativeRegister> {
     public static final NativeCommandConsumerFactory INSTANCE = new NativeCommandConsumerFactory();
 
-    public record Register(Commands commands)
-            implements NativeCommandConsumer.Register<CommandSourceStack> {
+    public record NativeRegister(LifecycleEventManager<@NotNull Plugin> eventManager)
+            implements NativeCommandConsumer.NativeRegister<CommandSourceStack> {
         @Override
         public void register(LiteralArgumentBuilder<CommandSourceStack> node, String command, List<String> aliases, @Nullable String description) {
-            commands.register(node.build(), description, aliases);
+            eventManager.registerEventHandler(LifecycleEvents.COMMANDS, commands -> commands.registrar().register(node.build(), description, aliases));
         }
     }
 
     @Override
-    public Class<Register> builderClass() {
-        return Register.class;
+    public Class<NativeRegister> builderClass() {
+        return NativeRegister.class;
     }
 
     @Override

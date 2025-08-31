@@ -6,14 +6,14 @@ import net.minecraft.commands.CommandSourceStack;
 import org.lime.core.common.api.commands.LiteCommandConsumer;
 
 public class LiteCommandConsumerFactory
-        implements LiteCommandConsumer.Factory<CommandSourceStack, LiteFabricSettings, LiteCommandConsumerFactory.Register> {
+        implements LiteCommandConsumer.Factory<CommandSourceStack, LiteFabricSettings, LiteCommandConsumerFactory.LiteRegister> {
     public static final LiteCommandConsumerFactory INSTANCE = new LiteCommandConsumerFactory();
 
-    public record Register(LiteCommandsBuilder<CommandSourceStack, LiteFabricSettings, ?> builder)
-            implements LiteCommandConsumer.Register<CommandSourceStack, LiteFabricSettings> { }
+    public record LiteRegister(LiteCommandsBuilder<CommandSourceStack, LiteFabricSettings, ?> builder)
+            implements LiteCommandConsumer.LiteRegister<CommandSourceStack, LiteFabricSettings> { }
 
     @Override
-    public Class<Register> builderClass() {
-        return Register.class;
+    public Class<LiteRegister> registerClass() {
+        return LiteRegister.class;
     }
 }

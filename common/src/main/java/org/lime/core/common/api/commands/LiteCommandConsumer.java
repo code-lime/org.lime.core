@@ -9,9 +9,10 @@ import dev.rollczi.litecommands.argument.suggester.Suggester;
 import dev.rollczi.litecommands.platform.PlatformSettings;
 import dev.rollczi.litecommands.programmatic.LiteCommand;
 
-public interface LiteCommandConsumer<Sender, Settings extends PlatformSettings, Builder extends LiteCommandConsumer.Register<Sender, Settings>>
+public interface LiteCommandConsumer<Sender, Settings extends PlatformSettings, Builder extends LiteCommandConsumer.LiteRegister<Sender, Settings>>
         extends CommandConsumer<Builder> {
-    interface Register<Sender, Settings extends PlatformSettings> {
+    interface LiteRegister<Sender, Settings extends PlatformSettings>
+            extends BaseRegister {
         LiteCommandsBuilder<Sender, Settings, ?> builder();
 
         default void command(Object command) {
@@ -39,52 +40,52 @@ public interface LiteCommandConsumer<Sender, Settings extends PlatformSettings, 
             builder().argumentParser(argumentClass, key, parser);
         }
     }
-    interface Factory<Sender, Settings extends PlatformSettings, Builder extends Register<Sender, Settings>> {
-        Class<Builder> builderClass();
+    interface Factory<Sender, Settings extends PlatformSettings, Register extends LiteRegister<Sender, Settings>> {
+        Class<Register> registerClass();
 
-        default LiteCommandConsumer<Sender, Settings, Builder> ofDynamic(
+        default LiteCommandConsumer<Sender, Settings, Register> ofDynamic(
                 Object command) {
             return new LiteCommandConsumer<>() {
                 @Override
-                public void apply(Builder builder) {
-                    builder.command(command);
+                public void apply(Register register) {
+                    register.command(command);
                 }
                 @Override
-                public Class<Builder> builderClass() {
-                    return Factory.this.builderClass();
+                public Class<Register> registerClass() {
+                    return Factory.this.registerClass();
                 }
             };
         }
-        default LiteCommandConsumer<Sender, Settings, Builder> of(
+        default LiteCommandConsumer<Sender, Settings, Register> of(
                 LiteCommand<Sender> command) {
             return ofDynamic(command);
         }
-        default LiteCommandConsumer<Sender, Settings, Builder> of(
+        default LiteCommandConsumer<Sender, Settings, Register> of(
                 LiteCommandsProvider<Sender> commandProvider) {
             return ofDynamic(commandProvider);
         }
-        default <T> LiteCommandConsumer<Sender, Settings, Builder> of(
+        default <T> LiteCommandConsumer<Sender, Settings, Register> of(
                 Class<T> commandClass) {
             return ofDynamic(commandClass);
         }
 
-        default <T> LiteCommandConsumer<Sender, Settings, Builder> ofArgument(
+        default <T> LiteCommandConsumer<Sender, Settings, Register> ofArgument(
                 Class<T> argumentClass,
                 ArgumentResolverBase<Sender, T> resolver) {
             return ofArgument(argumentClass, ArgumentKey.of(), resolver);
         }
-        default <T> LiteCommandConsumer<Sender, Settings, Builder> ofArgument(
+        default <T> LiteCommandConsumer<Sender, Settings, Register> ofArgument(
                 Class<T> argumentClass,
                 ArgumentKey key,
                 ArgumentResolverBase<Sender, T> resolver) {
             return new LiteCommandConsumer<>() {
                 @Override
-                public void apply(Builder builder) {
-                    builder.argument(argumentClass, key, resolver);
+                public void apply(Register register) {
+                    register.argument(argumentClass, key, resolver);
                 }
                 @Override
-                public Class<Builder> builderClass() {
-                    return Factory.this.builderClass();
+                public Class<Register> registerClass() {
+                    return Factory.this.registerClass();
                 }
             };
         }

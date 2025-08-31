@@ -16,14 +16,14 @@ import org.lime.core.fabric.commands.brigadier.CustomArgumentType;
 import java.util.List;
 
 public class NativeCommandConsumerFactory
-        implements NativeCommandConsumer.Factory<CommandSourceStack, NativeCommandConsumerFactory.Register> {
+        implements NativeCommandConsumer.Factory<CommandSourceStack, NativeCommandConsumerFactory.NativeRegister> {
     private final FabricServerAudiences audiences;
     public NativeCommandConsumerFactory(MinecraftServer server) {
         audiences = FabricServerAudiences.of(server);
     }
 
-    public record Register(CommandDispatcher<CommandSourceStack> dispatcher)
-            implements NativeCommandConsumer.Register<CommandSourceStack> {
+    public record NativeRegister(CommandDispatcher<CommandSourceStack> dispatcher)
+            implements NativeCommandConsumer.NativeRegister<CommandSourceStack> {
         @Override
         public void register(LiteralArgumentBuilder<CommandSourceStack> node, String command, List<String> aliases, @Nullable String description) {
             dispatcher.register(node);
@@ -31,8 +31,8 @@ public class NativeCommandConsumerFactory
     }
 
     @Override
-    public Class<Register> builderClass() {
-        return Register.class;
+    public Class<NativeRegister> builderClass() {
+        return NativeRegister.class;
     }
 
     @Override

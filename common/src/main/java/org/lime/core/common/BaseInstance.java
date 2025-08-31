@@ -47,7 +47,16 @@ public abstract class BaseInstance<Instance extends BaseInstance<Instance>> {
         else
             throw new IllegalArgumentException(command.getClass() + " is not command supplier");
     }
-    protected abstract Disposable registerCommand(CommandConsumer<?> command);
+    protected Disposable registerCommand(CommandConsumer<?> command) {
+        for (var register : commandRegisters()) {
+            if (command.isCast(register)) {
+                command.applyCast(register);
+                return Disposable.empty();
+            }
+        }
+        throw new IllegalArgumentException("Not supported " + command.getClass() + " command supplier with register " + command.registerClass());
+    }
+    protected abstract Iterable<CommandConsumer.BaseRegister> commandRegisters();
 
     protected void enableService(Service service) {}
     protected void disableService(Service service) {}

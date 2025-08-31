@@ -11,24 +11,25 @@ import org.lime.core.common.utils.system.execute.Action1;
 import java.util.ArrayList;
 import java.util.List;
 
-public interface NativeCommandConsumer<Sender, Builder extends NativeCommandConsumer.Register<Sender>>
-        extends CommandConsumer<Builder> {
-    interface Register<Sender> {
+public interface NativeCommandConsumer<Sender, Register extends NativeCommandConsumer.NativeRegister<Sender>>
+        extends CommandConsumer<Register> {
+    interface NativeRegister<Sender>
+            extends BaseRegister {
         void register(LiteralArgumentBuilder<Sender> node, String command, List<String> aliases, @Nullable String description);
     }
-    interface Factory<Sender, Builder extends Register<Sender>> {
-        Class<Builder> builderClass();
+    interface Factory<Sender, Register extends NativeRegister<Sender>> {
+        Class<Register> builderClass();
 
         Message tooltip(Component component);
         <T, N> ArgumentType<T> argument(BaseMappedArgument<T, N> mappedArgument);
 
-        default NativeCommandConsumer<Sender, Builder> of(
+        default NativeCommandConsumer<Sender, Register> of(
                 List<String> aliases,
                 @Nullable String description,
                 Action1<LiteralArgumentBuilder<Sender>> configure) {
             return new NativeCommandConsumer<>() {
                 @Override
-                public void apply(Builder builder) {
+                public void apply(Register register) {
                     LiteralArgumentBuilder<Sender> root = null;
                     List<String> otherAliases = new ArrayList<>();
                     String rootAlias = null;
@@ -43,26 +44,26 @@ public interface NativeCommandConsumer<Sender, Builder extends NativeCommandCons
                     if (root == null || rootAlias == null)
                         return;
                     configure.invoke(root);
-                    builder.register(root, rootAlias, otherAliases, description);
+                    register.register(root, rootAlias, otherAliases, description);
                 }
                 @Override
-                public Class<Builder> builderClass() {
+                public Class<Register> registerClass() {
                     return Factory.this.builderClass();
                 }
             };
         }
-        default NativeCommandConsumer<Sender, Builder> of(
+        default NativeCommandConsumer<Sender, Register> of(
                 String alias,
                 @Nullable String description,
                 Action1<LiteralArgumentBuilder<Sender>> configure) {
             return of(List.of(alias), description, configure);
         }
-        default NativeCommandConsumer<Sender, Builder> of(
+        default NativeCommandConsumer<Sender, Register> of(
                 List<String> aliases,
                 Action1<LiteralArgumentBuilder<Sender>> configure) {
             return of(aliases, null, configure);
         }
-        default NativeCommandConsumer<Sender, Builder> of(
+        default NativeCommandConsumer<Sender, Register> of(
                 String alias,
                 Action1<LiteralArgumentBuilder<Sender>> configure) {
             return of(List.of(alias), configure);

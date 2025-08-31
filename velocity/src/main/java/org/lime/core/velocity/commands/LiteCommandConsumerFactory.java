@@ -6,14 +6,14 @@ import dev.rollczi.litecommands.velocity.LiteVelocitySettings;
 import org.lime.core.common.api.commands.LiteCommandConsumer;
 
 public class LiteCommandConsumerFactory
-        implements LiteCommandConsumer.Factory<CommandSource, LiteVelocitySettings, LiteCommandConsumerFactory.Register> {
+        implements LiteCommandConsumer.Factory<CommandSource, LiteVelocitySettings, LiteCommandConsumerFactory.LiteRegister> {
     public static final LiteCommandConsumerFactory INSTANCE = new LiteCommandConsumerFactory();
 
-    public record Register(LiteCommandsBuilder<CommandSource, LiteVelocitySettings, ?> builder)
-            implements LiteCommandConsumer.Register<CommandSource, LiteVelocitySettings> { }
+    public record LiteRegister(LiteCommandsBuilder<CommandSource, LiteVelocitySettings, ?> builder)
+            implements LiteCommandConsumer.LiteRegister<CommandSource, LiteVelocitySettings> { }
 
     @Override
-    public Class<Register> builderClass() {
-        return Register.class;
+    public Class<LiteRegister> registerClass() {
+        return LiteRegister.class;
     }
 }
