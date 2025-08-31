@@ -9,7 +9,6 @@ import com.google.inject.TypeLiteral;
 import net.kyori.adventure.text.minimessage.MiniMessage;
 import net.minecraft.unsafe.GlobalConfigure;
 import org.apache.commons.lang3.reflect.TypeUtils;
-import org.jetbrains.annotations.Nullable;
 import org.lime.core.common.utils.Unsafe;
 import org.lime.core.common.services.UnsafeMappingsUtility;
 import org.lime.core.common.api.*;
@@ -57,13 +56,38 @@ public abstract class BaseInstanceModule<Instance extends BaseInstance<Instance>
     }
 
     protected abstract UnsafeMappingsUtility mappings();
+
     protected abstract LiteCommandConsumer.Factory<?,?,?> liteCommandFactory();
     protected abstract NativeCommandConsumer.Factory<?,?> nativeCommandFactory();
+
+    private static void addPart(
+            JsonObject root,
+            String[] part,
+            JsonElement value) {
+        int length = part.length;
+        if (length == 0)
+            throw new IllegalArgumentException("Part array is empty");
+        JsonElement result = value;
+        for (int i = length - 1; i >= 1; i--) {
+            String name = part[i];
+            result = Json.object()
+                    .add(name, result)
+                    .build();
+        }
+        root.add(part[0], result);
+    }
+    private static JsonObject createPart(
+            String[] part,
+            JsonElement value) {
+        JsonObject root = new JsonObject();
+        addPart(root, part, value);
+        return root;
+    }
 
     @SuppressWarnings("unchecked")
     protected <T>T readConfig(
             Path file,
-            @Nullable String part,
+            String[] part,
             Gson gson,
             Type configClass) {
         Class<T> rawConfigClass = (Class<T>)TypeUtils.getRawType(configClass, configClass);
@@ -96,25 +120,27 @@ public abstract class BaseInstanceModule<Instance extends BaseInstance<Instance>
         JsonElement defaultJson = gson.toJsonTree(defaultValue);
         try {
             JsonElement valueJson;
+            int partLength = part.length;
             if (Files.exists(file)) {
                 JsonElement rootJson = JsonParser.parseString(Files.readString(file));
-                if (part != null) {
-                    JsonObject rootJsonObject = rootJson.getAsJsonObject();
-                    if (rootJsonObject.has(part)) {
-                        valueJson = rootJsonObject.get(part);
+                valueJson = rootJson;
+                for (String name : part) {
+                    JsonObject nextJsonObject = valueJson.getAsJsonObject();
+                    if (nextJsonObject.has(name)) {
+                        valueJson = nextJsonObject.get(name);
                     } else {
                         valueJson = null;
+                        break;
                     }
-                } else {
-                    valueJson = rootJson;
                 }
                 Optional<JsonElement> merged = valueJson == null ? Optional.of(defaultJson) : JsonUtils.merge(valueJson, defaultJson);
+
                 if (merged.isPresent()) {
                     valueJson = merged.get();
-                    if (part != null) {
-                        rootJson.getAsJsonObject().add(part, valueJson);
-                    } else {
+                    if (partLength == 0) {
                         rootJson = valueJson;
+                    } else {
+                        addPart(rootJson.getAsJsonObject(), part, valueJson);
                     }
                     Files.writeString(file, JsonUtils.toJson(gson, rootJson));
                 }
@@ -125,9 +151,9 @@ public abstract class BaseInstanceModule<Instance extends BaseInstance<Instance>
             if (!Files.exists(parent))
                 Files.createDirectories(parent);
             valueJson = gson.toJsonTree(defaultValue, configClass);
-            Files.writeString(file, JsonUtils.toJson(gson, part == null
+            Files.writeString(file, JsonUtils.toJson(gson, partLength == 0
                     ? valueJson
-                    : Json.object().add(part, valueJson).build()));
+                    : createPart(part, valueJson)));
             return gson.fromJson(valueJson, configClass);
         } catch (IOException e) {
             throw new RuntimeException("Error load config " + file + " of " + configClass, e);
@@ -135,7 +161,7 @@ public abstract class BaseInstanceModule<Instance extends BaseInstance<Instance>
     }
     protected <T>void writeConfig(
             Path file,
-            @Nullable String part,
+            String[] part,
             Gson gson,
             Type configClass,
             T value) {
@@ -145,11 +171,12 @@ public abstract class BaseInstanceModule<Instance extends BaseInstance<Instance>
                 Files.createDirectories(parent);
 
             String rawValue;
-            if (part == null) {
+            int partLength = part.length;
+            if (partLength == 0) {
                 rawValue = gson.toJson(value, configClass);
             } else {
                 JsonObject rootJson = JsonParser.parseString(Files.readString(file)).getAsJsonObject();
-                rootJson.add(part, gson.toJsonTree(value, configClass));
+                addPart(rootJson, part, gson.toJsonTree(value, configClass));
                 rawValue = JsonUtils.toJson(gson, rootJson);
             }
             Files.writeString(file, rawValue);
@@ -175,10 +202,10 @@ public abstract class BaseInstanceModule<Instance extends BaseInstance<Instance>
             Type configType,
             Type configAccessType) {
         final String filePath = getConfigPath(config, configType);
-        final @Nullable String part = Optional.of(config.part()).filter(v -> !v.isBlank()).orElse(null);
+        final String[] part = config.part();
         final String key = Optional.of(config.key())
                 .filter(v -> !v.isBlank())
-                .orElseGet(() -> String.join(".", config.part()));
+                .orElseGet(() -> String.join(".", config.path()));
 
         //noinspection unchecked
         TypeLiteral<ConfigAccess<T>> typeLiteral = (TypeLiteral<ConfigAccess<T>>)TypeLiteral.get(configAccessType);
@@ -208,8 +235,8 @@ public abstract class BaseInstanceModule<Instance extends BaseInstance<Instance>
                         };
                         configs.computeIfAbsent(key, v -> new ArrayList<>())
                                 .add(configAccess);
-                        if (part != null)
-                            configs.computeIfAbsent(key + "#" + part, v -> new ArrayList<>())
+                        if (part.length > 0)
+                            configs.computeIfAbsent(key + "#" + String.join(".", config.part()), v -> new ArrayList<>())
                                     .add(configAccess);
                         return configAccess;
                     }
@@ -227,7 +254,7 @@ public abstract class BaseInstanceModule<Instance extends BaseInstance<Instance>
         }
 
         final String filePath = getConfigPath(config, configType);
-        final @Nullable String part = Optional.of(config.part()).filter(v -> !v.isBlank()).orElse(null);
+        final String[] part = config.part();
 
         //noinspection unchecked
         TypeLiteral<T> typeLiteral = (TypeLiteral<T>)TypeLiteral.get(configType);

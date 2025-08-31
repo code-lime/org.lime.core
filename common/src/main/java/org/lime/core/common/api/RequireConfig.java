@@ -13,6 +13,6 @@ import java.lang.annotation.Target;
 public @interface RequireConfig {
     String key() default "";
     String[] path() default {};
-    String part() default "";
+    String[] part() default {};
     boolean updatable() default false;
 }
