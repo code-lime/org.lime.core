@@ -12,8 +12,8 @@ import org.apache.commons.lang3.DoubleRange;
 import org.apache.commons.lang3.IntegerRange;
 import org.apache.commons.lang3.LongRange;
 import org.apache.commons.lang3.Range;
-import org.lime.core.common.utils.typeadapers.CombinedTypeAdapterFactory;
-import org.lime.core.common.utils.typeadapers.StringTypeAdapter;
+import org.lime.core.common.utils.adapters.CombinedTypeAdapterFactory;
+import org.lime.core.common.utils.adapters.StringTypeAdapter;
 
 import java.io.IOException;
 import java.lang.reflect.Type;

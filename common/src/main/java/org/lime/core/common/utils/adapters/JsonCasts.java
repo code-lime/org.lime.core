@@ -1,4 +1,4 @@
-package org.lime.core.common.utils.typeadapers;
+package org.lime.core.common.utils.adapters;
 
 import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;

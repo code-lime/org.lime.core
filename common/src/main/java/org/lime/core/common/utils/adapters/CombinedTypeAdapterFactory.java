@@ -1,4 +1,4 @@
-package org.lime.core.common.utils.typeadapers;
+package org.lime.core.common.utils.adapters;
 
 import com.google.gson.Gson;
 import com.google.gson.TypeAdapter;
