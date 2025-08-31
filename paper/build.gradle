@@ -35,12 +35,12 @@ processResources {
 //<editor-fold desc="Settings: Libraries">
 //<editor-fold desc="Settings: Libraries: ProtocolLib">
 dependencies {
-    compileOnly "net.dmulloy2:ProtocolLib:${versionProtocolLib}"
+    implementation "net.dmulloy2:ProtocolLib:${versionProtocolLib}"
 }
 //</editor-fold>
 //<editor-fold desc="Settings: Libraries: com.google.inject#guice">
 dependencies {
-    compileOnly "com.google.inject:guice:${versionGuice}"
+    implementation "com.google.inject:guice:${versionGuice}"
 }
 //</editor-fold>
 //<editor-fold desc="Settings: Libraries: LiteCommands">
@@ -51,7 +51,7 @@ repositories {
 }
 
 dependencies {
-    compileOnly "dev.rollczi:litecommands-bukkit:${versionLiteCommands}"
+    implementation "dev.rollczi:litecommands-bukkit:${versionLiteCommands}"
 }
 //</editor-fold>
 //</editor-fold>
