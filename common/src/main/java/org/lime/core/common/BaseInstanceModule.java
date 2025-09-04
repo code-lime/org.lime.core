@@ -144,7 +144,7 @@ public abstract class BaseInstanceModule<Instance extends BaseInstance<Instance>
                     } else {
                         addPart(rootJson.getAsJsonObject(), part, valueJson);
                     }
-                    Files.writeString(file, JsonUtils.toJson(gson, rootJson));
+                    Files.writeString(file, Json.format(rootJson));
                 }
                 return gson.fromJson(valueJson, configClass);
             }
@@ -153,7 +153,7 @@ public abstract class BaseInstanceModule<Instance extends BaseInstance<Instance>
             if (!Files.exists(parent))
                 Files.createDirectories(parent);
             valueJson = gson.toJsonTree(defaultValue, configClass);
-            Files.writeString(file, JsonUtils.toJson(gson, partLength == 0
+            Files.writeString(file, Json.format(partLength == 0
                     ? valueJson
                     : createPart(part, valueJson)));
             return gson.fromJson(valueJson, configClass);
@@ -179,7 +179,7 @@ public abstract class BaseInstanceModule<Instance extends BaseInstance<Instance>
             } else {
                 JsonObject rootJson = JsonParser.parseString(Files.readString(file)).getAsJsonObject();
                 addPart(rootJson, part, gson.toJsonTree(value, configClass));
-                rawValue = JsonUtils.toJson(gson, rootJson);
+                rawValue = Json.format(rootJson);
             }
             Files.writeString(file, rawValue);
         } catch (IOException e) {

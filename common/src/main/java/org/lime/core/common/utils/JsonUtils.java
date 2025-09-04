@@ -37,10 +37,4 @@ public class JsonUtils {
             return mergeTo(currentObject, targetObject);
         return false;
     }
-
-    public static String toJson(Gson gson, JsonElement element) {
-        StringWriter writer = new StringWriter();
-        gson.toJson(element, writer);
-        return writer.toString();
-    }
 }
