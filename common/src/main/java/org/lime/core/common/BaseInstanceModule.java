@@ -67,14 +67,16 @@ public abstract class BaseInstanceModule<Instance extends BaseInstance<Instance>
         int length = part.length;
         if (length == 0)
             throw new IllegalArgumentException("Part array is empty");
-        JsonElement result = value;
-        for (int i = length - 1; i >= 1; i--) {
+
+        JsonObject current = root;
+        for (int i = 0; i < length - 1; i++) {
             String name = part[i];
-            result = Json.object()
-                    .add(name, result)
-                    .build();
+            JsonObject next;
+            if (current.has(name)) next = current.getAsJsonObject(name);
+            else current.add(name, next = new JsonObject());
+            current = next;
         }
-        root.add(part[0], result);
+        current.add(part[length - 1], value);
     }
     private static JsonObject createPart(
             String[] part,
