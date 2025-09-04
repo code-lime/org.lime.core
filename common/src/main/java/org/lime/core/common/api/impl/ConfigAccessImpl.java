@@ -10,7 +10,7 @@ public abstract class ConfigAccessImpl<T>
 
     public ConfigAccessImpl(boolean updated) {
         this.updated = updated;
-        this.access = Lazy.of(this::read);
+        this.access = Lazy.of(this.read());
     }
 
     @Override
