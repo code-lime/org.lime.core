@@ -19,6 +19,7 @@ import org.lime.core.common.services.UpdateConfigService;
 import org.lime.core.common.utils.*;
 import org.lime.core.common.utils.json.builder.Json;
 import org.lime.core.common.utils.adapters.RuntimeTypeAdapterFactory;
+import org.slf4j.Logger;
 
 import java.io.File;
 import java.io.IOException;
@@ -319,6 +320,7 @@ public abstract class BaseInstanceModule<Instance extends BaseInstance<Instance>
     protected void configure() {
         bind(UnsafeMappingsUtility.class).toInstance(Unsafe.MAPPINGS);
 
+        bind(Logger.class).toInstance(instance.logger());
         bind(Gson.class)
                 .toProvider(() -> {
                     GsonBuilder builder = new GsonBuilder()
