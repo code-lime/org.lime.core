@@ -277,16 +277,24 @@ public abstract class BaseInstanceModule<Instance extends BaseInstance<Instance>
                 })
                 .asEagerSingleton();
     }
+    protected void bindCustom(
+            Class<? extends Service> custom) {
+        bindCustom(custom, true);
+    }
     protected <T>void bindCustom(
-            Class<T> custom) {
+            Class<T> custom,
+            boolean singelton) {
         if (!bindCache.add(custom) || services.contains(custom))
             return;
         for (Require children : custom.getDeclaredAnnotationsByType(Require.class))
-            bindCustom(children.value());
+            bindCustom(children.value(), false);
 
         if (Service.class.isAssignableFrom(custom)) {
             //noinspection unchecked
             services.add((Class<? extends Service>) custom);
+            singelton = true;
+        }
+        if (singelton) {
             bind(custom).asEagerSingleton();
         }
 
@@ -344,7 +352,7 @@ public abstract class BaseInstanceModule<Instance extends BaseInstance<Instance>
                 .filter(v -> Optional.ofNullable(v.getDeclaredAnnotation(BindService.class))
                         .map(BindService::enable)
                         .orElse(false))
-                .forEach(this::bindCustom);
+                .forEach(v -> bindCustom(v, true));
     }
 
     public Collection<String> configKeys() {
