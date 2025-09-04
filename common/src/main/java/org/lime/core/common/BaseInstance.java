@@ -42,6 +42,10 @@ public abstract class BaseInstance<Instance extends BaseInstance<Instance>> {
     private final Set<Service> services = ConcurrentHashMap.newKeySet();
     protected final Disposable.Composite compositeDisposable = Disposable.composite();
 
+    public Injector injector() {
+        return injector;
+    }
+
     private Disposable registerCommandCast(Object command) {
         if (command instanceof CommandConsumer<?> commandConsumer) {
             return registerCommand(commandConsumer);
