@@ -38,6 +38,7 @@ public abstract class BaseInstanceModule<Instance extends BaseInstance<Instance>
     protected final Disposable.Composite compositeDisposable;
 
     protected final Deque<Class<? extends Service>> services = new ConcurrentLinkedDeque<>();
+    protected final Set<Class<?>> bindCache = ConcurrentHashMap.newKeySet();
     protected final ConcurrentHashMap<String, List<ConfigAccess<?>>> configs = new ConcurrentHashMap<>();
 
     protected final Class<Instance> instanceClass;
@@ -282,7 +283,7 @@ public abstract class BaseInstanceModule<Instance extends BaseInstance<Instance>
     }
     protected <T>void bindCustom(
             Class<T> custom) {
-        if (services.contains(custom))
+        if (!bindCache.add(custom) || services.contains(custom))
             return;
         for (Require children : custom.getDeclaredAnnotationsByType(Require.class))
             bindCustom(children.value());
