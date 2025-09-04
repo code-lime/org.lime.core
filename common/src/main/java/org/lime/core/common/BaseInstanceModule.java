@@ -218,8 +218,6 @@ public abstract class BaseInstanceModule<Instance extends BaseInstance<Instance>
                 .annotatedWith(config)
                 .toProvider(new Provider<>() {
                     @Inject
-                    Instance instance;
-                    @Inject
                     Gson gson;
 
                     @Override
@@ -266,8 +264,6 @@ public abstract class BaseInstanceModule<Instance extends BaseInstance<Instance>
         bind(typeLiteral)
                 .annotatedWith(config)
                 .toProvider(new Provider<>() {
-                    @Inject
-                    Instance instance;
                     @Inject
                     Gson gson;
 
