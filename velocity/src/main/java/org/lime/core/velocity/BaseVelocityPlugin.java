@@ -34,6 +34,7 @@ import java.io.InputStream;
 import java.nio.ByteBuffer;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
 import java.util.jar.JarEntry;
@@ -124,11 +125,9 @@ public abstract class BaseVelocityPlugin
         LiteCommandsBuilder<CommandSource, LiteVelocitySettings, ?> liteCommandsBuilder = LiteVelocityFactory.builder(server);
         commandRegisters = List.of(
                 new LiteCommandConsumerFactory.LiteRegister(liteCommandsBuilder),
-                new NativeCommandConsumerFactory.NativeRegister(this, server.getCommandManager()));
+                new NativeCommandConsumerFactory.NativeRegister(this, server.getCommandManager(), new ArrayList<>()));
         super.enable();
-        var liteCommands = liteCommandsBuilder.build();
-        liteCommands.register();
-        compositeDisposable.add(liteCommands::unregister);
+        commandRegisters.forEach(v -> compositeDisposable.add(v.apply()));
     }
 
     @Override

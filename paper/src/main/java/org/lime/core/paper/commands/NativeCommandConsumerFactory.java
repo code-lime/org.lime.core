@@ -19,6 +19,8 @@ import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 import org.lime.core.common.api.commands.brigadier.arguments.BaseMappedArgument;
 import org.lime.core.common.api.commands.NativeCommandConsumer;
+import org.lime.core.common.utils.Disposable;
+import org.lime.core.common.utils.system.execute.Action1;
 
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
@@ -27,11 +29,18 @@ public class NativeCommandConsumerFactory
         implements NativeCommandConsumer.Factory<CommandSourceStack, NativeCommandConsumerFactory.NativeRegister> {
     public static final NativeCommandConsumerFactory INSTANCE = new NativeCommandConsumerFactory();
 
-    public record NativeRegister(LifecycleEventManager<@NotNull Plugin> eventManager)
+    public record NativeRegister(
+            LifecycleEventManager<@NotNull Plugin> eventManager,
+            List<Command<CommandSourceStack>> commands)
             implements NativeCommandConsumer.NativeRegister<CommandSourceStack> {
         @Override
-        public void register(LiteralArgumentBuilder<CommandSourceStack> node, String command, List<String> aliases, @Nullable String description) {
-            eventManager.registerEventHandler(LifecycleEvents.COMMANDS, commands -> commands.registrar().register(node.build(), description, aliases));
+        public Disposable registerSingle(String alias, Action1<LiteralArgumentBuilder<CommandSourceStack>> configure) {
+            eventManager.registerEventHandler(LifecycleEvents.COMMANDS, commands -> {
+                var root = Commands.literal(alias);
+                configure.invoke(root);
+                commands.registrar().register(root.build());
+            });
+            return Disposable.empty();
         }
     }
 

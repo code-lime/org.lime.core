@@ -22,6 +22,7 @@ import org.slf4j.LoggerFactory;
 import java.io.File;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.stream.Stream;
 
@@ -69,11 +70,9 @@ public abstract class BaseFabricMod
         LiteCommandsBuilder<CommandSourceStack, LiteFabricSettings, ?> liteCommandsBuilder = LiteFabricFactory.server();
         commandRegisters = List.of(
                 new LiteCommandConsumerFactory.LiteRegister(liteCommandsBuilder),
-                new NativeCommandConsumerFactory.NativeRegister(server.getCommands().getDispatcher()));
+                new NativeCommandConsumerFactory.NativeRegister(server.getCommands().getDispatcher(), new ArrayList<>()));
         super.enable();
-        var liteCommands = liteCommandsBuilder.build();
-        liteCommands.register();
-        compositeDisposable.add(liteCommands::unregister);
+        commandRegisters.forEach(register -> compositeDisposable.add(register.apply()));
         server.getPlayerList()
                 .getPlayers()
                 .forEach(server.getCommands()::sendCommands);

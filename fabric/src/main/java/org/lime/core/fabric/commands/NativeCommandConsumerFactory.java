@@ -7,10 +7,13 @@ import com.mojang.brigadier.builder.LiteralArgumentBuilder;
 import net.kyori.adventure.platform.fabric.FabricServerAudiences;
 import net.kyori.adventure.text.Component;
 import net.minecraft.commands.CommandSourceStack;
+import net.minecraft.commands.Commands;
 import net.minecraft.server.MinecraftServer;
 import org.jetbrains.annotations.Nullable;
 import org.lime.core.common.api.commands.NativeCommandConsumer;
 import org.lime.core.common.api.commands.brigadier.arguments.BaseMappedArgument;
+import org.lime.core.common.utils.Disposable;
+import org.lime.core.common.utils.system.execute.Action1;
 import org.lime.core.fabric.commands.brigadier.CustomArgumentType;
 
 import java.util.List;
@@ -22,11 +25,16 @@ public class NativeCommandConsumerFactory
         audiences = FabricServerAudiences.of(server);
     }
 
-    public record NativeRegister(CommandDispatcher<CommandSourceStack> dispatcher)
+    public record NativeRegister(
+            CommandDispatcher<CommandSourceStack> dispatcher,
+            List<Command<CommandSourceStack>> commands)
             implements NativeCommandConsumer.NativeRegister<CommandSourceStack> {
         @Override
-        public void register(LiteralArgumentBuilder<CommandSourceStack> node, String command, List<String> aliases, @Nullable String description) {
-            dispatcher.register(node);
+        public Disposable registerSingle(String alias, Action1<LiteralArgumentBuilder<CommandSourceStack>> configure) {
+            var root = Commands.literal(alias);
+            configure.invoke(root);
+            dispatcher.register(root);
+            return Disposable.empty();
         }
     }
 

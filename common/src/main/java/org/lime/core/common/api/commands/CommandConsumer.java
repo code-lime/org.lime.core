@@ -1,5 +1,7 @@
 package org.lime.core.common.api.commands;
 
+import org.lime.core.common.utils.Disposable;
+
 import java.util.function.Consumer;
 
 public interface CommandConsumer<Register extends CommandConsumer.BaseRegister> {
@@ -27,5 +29,7 @@ public interface CommandConsumer<Register extends CommandConsumer.BaseRegister> 
         apply(registerClass().cast(register));
     }
 
-    interface BaseRegister {}
+    interface BaseRegister {
+        Disposable apply();
+    }
 }

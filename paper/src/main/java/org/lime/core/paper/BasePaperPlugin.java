@@ -10,6 +10,7 @@ import org.lime.core.paper.commands.LiteCommandConsumerFactory;
 import org.lime.core.paper.commands.NativeCommandConsumerFactory;
 
 import java.io.File;
+import java.util.ArrayList;
 import java.util.List;
 
 public abstract class BasePaperPlugin
@@ -32,11 +33,9 @@ public abstract class BasePaperPlugin
             LiteCommandsBuilder<CommandSender, LiteBukkitSettings, ?> liteCommandsBuilder = LiteBukkitFactory.builder(plugin);
             commandRegisters = List.of(
                     new LiteCommandConsumerFactory.LiteRegister(liteCommandsBuilder),
-                    new NativeCommandConsumerFactory.NativeRegister(plugin.getLifecycleManager()));
+                    new NativeCommandConsumerFactory.NativeRegister(plugin.getLifecycleManager(), new ArrayList<>()));
             super.enable();
-            var liteCommands = liteCommandsBuilder.build();
-            liteCommands.register();
-            compositeDisposable.add(liteCommands::unregister);
+            commandRegisters.forEach(v -> compositeDisposable.add(v.apply()));
         }
 
         @Override
