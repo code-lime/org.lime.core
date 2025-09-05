@@ -25,6 +25,7 @@ public final class CoreVelocityPlugin
     @Inject
     public CoreVelocityPlugin(ProxyServer server, Logger logger, Path dataDirectory) {
         super(server, logger, dataDirectory);
+        VelocityInstanceProvider.proxyServer = server;
     }
 
     @Override
