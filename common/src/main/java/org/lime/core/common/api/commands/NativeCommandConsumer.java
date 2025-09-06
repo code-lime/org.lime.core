@@ -3,6 +3,7 @@ package org.lime.core.common.api.commands;
 import com.mojang.brigadier.Message;
 import com.mojang.brigadier.arguments.ArgumentType;
 import com.mojang.brigadier.builder.LiteralArgumentBuilder;
+import com.mojang.brigadier.builder.RequiredArgumentBuilder;
 import net.kyori.adventure.text.Component;
 import org.lime.core.common.api.commands.brigadier.arguments.BaseMappedArgument;
 import org.lime.core.common.utils.Disposable;
@@ -12,6 +13,7 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.function.Predicate;
 
 public interface NativeCommandConsumer<Sender, Register extends NativeCommandConsumer.NativeRegister<Sender>>
         extends CommandConsumer<Register> {
@@ -44,9 +46,17 @@ public interface NativeCommandConsumer<Sender, Register extends NativeCommandCon
     }
     interface Factory<Sender, Register extends NativeRegister<Sender>> {
         Class<Register> builderClass();
+        Class<Sender> senderClass();
 
         Message tooltip(Component component);
         <T, N> ArgumentType<T> argument(BaseMappedArgument<T, N> mappedArgument);
+
+        Predicate<Sender> operator();
+        LiteralArgumentBuilder<Sender> literal(String literal);
+        <T> RequiredArgumentBuilder<Sender, T> argument(String key, ArgumentType<T> argumentType);
+        default <T, N> RequiredArgumentBuilder<Sender, T> argument(String key, BaseMappedArgument<T, N> mappedArgument) {
+            return argument(key, argument(mappedArgument));
+        }
 
         default NativeCommandConsumer<Sender, Register> of(
                 List<String> aliases,

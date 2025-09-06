@@ -3,6 +3,7 @@ package org.lime.core.paper.commands;
 import com.mojang.brigadier.Message;
 import com.mojang.brigadier.arguments.ArgumentType;
 import com.mojang.brigadier.builder.LiteralArgumentBuilder;
+import com.mojang.brigadier.builder.RequiredArgumentBuilder;
 import com.mojang.brigadier.context.CommandContext;
 import com.mojang.brigadier.exceptions.CommandSyntaxException;
 import com.mojang.brigadier.suggestion.Suggestions;
@@ -16,7 +17,6 @@ import io.papermc.paper.plugin.lifecycle.event.types.LifecycleEvents;
 import net.kyori.adventure.text.Component;
 import org.bukkit.plugin.Plugin;
 import org.jetbrains.annotations.NotNull;
-import org.jetbrains.annotations.Nullable;
 import org.lime.core.common.api.commands.brigadier.arguments.BaseMappedArgument;
 import org.lime.core.common.api.commands.NativeCommandConsumer;
 import org.lime.core.common.utils.Disposable;
@@ -24,6 +24,7 @@ import org.lime.core.common.utils.system.execute.Action1;
 
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
+import java.util.function.Predicate;
 
 public class NativeCommandConsumerFactory
         implements NativeCommandConsumer.Factory<CommandSourceStack, NativeCommandConsumerFactory.NativeRegister> {
@@ -47,6 +48,10 @@ public class NativeCommandConsumerFactory
     @Override
     public Class<NativeRegister> builderClass() {
         return NativeRegister.class;
+    }
+    @Override
+    public Class<CommandSourceStack> senderClass() {
+        return CommandSourceStack.class;
     }
 
     @Override
@@ -73,5 +78,18 @@ public class NativeCommandConsumerFactory
                 return mappedArgument.convert(value, source);
             }
         };
+    }
+
+    @Override
+    public Predicate<CommandSourceStack> operator() {
+        return v -> v.getSender().isOp();
+    }
+    @Override
+    public LiteralArgumentBuilder<CommandSourceStack> literal(String literal) {
+        return Commands.literal(literal);
+    }
+    @Override
+    public <T> RequiredArgumentBuilder<CommandSourceStack, T> argument(String key, ArgumentType<T> argumentType) {
+        return Commands.argument(key, argumentType);
     }
 }

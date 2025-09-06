@@ -3,6 +3,7 @@ package org.lime.core.velocity.commands;
 import com.mojang.brigadier.Message;
 import com.mojang.brigadier.arguments.ArgumentType;
 import com.mojang.brigadier.builder.LiteralArgumentBuilder;
+import com.mojang.brigadier.builder.RequiredArgumentBuilder;
 import com.velocitypowered.api.command.BrigadierCommand;
 import com.velocitypowered.api.command.CommandManager;
 import com.velocitypowered.api.command.CommandSource;
@@ -18,6 +19,7 @@ import org.lime.core.velocity.commands.brigadier.Commands;
 import org.lime.core.velocity.commands.brigadier.CustomArgumentType;
 
 import java.util.List;
+import java.util.function.Predicate;
 
 public class NativeCommandConsumerFactory
         implements NativeCommandConsumer.Factory<CommandSource, NativeCommandConsumerFactory.NativeRegister> {
@@ -44,6 +46,10 @@ public class NativeCommandConsumerFactory
     public Class<NativeRegister> builderClass() {
         return NativeRegister.class;
     }
+    @Override
+    public Class<CommandSource> senderClass() {
+        return CommandSource.class;
+    }
 
     @Override
     public Message tooltip(Component component) {
@@ -52,5 +58,18 @@ public class NativeCommandConsumerFactory
     @Override
     public <T, N> ArgumentType<T> argument(BaseMappedArgument<T, N> mappedArgument) {
         return new CustomArgumentType<>(mappedArgument);
+    }
+
+    @Override
+    public Predicate<CommandSource> operator() {
+        return v -> v.hasPermission("velocity.operator");
+    }
+    @Override
+    public LiteralArgumentBuilder<CommandSource> literal(String literal) {
+        return LiteralArgumentBuilder.literal(literal);
+    }
+    @Override
+    public <T> RequiredArgumentBuilder<CommandSource, T> argument(String key, ArgumentType<T> argumentType) {
+        return RequiredArgumentBuilder.argument(key, argumentType);
     }
 }
