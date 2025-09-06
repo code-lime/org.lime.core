@@ -1,4 +1,4 @@
-package org.lime.core.common.utils;
+package org.lime.core.common.utils.adapters;
 
 import com.google.gson.*;
 import com.google.gson.internal.bind.TypeAdapters;
@@ -8,19 +8,12 @@ import com.google.gson.stream.JsonWriter;
 import net.kyori.adventure.key.Key;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.minimessage.MiniMessage;
-import org.apache.commons.lang3.DoubleRange;
-import org.apache.commons.lang3.IntegerRange;
-import org.apache.commons.lang3.LongRange;
-import org.apache.commons.lang3.Range;
-import org.lime.core.common.utils.adapters.CombinedTypeAdapterFactory;
-import org.lime.core.common.utils.adapters.StringTypeAdapter;
+import org.lime.core.common.utils.PlaceholderComponent;
+import org.lime.core.common.utils.range.*;
 
 import java.io.IOException;
 import java.lang.reflect.Type;
 import java.time.Duration;
-import java.time.temporal.ChronoUnit;
-import java.time.temporal.TemporalUnit;
-import java.util.function.BiFunction;
 
 public class GsonTypeAdapters {
     @SuppressWarnings({"unchecked", "SameParameterValue"})
@@ -74,70 +67,29 @@ public class GsonTypeAdapters {
         return TypeAdapters.newFactory(
                 Duration.class,
                 new StringTypeAdapter<>() {
-                    private static void addPart(StringBuilder builder, long value, String suffix) {
-                        if (value <= 0)
-                            return;
-                        builder.append(value).append(suffix);
-                    }
                     @Override
                     public String write(Duration value) {
-                        if (value.isNegative())
-                            return "0s";
-
-                        StringBuilder builder = new StringBuilder();
-
-                        addPart(builder, value.toSecondsPart(), "s");
-                        addPart(builder, value.toMinutesPart(), "m");
-                        addPart(builder, value.toHoursPart(), "h");
-                        addPart(builder, value.toDays(), "d");
-
-                        if (builder.isEmpty())
-                            builder.append("0s");
-
-                        return builder.toString();
+                        return DurationUtils.write(value);
                     }
                     @Override
                     public Duration read(String value) {
-                        int amount = 0;
-                        Duration duration = Duration.ZERO;
-
-                        for (char ch : value.toCharArray()) {
-                            if ('0' <= ch && ch <= '9') {
-                                amount = amount * 10 + (ch - '0');
-                            } else {
-                                TemporalUnit unit = switch (ch) {
-                                    case 's' -> ChronoUnit.SECONDS;
-                                    case 'm' -> ChronoUnit.MINUTES;
-                                    case 'h' -> ChronoUnit.HOURS;
-                                    case 'd' -> ChronoUnit.DAYS;
-                                    default -> throw new IllegalStateException("Unexpected character: " + ch);
-                                };
-                                duration = duration.plus(amount, unit);
-                                amount = 0;
-                            }
-                        }
-
-                        if (amount > 0)
-                            duration = duration.plusSeconds(amount);
-
-                        return duration;
+                        return DurationUtils.read(value);
                     }
                 });
     }
 
-    private static <T, R extends Range<T>>TypeAdapterFactory range(
-            Class<R> rangeClass,
-            BiFunction<T, T, R> creator,
+    private static <T extends Comparable<T>, R extends Range<T>>TypeAdapterFactory range(
+            Range.Factory<R, T> factory,
             JsonReadFunction<T> readElement,
             JsonWriteFunction<T> writeElement) {
         return TypeAdapters.newFactory(
-                rangeClass,
+                factory.rangeClass(),
                 new TypeAdapter<>() {
                     @Override
                     public void write(JsonWriter out, R value) throws IOException {
                         out.beginArray();
-                        writeElement.write(out, value.getMinimum());
-                        writeElement.write(out, value.getMaximum());
+                        writeElement.write(out, value.min());
+                        writeElement.write(out, value.max());
                         out.endArray();
                     }
                     @Override
@@ -146,14 +98,16 @@ public class GsonTypeAdapters {
                         T a = readElement.read(in);
                         T b = readElement.read(in);
                         in.endArray();
-                        return creator.apply(a, b);
+                        return factory.create(a, b);
                     }
                 });
     }
     public static TypeAdapterFactory range() {
         return combine(
-                range(IntegerRange.class, IntegerRange::of, JsonReader::nextInt, JsonWriter::value),
-                range(DoubleRange.class, DoubleRange::of, JsonReader::nextDouble, JsonWriter::value),
-                range(LongRange.class, LongRange::of, JsonReader::nextLong, JsonWriter::value));
+                range(DurationRange.FACTORY, v -> DurationUtils.read(v.nextString()), (w,v) -> w.value(DurationUtils.write(v))),
+                range(FloatRange.FACTORY, v -> (float)v.nextDouble(), JsonWriter::value),
+                range(IntegerRange.FACTORY, JsonReader::nextInt, JsonWriter::value),
+                range(DoubleRange.FACTORY, JsonReader::nextDouble, JsonWriter::value),
+                range(LongRange.FACTORY, JsonReader::nextLong, JsonWriter::value));
     }
 }

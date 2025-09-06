@@ -1,4 +1,4 @@
-package org.lime.core.common.utils;
+package org.lime.core.common.utils.adapters;
 
 import com.google.gson.stream.JsonWriter;
 
