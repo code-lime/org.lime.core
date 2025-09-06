@@ -99,6 +99,10 @@ public abstract class BaseFabricMod
         return dataFolder;
     }
     @Override
+    public String id() {
+        return metadata.getId();
+    }
+    @Override
     public String name() {
         return metadata.getName();
     }

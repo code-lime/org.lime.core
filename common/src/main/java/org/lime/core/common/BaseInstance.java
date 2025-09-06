@@ -28,6 +28,7 @@ public abstract class BaseInstance<Instance extends BaseInstance<Instance>> {
 
     protected abstract boolean isCore();
 
+    public abstract String id();
     public abstract String name();
     public abstract Artifact artifact();
     protected abstract Logger logger();

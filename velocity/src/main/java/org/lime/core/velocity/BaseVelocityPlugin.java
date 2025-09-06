@@ -162,6 +162,10 @@ public abstract class BaseVelocityPlugin
         return dataFolder;
     }
     @Override
+    public String id() {
+        return description.getId();
+    }
+    @Override
     public String name() {
         return description.getName().orElseGet(description::getId);
     }

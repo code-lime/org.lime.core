@@ -50,6 +50,10 @@ public abstract class BasePaperInstance<Instance extends BasePaperInstance<Insta
         return plugin.getDataFolder();
     }
     @Override
+    public String id() {
+        return this.plugin.getName().toLowerCase();
+    }
+    @Override
     public String name() {
         return this.plugin.getName();
     }
