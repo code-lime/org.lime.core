@@ -95,10 +95,15 @@ public class CustomArgumentBuilder<J, T, Source> {
                 return nativeType;
             }
 
+            private SuggestionsBuilder withError(SuggestionsBuilder builder, String error) {
+                return builder.suggest("§cERROR (hover for details)§r", factory.tooltip(Component.text(error)));
+            }
+
             @Override
             public <ContextSource> @NotNull CompletableFuture<Suggestions> suggestions(@NotNull CommandContext<ContextSource> context, @NotNull SuggestionsBuilder builder) {
-                if (!sourceClass.isInstance(context.getSource()))
-                    return builder.buildFuture();
+                if (!sourceClass.isInstance(context.getSource())) {
+                    return withError(builder, "Source '"+context.getSource().getClass()+"' is not " + sourceClass).buildFuture();
+                }
                 Source source = sourceClass.cast(context.getSource());
                 values.forEach(value -> {
                     if (filter != null && !filter.invoke(value, source))
