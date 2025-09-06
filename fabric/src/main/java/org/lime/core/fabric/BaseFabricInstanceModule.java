@@ -11,7 +11,6 @@ import org.lime.core.fabric.tasks.FabricScheduleTaskService;
 
 public class BaseFabricInstanceModule
         extends BaseInstanceModule<BaseFabricMod> {
-    private static FabricScheduleTaskService fabricTaskService;
     private final Lazy<NativeCommandConsumerFactory> nativeLazy;
 
     public BaseFabricInstanceModule(BaseFabricMod instance) {
@@ -39,7 +38,7 @@ public class BaseFabricInstanceModule
         bind(MinecraftServer.class).toInstance(instance.server);
         bind(BaseFabricMod.class).toInstance(instance);
 
-        bind(ScheduleTaskService.class).to(FabricScheduleTaskService.class);
+        bind(ScheduleTaskService.class).toInstance(instance.scheduleTaskService);
         bind(LiteCommandConsumerFactory.class).toInstance(liteCommandFactory());
         bind(NativeCommandConsumerFactory.class).toInstance(nativeCommandFactory());
     }
