@@ -17,6 +17,7 @@ import org.lime.core.common.api.commands.NativeCommandConsumer;
 import org.lime.core.common.api.impl.ConfigAccessImpl;
 import org.lime.core.common.services.UpdateConfigService;
 import org.lime.core.common.utils.*;
+import org.lime.core.common.utils.adapters.GsonTypeAdapters;
 import org.lime.core.common.utils.json.builder.Json;
 import org.lime.core.common.utils.adapters.RuntimeTypeAdapterFactory;
 import org.slf4j.Logger;
