@@ -48,6 +48,17 @@ processResources {
 //</editor-fold>
 
 //<editor-fold desc="Settings: Libraries">
+configurations {
+    transitiveInclude {
+        transitive = true
+
+        exclude group: 'com.mojang'
+        exclude group: 'net.fabricmc'
+        exclude group: 'org.jetbrains.kotlin'
+        exclude group: 'org.jetbrains.kotlinx'
+        exclude group: 'com.google.guava'
+    }
+}
 //<editor-fold desc="Settings: Libraries: ByteBuddyAgent">
 dependencies {
     modImplementation include("net.bytebuddy:byte-buddy-agent:${versionByteBuddy}")
@@ -55,7 +66,7 @@ dependencies {
 //</editor-fold>
 //<editor-fold desc="Settings: Libraries: Commons Lang v3">
 dependencies {
-    modImplementation include("org.apache.commons:commons-lang3:${versionCommonsLang3}")
+    transitiveInclude implementation("org.apache.commons:commons-lang3:${versionCommonsLang3}")
 }
 //</editor-fold>
 //<editor-fold desc="Settings: Libraries: Adventure">
@@ -74,7 +85,7 @@ dependencies {
 //</editor-fold>
 //<editor-fold desc="Settings: Libraries: com.google.inject#guice">
 dependencies {
-    modImplementation include("com.google.inject:guice:${versionGuice}")
+    transitiveInclude implementation("com.google.inject:guice:${versionGuice}")
 }
 //</editor-fold>
 //<editor-fold desc="Settings: Libraries: LiteCommands">
@@ -88,6 +99,22 @@ dependencies {
     modImplementation include("dev.rollczi:litecommands-fabric:${versionLiteCommands}")
 }
 //</editor-fold>
+afterEvaluate {
+    def added = new HashSet<String>()
+
+    configurations.transitiveInclude.resolvedConfiguration.resolvedArtifacts.each { artifact ->
+        def id = artifact.moduleVersion.id
+        def notation = "${id.group}:${id.name}:${id.version}"
+
+        if (!added.contains(notation)) {
+            logger.lifecycle("Adding transitive include -> ${notation}")
+            dependencies.add("include", notation)
+            added.add(notation)
+        } else {
+            logger.debug("Already added: ${notation}")
+        }
+    }
+}
 //</editor-fold>
 
 println("FABRIC: ${group}/${pathName}#${version}")
