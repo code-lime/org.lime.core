@@ -3,7 +3,7 @@ package org.lime.core.fabric;
 import dev.rollczi.litecommands.LiteCommandsBuilder;
 import dev.rollczi.litecommands.fabric.LiteFabricFactory;
 import dev.rollczi.litecommands.fabric.LiteFabricSettings;
-import net.fabricmc.api.DedicatedServerModInitializer;
+import net.fabricmc.api.ModInitializer;
 import net.fabricmc.fabric.api.event.lifecycle.v1.ServerLifecycleEvents;
 import net.fabricmc.fabric.api.event.lifecycle.v1.ServerTickEvents;
 import net.fabricmc.loader.api.FabricLoader;
@@ -28,7 +28,7 @@ import java.util.stream.Stream;
 
 public abstract class BaseFabricMod
         extends BaseInstance<BaseFabricMod>
-        implements DedicatedServerModInitializer {
+        implements ModInitializer {
     private ModMetadata metadata;
     private Logger logger;
     private File dataFolder;
@@ -43,9 +43,9 @@ public abstract class BaseFabricMod
     }
 
     @Override
-    public void onInitializeServer() {
+    public void onInitialize() {
         metadata = FabricLoader.getInstance()
-                .getEntrypointContainers("main", DedicatedServerModInitializer.class)
+                .getEntrypointContainers("main", ModInitializer.class)
                 .stream()
                 .filter(v -> v.getEntrypoint() == this)
                 .findFirst()

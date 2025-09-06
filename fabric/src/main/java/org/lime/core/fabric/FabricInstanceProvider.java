@@ -1,6 +1,6 @@
 package org.lime.core.fabric;
 
-import net.fabricmc.api.DedicatedServerModInitializer;
+import net.fabricmc.api.ModInitializer;
 import net.fabricmc.loader.api.FabricLoader;
 import net.fabricmc.loader.api.entrypoint.EntrypointContainer;
 import org.lime.core.common.BaseInstanceProvider;
@@ -9,7 +9,7 @@ public abstract class FabricInstanceProvider<Instance extends BaseFabricMod>
         extends BaseInstanceProvider<Instance> {
     static {
         BaseInstanceProvider.setStorage(Storage.of(BaseFabricMod.class, () -> FabricLoader.getInstance()
-                .getEntrypointContainers("main", DedicatedServerModInitializer.class)
+                .getEntrypointContainers("main", ModInitializer.class)
                 .stream()
                 .map(EntrypointContainer::getEntrypoint)));
     }

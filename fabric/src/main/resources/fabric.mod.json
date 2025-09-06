@@ -9,7 +9,7 @@
   "license": "unlicense",
   "environment": "server",
   "entrypoints": {
-    "server": [
+    "main": [
       "org.lime.core.fabric.CoreFabricMod"
     ]
   },
