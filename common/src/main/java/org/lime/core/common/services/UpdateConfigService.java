@@ -2,6 +2,7 @@ package org.lime.core.common.services;
 
 import com.google.inject.Inject;
 import com.mojang.brigadier.Command;
+import net.kyori.adventure.text.Component;
 import org.lime.core.common.Artifact;
 import org.lime.core.common.BaseInstance;
 import org.lime.core.common.api.RequireCommand;
@@ -30,7 +31,9 @@ public class UpdateConfigService
                         .then(commandsFactory.argument("config", argumentsFactory.builderString(commandsFactory.senderClass(), instance.module.configKeys()).build())
                                 .executes(ctx -> {
                                     String config = ctx.getArgument("config", String.class);
-                                    instance.module.updateConfigs(List.of(config));
+                                    int updateCount = instance.module.updateConfigs(List.of(config));
+                                    commandsFactory.audience(ctx.getSource())
+                                            .sendMessage(Component.text("Config '"+config+"' update "+updateCount+" access"));
                                     return Command.SINGLE_SUCCESS;
                                 }))));
     }
