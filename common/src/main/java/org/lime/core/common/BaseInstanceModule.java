@@ -239,7 +239,7 @@ public abstract class BaseInstanceModule<Instance extends BaseInstance<Instance>
                         configs.computeIfAbsent(key, v -> new ArrayList<>())
                                 .add(configAccess);
                         if (part.length > 0)
-                            configs.computeIfAbsent(key + "#" + String.join(".", config.part()), v -> new ArrayList<>())
+                            configs.computeIfAbsent(key + "+" + String.join(".", config.part()), v -> new ArrayList<>())
                                     .add(configAccess);
                         return configAccess;
                     }
