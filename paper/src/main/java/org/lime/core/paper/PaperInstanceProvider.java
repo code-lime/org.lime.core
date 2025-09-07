@@ -1,5 +1,6 @@
 package org.lime.core.paper;
 
+import com.google.inject.Provider;
 import org.bukkit.Bukkit;
 import org.lime.core.common.BaseInstanceProvider;
 
@@ -20,5 +21,8 @@ public abstract class PaperInstanceProvider<Instance extends BasePaperInstance<I
                 return instanceClass;
             }
         };
+    }
+    public static <Instance extends BasePaperInstance<Instance>, T>Provider<T> getInjectorProvider(Class<Instance> instanceClass, Class<T> type) {
+        return getProvider(instanceClass).provider(type);
     }
 }

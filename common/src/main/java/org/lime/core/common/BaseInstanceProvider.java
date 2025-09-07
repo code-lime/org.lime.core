@@ -1,5 +1,6 @@
 package org.lime.core.common;
 
+import com.google.inject.Provider;
 import org.lime.core.common.utils.system.Lazy;
 import org.lime.core.common.utils.system.execute.Func0;
 import org.lime.core.common.utils.system.execute.Func1;
@@ -24,6 +25,10 @@ public abstract class BaseInstanceProvider<Instance extends BaseInstance<?>> {
     public Instance get() {
         return lazy.value();
     }
+    public <T>Provider<T> provider(Class<T> type) {
+        final Lazy<Provider<T>> otherProvider = Lazy.of(() -> get().injector().getProvider(type));
+        return () -> otherProvider.value().get();
+    }
 
     protected static abstract class Storage<T extends BaseInstance<T>> {
         protected abstract Class<T> instanceBaseClass();
@@ -33,7 +38,6 @@ public abstract class BaseInstanceProvider<Instance extends BaseInstance<?>> {
                 throw new RuntimeException("Instance "+instanceClass+" not "+instanceBaseClass());
             return instanceClass.cast(getInstance((Class<T>)instanceClass));
         }
-
 
         public static <T extends BaseInstance<T>>Storage<T> of(
                 Class<T> instanceBaseClass,

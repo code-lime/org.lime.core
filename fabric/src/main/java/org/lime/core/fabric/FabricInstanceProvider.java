@@ -1,5 +1,6 @@
 package org.lime.core.fabric;
 
+import com.google.inject.Provider;
 import net.fabricmc.api.ModInitializer;
 import net.fabricmc.loader.api.FabricLoader;
 import net.fabricmc.loader.api.entrypoint.EntrypointContainer;
@@ -21,5 +22,8 @@ public abstract class FabricInstanceProvider<Instance extends BaseFabricMod>
                 return instanceClass;
             }
         };
+    }
+    public static <Instance extends BaseFabricMod, T>Provider<T> getInjectorProvider(Class<Instance> instanceClass, Class<T> type) {
+        return getProvider(instanceClass).provider(type);
     }
 }

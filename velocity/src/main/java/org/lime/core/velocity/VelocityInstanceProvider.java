@@ -1,5 +1,6 @@
 package org.lime.core.velocity;
 
+import com.google.inject.Provider;
 import com.velocitypowered.api.plugin.PluginContainer;
 import com.velocitypowered.api.proxy.ProxyServer;
 import org.lime.core.common.BaseInstanceProvider;
@@ -24,5 +25,8 @@ public abstract class VelocityInstanceProvider<Instance extends BaseVelocityPlug
                 return instanceClass;
             }
         };
+    }
+    public static <Instance extends BaseVelocityPlugin, T>Provider<T> getInjectorProvider(Class<Instance> instanceClass, Class<T> type) {
+        return getProvider(instanceClass).provider(type);
     }
 }
