@@ -14,6 +14,7 @@ import io.papermc.paper.command.brigadier.Commands;
 import io.papermc.paper.command.brigadier.argument.CustomArgumentType;
 import io.papermc.paper.plugin.lifecycle.event.LifecycleEventManager;
 import io.papermc.paper.plugin.lifecycle.event.types.LifecycleEvents;
+import net.kyori.adventure.audience.Audience;
 import net.kyori.adventure.text.Component;
 import org.bukkit.plugin.Plugin;
 import org.jetbrains.annotations.NotNull;
@@ -52,6 +53,10 @@ public class NativeCommandConsumerFactory
     @Override
     public Class<CommandSourceStack> senderClass() {
         return CommandSourceStack.class;
+    }
+    @Override
+    public Audience audience(CommandSourceStack commandSourceStack) {
+        return commandSourceStack.getSender();
     }
 
     @Override

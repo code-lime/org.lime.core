@@ -8,6 +8,7 @@ import com.velocitypowered.api.command.BrigadierCommand;
 import com.velocitypowered.api.command.CommandManager;
 import com.velocitypowered.api.command.CommandSource;
 import com.velocitypowered.api.command.VelocityBrigadierMessage;
+import net.kyori.adventure.audience.Audience;
 import net.kyori.adventure.text.Component;
 import org.jetbrains.annotations.Nullable;
 import org.lime.core.common.api.commands.NativeCommandConsumer;
@@ -49,6 +50,10 @@ public class NativeCommandConsumerFactory
     @Override
     public Class<CommandSource> senderClass() {
         return CommandSource.class;
+    }
+    @Override
+    public Audience audience(CommandSource commandSource) {
+        return commandSource;
     }
 
     @Override

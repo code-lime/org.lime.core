@@ -4,6 +4,7 @@ import com.mojang.brigadier.Message;
 import com.mojang.brigadier.arguments.ArgumentType;
 import com.mojang.brigadier.builder.LiteralArgumentBuilder;
 import com.mojang.brigadier.builder.RequiredArgumentBuilder;
+import net.kyori.adventure.audience.Audience;
 import net.kyori.adventure.text.Component;
 import org.lime.core.common.api.commands.brigadier.arguments.BaseMappedArgument;
 import org.lime.core.common.utils.Disposable;
@@ -47,6 +48,7 @@ public interface NativeCommandConsumer<Sender, Register extends NativeCommandCon
     interface Factory<Sender, Register extends NativeRegister<Sender>> {
         Class<Register> builderClass();
         Class<Sender> senderClass();
+        Audience audience(Sender sender);
 
         Message tooltip(Component component);
         <T, N> ArgumentType<T> argument(BaseMappedArgument<T, N> mappedArgument);

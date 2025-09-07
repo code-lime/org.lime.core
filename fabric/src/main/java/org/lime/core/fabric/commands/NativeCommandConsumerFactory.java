@@ -5,6 +5,7 @@ import com.mojang.brigadier.Message;
 import com.mojang.brigadier.arguments.ArgumentType;
 import com.mojang.brigadier.builder.LiteralArgumentBuilder;
 import com.mojang.brigadier.builder.RequiredArgumentBuilder;
+import net.kyori.adventure.audience.Audience;
 import net.kyori.adventure.platform.fabric.FabricServerAudiences;
 import net.kyori.adventure.text.Component;
 import net.minecraft.commands.CommandSourceStack;
@@ -46,6 +47,10 @@ public class NativeCommandConsumerFactory
     @Override
     public Class<CommandSourceStack> senderClass() {
         return CommandSourceStack.class;
+    }
+    @Override
+    public Audience audience(CommandSourceStack stack) {
+        return stack;
     }
 
     @Override
