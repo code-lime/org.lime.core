@@ -359,12 +359,17 @@ public abstract class BaseInstanceModule<Instance extends BaseInstance<Instance>
     public Collection<String> configKeys() {
         return configs.keySet();
     }
-    public void updateConfigs(Iterable<String> keys) {
-        keys.forEach(key -> {
+    public int updateConfigs(Iterable<String> keys) {
+        int count = 0;
+        for (String key : keys) {
             var configList = configs.get(key);
             if (configList == null)
-                return;
-            configList.forEach(ConfigAccess::update);
-        });
+                continue;
+            for (ConfigAccess<?> configAccess : configList) {
+                if (configAccess.update())
+                    count++;
+            }
+        }
+        return count;
     }
 }
