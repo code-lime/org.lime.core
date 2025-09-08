@@ -3,7 +3,7 @@ package org.lime.core.common.utils;
 import org.lime.core.common.utils.system.Lock;
 import org.lime.core.common.utils.system.execute.Func1;
 
-import java.time.Duration;
+import java.util.Objects;
 
 public class KeyedProvider<K, V> {
     private final Lock lock = Lock.create();
@@ -20,8 +20,8 @@ public class KeyedProvider<K, V> {
     }
 
     public V get(K key) {
-        try (var v = lock.lock()) {
-            if (!this.key.equals(key)) {
+        try (var ignored = lock.lock()) {
+            if (!Objects.equals(this.key, key)) {
                 this.key = key;
                 this.value = factory.apply(key);
             }
@@ -33,4 +33,3 @@ public class KeyedProvider<K, V> {
         return new KeyedProvider<>(initialKey, factory);
     }
 }
-
