@@ -2,10 +2,7 @@ package org.lime.core.common;
 
 import com.google.common.base.CaseFormat;
 import com.google.gson.*;
-import com.google.inject.AbstractModule;
-import com.google.inject.Inject;
-import com.google.inject.Provider;
-import com.google.inject.TypeLiteral;
+import com.google.inject.*;
 import net.kyori.adventure.text.minimessage.MiniMessage;
 import net.minecraft.unsafe.GlobalConfigure;
 import org.apache.commons.lang3.reflect.TypeUtils;
@@ -20,6 +17,8 @@ import org.lime.core.common.utils.*;
 import org.lime.core.common.utils.adapters.GsonTypeAdapters;
 import org.lime.core.common.utils.json.builder.Json;
 import org.lime.core.common.utils.adapters.RuntimeTypeAdapterFactory;
+import org.lime.core.common.utils.system.Lazy;
+import org.lime.core.common.utils.system.execute.Func1;
 import org.slf4j.Logger;
 
 import java.io.File;
@@ -303,6 +302,31 @@ public abstract class BaseInstanceModule<Instance extends BaseInstance<Instance>
                 .distinct()
                 .forEach(data -> bindConfig(data.annotation(), data.target()));
     }
+    protected <F, T>void bindMapped(Class<T> serviceClass, Class<F> targetClass, Func1<F, T> provider) {
+        bind(serviceClass)
+                .toProvider(new Provider<>() {
+                    @Inject Injector injector;
+                    private final Lazy<Provider<F>> targetProvider = Lazy.of(() -> injector.getProvider(targetClass));
+
+                    @Override
+                    public T get() {
+                        return provider.invoke(targetProvider.value().get());
+                    }
+                });
+    }
+    protected <F extends T, T>void bindCast(Class<T> serviceClass, Class<F> targetClass) {
+        bind(serviceClass)
+                .toProvider(new Provider<>() {
+                    @Inject Injector injector;
+                    private final Lazy<Provider<F>> targetProvider = Lazy.of(() -> injector.getProvider(targetClass));
+
+                    @Override
+                    public T get() {
+                        return injector.getInstance(targetClass);
+                    }
+                });
+    }
+
 
     protected MiniMessage miniMessage() {
         return MiniMessage.miniMessage();
