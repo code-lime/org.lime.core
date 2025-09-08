@@ -10,6 +10,8 @@ import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.minimessage.MiniMessage;
 import org.lime.core.common.utils.PlaceholderComponent;
 import org.lime.core.common.utils.range.*;
+import org.lime.core.common.utils.system.execute.ActionEx2;
+import org.lime.core.common.utils.system.execute.FuncEx1;
 
 import java.io.IOException;
 import java.lang.reflect.Type;
@@ -17,7 +19,7 @@ import java.time.Duration;
 
 public class GsonTypeAdapters {
     @SuppressWarnings({"unchecked", "SameParameterValue"})
-    private static <T, J extends T>TypeToken<J> getParameterized(Class<T> rawClass, Type... typeArguments) {
+    public static <T, J extends T>TypeToken<J> getParameterized(Class<T> rawClass, Type... typeArguments) {
         return (TypeToken<J>)TypeToken.getParameterized(rawClass, typeArguments);
     }
     public static TypeAdapterFactory combine(TypeAdapterFactory... factories) {
@@ -78,27 +80,39 @@ public class GsonTypeAdapters {
                 });
     }
 
-    private static <T extends Comparable<T>, R extends Range<T>>TypeAdapterFactory range(
+    public static <T extends Comparable<T>, R extends Range<T>>TypeAdapterFactory range(
             Range.Factory<R, T> factory,
-            JsonReadFunction<T> readElement,
-            JsonWriteFunction<T> writeElement) {
+            FuncEx1<JsonReader, T> readElement,
+            ActionEx2<JsonWriter, T> writeElement) {
         return TypeAdapters.newFactory(
                 factory.rangeClass(),
                 new TypeAdapter<>() {
                     @Override
                     public void write(JsonWriter out, R value) throws IOException {
-                        out.beginArray();
-                        writeElement.write(out, value.min());
-                        writeElement.write(out, value.max());
-                        out.endArray();
+                        try {
+                            out.beginArray();
+                            writeElement.invoke(out, value.min());
+                            writeElement.invoke(out, value.max());
+                            out.endArray();
+                        } catch (IOException e) {
+                            throw e;
+                        } catch (Throwable e) {
+                            throw new RuntimeException(e);
+                        }
                     }
                     @Override
                     public R read(JsonReader in) throws IOException {
-                        in.beginArray();
-                        T a = readElement.read(in);
-                        T b = readElement.read(in);
-                        in.endArray();
-                        return factory.create(a, b);
+                        try {
+                            in.beginArray();
+                            T a = readElement.invoke(in);
+                            T b = readElement.invoke(in);
+                            in.endArray();
+                            return factory.create(a, b);
+                        } catch (IOException e) {
+                            throw e;
+                        } catch (Throwable e) {
+                            throw new RuntimeException(e);
+                        }
                     }
                 });
     }
