@@ -11,8 +11,10 @@ import net.kyori.adventure.text.Component;
 import net.minecraft.commands.CommandSourceStack;
 import net.minecraft.commands.Commands;
 import net.minecraft.server.MinecraftServer;
+import org.jetbrains.annotations.Range;
 import org.lime.core.common.api.commands.NativeCommandConsumer;
 import org.lime.core.common.api.commands.brigadier.arguments.BaseMappedArgument;
+import org.lime.core.common.api.commands.brigadier.arguments.RepeatableArgumentBuilder;
 import org.lime.core.common.utils.Disposable;
 import org.lime.core.common.utils.system.execute.Action1;
 import org.lime.core.fabric.commands.brigadier.CustomArgumentType;
@@ -73,5 +75,13 @@ public class NativeCommandConsumerFactory
     @Override
     public <T> RequiredArgumentBuilder<CommandSourceStack, T> argument(String key, ArgumentType<T> argumentType) {
         return Commands.argument(key, argumentType);
+    }
+    @Override
+    public <T> RepeatableArgumentBuilder<CommandSourceStack, T> repeatable(String key, ArgumentType<T> argumentType) {
+        return RepeatableArgumentBuilder.repeatable(key, argumentType);
+    }
+    @Override
+    public <T> RepeatableArgumentBuilder<CommandSourceStack, T> repeatable(String key, @Range(from = 1, to = RepeatableArgumentBuilder.LIMIT_MAX_COUNT) int maxCount, ArgumentType<T> argumentType) {
+        return RepeatableArgumentBuilder.repeatable(key, maxCount, argumentType);
     }
 }

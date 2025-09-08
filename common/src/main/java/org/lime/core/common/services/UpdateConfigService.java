@@ -9,7 +9,7 @@ import org.lime.core.common.api.RequireCommand;
 import org.lime.core.common.api.Service;
 import org.lime.core.common.api.commands.CommandConsumer;
 import org.lime.core.common.api.commands.NativeCommandConsumer;
-import org.slf4j.Logger;
+import org.lime.core.common.api.commands.brigadier.arguments.RepeatableArgumentBuilder;
 
 import java.util.List;
 
@@ -18,7 +18,6 @@ public class UpdateConfigService
     @Inject BaseInstance<?> instance;
     @Inject NativeCommandConsumer.Factory<?, ?> commandsFactory;
     @Inject CustomArgumentUtility argumentsFactory;
-    @Inject Logger logger;
 
     private <Sender>CommandConsumer<?> command(
             NativeCommandConsumer.Factory<Sender, ?> commandsFactory) {
@@ -28,12 +27,13 @@ public class UpdateConfigService
         return commandsFactory.of("update.config" + suffix, j -> j
                 .requires(commandsFactory.operator())
                 .then(commandsFactory.literal(instance.id())
-                        .then(commandsFactory.argument("config", argumentsFactory.builderString(commandsFactory.senderClass(), instance.module.configKeys()).build())
+                        .requires(ctx -> !instance.module.configKeys().isEmpty())
+                        .then(commandsFactory.repeatable("config", argumentsFactory.builderString(commandsFactory.senderClass(), instance.module.configKeys()).build())
                                 .executes(ctx -> {
-                                    String config = ctx.getArgument("config", String.class);
-                                    int updateCount = instance.module.updateConfigs(List.of(config));
+                                    List<String> configs = RepeatableArgumentBuilder.readRepeatable(ctx, "config", String.class).toList();
+                                    int updateCount = instance.module.updateConfigs(configs);
                                     commandsFactory.audience(ctx.getSource())
-                                            .sendMessage(Component.text("Config '"+config+"' update "+updateCount+" access"));
+                                            .sendMessage(Component.text("Configs '"+String.join("', '", configs)+"' update "+updateCount+" access"));
                                     return Command.SINGLE_SUCCESS;
                                 }))));
     }
