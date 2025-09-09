@@ -3,7 +3,10 @@ package org.lime.core.common;
 import com.google.common.base.CaseFormat;
 import com.google.gson.*;
 import com.google.inject.*;
+import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.minimessage.MiniMessage;
+import net.kyori.adventure.text.minimessage.tag.Tag;
+import net.kyori.adventure.text.minimessage.tag.resolver.TagResolver;
 import net.kyori.adventure.text.serializer.ansi.ANSIComponentSerializer;
 import net.kyori.adventure.text.serializer.gson.GsonComponentSerializer;
 import net.kyori.adventure.text.serializer.json.JSONComponentSerializer;
@@ -11,6 +14,7 @@ import net.kyori.adventure.text.serializer.legacy.LegacyComponentSerializer;
 import net.kyori.adventure.text.serializer.plain.PlainTextComponentSerializer;
 import net.minecraft.unsafe.GlobalConfigure;
 import org.apache.commons.lang3.reflect.TypeUtils;
+import org.lime.core.common.api.minimessage.TagContextReader;
 import org.lime.core.common.utils.Unsafe;
 import org.lime.core.common.services.UnsafeMappingsUtility;
 import org.lime.core.common.api.*;
@@ -22,6 +26,7 @@ import org.lime.core.common.utils.*;
 import org.lime.core.common.utils.adapters.CommonGsonTypeAdapters;
 import org.lime.core.common.utils.adapters.GsonTypeAdapters;
 import org.lime.core.common.utils.json.builder.Json;
+import org.lime.core.common.utils.range.number.IntegerRange;
 import org.lime.core.common.utils.system.Lazy;
 import org.lime.core.common.utils.system.execute.Func1;
 import org.slf4j.Logger;
@@ -337,7 +342,10 @@ public abstract class BaseInstanceModule<Instance extends BaseInstance<Instance>
     }
 
     protected MiniMessage.Builder miniMessage() {
-        return MiniMessage.builder();
+        return MiniMessage.builder()
+                .editTags(v -> v
+                        .resolver(TagResolver.resolver("n", Tag.inserting(Component.text("\n"))))
+                        .resolver(TagContextReader.tag("u", ctx -> Tag.inserting(Component.text(ctx.popHexChar("unicode", 1))))));
     }
 
     protected abstract Class<? extends CommonGsonTypeAdapters> gsonTypeAdapters();
