@@ -10,11 +10,14 @@ import net.minecraft.world.scores.Scoreboard;
 import org.bukkit.Bukkit;
 import org.bukkit.World;
 import org.bukkit.craftbukkit.CraftWorld;
+import org.bukkit.craftbukkit.scoreboard.CraftScoreboard;
+import org.bukkit.craftbukkit.scoreboard.CraftScoreboardManager;
 import org.bukkit.plugin.Plugin;
 import org.bukkit.plugin.PluginBase;
 import org.bukkit.plugin.PluginManager;
 import org.bukkit.plugin.java.JavaPlugin;
 import org.bukkit.scheduler.BukkitScheduler;
+import org.bukkit.scoreboard.ScoreboardManager;
 import org.lime.core.common.services.UnsafeMappingsUtility;
 import org.lime.core.common.services.ScheduleTaskService;
 import org.lime.core.common.BaseInstanceModule;
@@ -75,6 +78,10 @@ public class BasePaperInstanceModule<Instance extends BasePaperInstance<Instance
 
         bind(CraftWorld.class).toInstance((CraftWorld) Bukkit.getWorlds().getFirst());
         bindCast(World.class, CraftWorld.class);
+        bind(CraftScoreboardManager.class).toInstance((CraftScoreboardManager) Bukkit.getScoreboardManager());
+        bindCast(ScoreboardManager.class, CraftScoreboardManager.class);
+        bindMapped(CraftScoreboard.class, CraftScoreboardManager.class, CraftScoreboardManager::getMainScoreboard);
+        bindCast(org.bukkit.scoreboard.Scoreboard.class, CraftScoreboard.class);
 
         bind(PluginManager.class).toInstance(Bukkit.getPluginManager());
 
