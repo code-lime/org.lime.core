@@ -12,8 +12,9 @@ import org.jetbrains.annotations.Range;
 import org.lime.core.common.reflection.ReflectionField;
 import org.lime.core.common.utils.system.execute.Func1;
 
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Map;
-import java.util.Objects;
 import java.util.stream.IntStream;
 import java.util.stream.Stream;
 
@@ -93,21 +94,23 @@ public class RepeatableArgumentBuilder<S, T>
         int maxCount = getMaxCount();
         ArgumentType<T> type = getType();
 
-        RequiredArgumentBuilder<S, T> builder = null;
-        RequiredArgumentBuilder<S, T> last = null;
+        List<RequiredArgumentBuilder<S, T>> items = new ArrayList<>(maxCount);
         for (int index = 0; index < maxCount; index++) {
             String indexedName = getIndexedName(index);
             RequiredArgumentBuilder<S, T> current = RequiredArgumentBuilder.argument(indexedName, type);
             if (suggestionProvider != null)
                 current.suggests(suggestionProvider);
-            if (last == null) {
-                builder = last = current;
-            } else {
-                last.then(current);
-                last = current;
-            }
+            current.executes(getCommand());
+            items.add(current);
         }
-        return Objects.requireNonNull(builder);
+        RequiredArgumentBuilder<S, T> builder = items.get(maxCount - 1);
+        for (int index = maxCount - 2; index >= 0; index--) {
+            RequiredArgumentBuilder<S, T> current = items.get(index);
+            current.then(builder);
+            builder = current;
+        }
+        builder.requires(getRequirement());
+        return builder;
     }
 
     @Override
