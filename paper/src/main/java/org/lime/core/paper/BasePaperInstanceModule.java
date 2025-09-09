@@ -3,6 +3,10 @@ package org.lime.core.paper;
 import com.google.inject.TypeLiteral;
 import io.papermc.paper.datapack.DatapackManager;
 import io.papermc.paper.datapack.PaperDatapackManager;
+import net.kyori.adventure.text.Component;
+import net.kyori.adventure.text.minimessage.MiniMessage;
+import net.kyori.adventure.text.minimessage.tag.Tag;
+import net.kyori.adventure.text.minimessage.tag.resolver.TagResolver;
 import net.minecraft.commands.Commands;
 import net.minecraft.core.RegistryAccess;
 import net.minecraft.server.MinecraftServer;
@@ -59,6 +63,12 @@ public class BasePaperInstanceModule<Instance extends BasePaperInstance<Instance
     @Override
     protected NativeCommandConsumerFactory nativeCommandFactory() {
         return NativeCommandConsumerFactory.INSTANCE;
+    }
+
+    @Override
+    protected MiniMessage.Builder miniMessage() {
+        return super.miniMessage()
+                .emitVirtuals(false);
     }
 
     @Override

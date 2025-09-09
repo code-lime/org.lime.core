@@ -1,6 +1,7 @@
 package org.lime.core.velocity;
 
 import com.velocitypowered.api.proxy.ProxyServer;
+import net.kyori.adventure.text.minimessage.MiniMessage;
 import org.lime.core.common.BaseInstanceModule;
 import org.lime.core.common.services.ScheduleTaskService;
 import org.lime.core.common.services.UnsafeMappingsUtility;
@@ -27,6 +28,12 @@ public class BaseVelocityInstanceModule
     @Override
     protected NativeCommandConsumerFactory nativeCommandFactory() {
         return NativeCommandConsumerFactory.INSTANCE;
+    }
+
+    @Override
+    protected MiniMessage.Builder miniMessage() {
+        return super.miniMessage()
+                .emitVirtuals(false);
     }
 
     @Override
