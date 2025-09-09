@@ -11,10 +11,7 @@ import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.minimessage.MiniMessage;
 import org.lime.core.common.utils.PlaceholderComponent;
 import org.lime.core.common.utils.range.*;
-import org.lime.core.common.utils.range.number.DoubleRange;
-import org.lime.core.common.utils.range.number.FloatRange;
-import org.lime.core.common.utils.range.number.IntegerRange;
-import org.lime.core.common.utils.range.number.LongRange;
+import org.lime.core.common.utils.range.number.*;
 import org.lime.core.common.utils.system.execute.ActionEx2;
 import org.lime.core.common.utils.system.execute.FuncEx1;
 
@@ -128,10 +125,12 @@ public abstract class CommonGsonTypeAdapters
     protected TypeAdapterFactory range() {
         return combine(
                 range(DurationRange.FACTORY, v -> DurationUtils.read(v.nextString()), (w,v) -> w.value(DurationUtils.write(v))),
+                range(ByteRange.FACTORY, v -> (byte)v.nextInt(), JsonWriter::value),
                 range(FloatRange.FACTORY, v -> (float)v.nextDouble(), JsonWriter::value),
                 range(IntegerRange.FACTORY, JsonReader::nextInt, JsonWriter::value),
                 range(DoubleRange.FACTORY, JsonReader::nextDouble, JsonWriter::value),
-                range(LongRange.FACTORY, JsonReader::nextLong, JsonWriter::value));
+                range(LongRange.FACTORY, JsonReader::nextLong, JsonWriter::value),
+                range(ShortRange.FACTORY, v -> (short)v.nextInt(), JsonWriter::value));
     }
 
     public Stream<TypeAdapterFactory> factories() {
