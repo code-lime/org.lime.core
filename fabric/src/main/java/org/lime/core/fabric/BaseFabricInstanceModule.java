@@ -1,10 +1,16 @@
 package org.lime.core.fabric;
 
+import net.minecraft.commands.Commands;
+import net.minecraft.core.RegistryAccess;
 import net.minecraft.server.MinecraftServer;
+import net.minecraft.server.ServerAdvancementManager;
 import net.minecraft.server.ServerScoreboard;
 import net.minecraft.server.level.ServerLevel;
+import net.minecraft.server.packs.resources.ResourceManager;
 import net.minecraft.server.players.PlayerList;
+import net.minecraft.world.item.crafting.RecipeManager;
 import net.minecraft.world.level.Level;
+import net.minecraft.world.level.levelgen.structure.templatesystem.StructureTemplateManager;
 import net.minecraft.world.scores.Scoreboard;
 import org.lime.core.common.BaseInstanceModule;
 import org.lime.core.common.services.ScheduleTaskService;
@@ -49,10 +55,14 @@ public class BaseFabricInstanceModule
 
         bind(MinecraftServer.class).toInstance(instance.server);
         bindMapped(PlayerList.class, MinecraftServer.class, MinecraftServer::getPlayerList);
-        bindMapped(ServerLevel.class, MinecraftServer.class, MinecraftServer::overworld);
-        bindMapped(ServerScoreboard.class, MinecraftServer.class, MinecraftServer::getScoreboard);
-        bindCast(Scoreboard.class, ServerScoreboard.class);
-        bindCast(Level.class, ServerLevel.class);
+        bindMappedCast(ServerLevel.class, Level.class, MinecraftServer.class, MinecraftServer::overworld);
+        bindMappedCast(ServerScoreboard.class, Scoreboard.class, MinecraftServer.class, MinecraftServer::getScoreboard);
+        bindMapped(RegistryAccess.class, MinecraftServer.class, MinecraftServer::registryAccess);
+        bindMapped(Commands.class, MinecraftServer.class, MinecraftServer::getCommands);
+        bindMapped(ServerAdvancementManager.class, MinecraftServer.class, MinecraftServer::getAdvancements);
+        bindMapped(RecipeManager.class, MinecraftServer.class, MinecraftServer::getRecipeManager);
+        bindMapped(ResourceManager.class, MinecraftServer.class, MinecraftServer::getResourceManager);
+        bindMapped(StructureTemplateManager.class, MinecraftServer.class, MinecraftServer::getStructureManager);
 
         bind(ScheduleTaskService.class).toInstance(instance.scheduleTaskService);
         bind(LiteCommandConsumerFactory.class).toInstance(liteCommandFactory());

@@ -327,7 +327,10 @@ public abstract class BaseInstanceModule<Instance extends BaseInstance<Instance>
                     }
                 });
     }
-
+    protected <F, T extends TSub, TSub>void bindMappedCast(Class<T> serviceClass, Class<TSub> subClass, Class<F> targetClass, Func1<F, T> provider) {
+        bindMapped(serviceClass, targetClass, provider);
+        bindCast(subClass, serviceClass);
+    }
 
     protected MiniMessage miniMessage() {
         return MiniMessage.miniMessage();
@@ -347,6 +350,7 @@ public abstract class BaseInstanceModule<Instance extends BaseInstance<Instance>
     protected void configure() {
         bind(UnsafeMappingsUtility.class).toInstance(Unsafe.MAPPINGS);
 
+        bind(MiniMessage.class).toProvider(this::miniMessage).asEagerSingleton();
         bind(GsonTypeAdapters.class).to(gsonTypeAdapters()).asEagerSingleton();
         bind(Logger.class).toInstance(instance.logger());
         bind(Gson.class)
