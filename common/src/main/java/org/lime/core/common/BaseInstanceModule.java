@@ -4,6 +4,11 @@ import com.google.common.base.CaseFormat;
 import com.google.gson.*;
 import com.google.inject.*;
 import net.kyori.adventure.text.minimessage.MiniMessage;
+import net.kyori.adventure.text.serializer.ansi.ANSIComponentSerializer;
+import net.kyori.adventure.text.serializer.gson.GsonComponentSerializer;
+import net.kyori.adventure.text.serializer.json.JSONComponentSerializer;
+import net.kyori.adventure.text.serializer.legacy.LegacyComponentSerializer;
+import net.kyori.adventure.text.serializer.plain.PlainTextComponentSerializer;
 import net.minecraft.unsafe.GlobalConfigure;
 import org.apache.commons.lang3.reflect.TypeUtils;
 import org.lime.core.common.utils.Unsafe;
@@ -17,7 +22,6 @@ import org.lime.core.common.utils.*;
 import org.lime.core.common.utils.adapters.CommonGsonTypeAdapters;
 import org.lime.core.common.utils.adapters.GsonTypeAdapters;
 import org.lime.core.common.utils.json.builder.Json;
-import org.lime.core.common.utils.adapters.RuntimeTypeAdapterFactory;
 import org.lime.core.common.utils.system.Lazy;
 import org.lime.core.common.utils.system.execute.Func1;
 import org.slf4j.Logger;
@@ -351,6 +355,12 @@ public abstract class BaseInstanceModule<Instance extends BaseInstance<Instance>
         bind(UnsafeMappingsUtility.class).toInstance(Unsafe.MAPPINGS);
 
         bind(MiniMessage.class).toProvider(this::miniMessage).asEagerSingleton();
+        bind(ANSIComponentSerializer.class).toProvider(ANSIComponentSerializer::ansi).asEagerSingleton();
+        bind(GsonComponentSerializer.class).toProvider(GsonComponentSerializer::gson).asEagerSingleton();
+        bind(JSONComponentSerializer.class).toProvider(JSONComponentSerializer::json).asEagerSingleton();
+        bind(LegacyComponentSerializer.class).toProvider(LegacyComponentSerializer::legacySection).asEagerSingleton();
+        bind(PlainTextComponentSerializer.class).toProvider(PlainTextComponentSerializer::plainText).asEagerSingleton();
+
         bind(GsonTypeAdapters.class).to(gsonTypeAdapters()).asEagerSingleton();
         bind(Logger.class).toInstance(instance.logger());
         bind(Gson.class)

@@ -25,6 +25,10 @@ repositories {
 dependencies {
     implementation "net.kyori:adventure-api:${versionAdventureApi}"
     implementation "net.kyori:adventure-text-minimessage:${versionAdventureApi}"
+    implementation "net.kyori:adventure-text-serializer-ansi:${versionAdventureApi}"
+    implementation "net.kyori:adventure-text-serializer-gson:${versionAdventureApi}"
+    implementation "net.kyori:adventure-text-serializer-json:${versionAdventureApi}"
+    implementation "net.kyori:adventure-text-serializer-legacy:${versionAdventureApi}"
     implementation "net.kyori:adventure-text-serializer-plain:${versionAdventureApi}"
     implementation "com.mojang:brigadier:${versionBrigadierApi}"
     implementation "com.google.guava:guava:31.1-jre"
