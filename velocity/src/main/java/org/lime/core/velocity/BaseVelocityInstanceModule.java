@@ -4,6 +4,7 @@ import com.velocitypowered.api.proxy.ProxyServer;
 import org.lime.core.common.BaseInstanceModule;
 import org.lime.core.common.services.ScheduleTaskService;
 import org.lime.core.common.services.UnsafeMappingsUtility;
+import org.lime.core.common.utils.adapters.CommonGsonTypeAdapters;
 import org.lime.core.velocity.commands.LiteCommandConsumerFactory;
 import org.lime.core.velocity.commands.NativeCommandConsumerFactory;
 import org.lime.core.velocity.tasks.VelocityScheduleTaskService;
@@ -26,6 +27,11 @@ public class BaseVelocityInstanceModule
     @Override
     protected NativeCommandConsumerFactory nativeCommandFactory() {
         return NativeCommandConsumerFactory.INSTANCE;
+    }
+
+    @Override
+    protected Class<? extends CommonGsonTypeAdapters> gsonTypeAdapters() {
+        return CommonGsonTypeAdapters.class;
     }
 
     @Override

@@ -14,6 +14,7 @@ import org.lime.core.common.api.commands.NativeCommandConsumer;
 import org.lime.core.common.api.impl.ConfigAccessImpl;
 import org.lime.core.common.services.UpdateConfigService;
 import org.lime.core.common.utils.*;
+import org.lime.core.common.utils.adapters.CommonGsonTypeAdapters;
 import org.lime.core.common.utils.adapters.GsonTypeAdapters;
 import org.lime.core.common.utils.json.builder.Json;
 import org.lime.core.common.utils.adapters.RuntimeTypeAdapterFactory;
@@ -332,13 +333,9 @@ public abstract class BaseInstanceModule<Instance extends BaseInstance<Instance>
         return MiniMessage.miniMessage();
     }
 
+    protected abstract Class<? extends CommonGsonTypeAdapters> gsonTypeAdapters();
     protected GsonBuilder configureGson(GsonBuilder builder) {
-        return builder
-                .registerTypeAdapterFactory(GsonTypeAdapters.range())
-                .registerTypeAdapterFactory(GsonTypeAdapters.duration())
-                .registerTypeAdapterFactory(GsonTypeAdapters.miniMessage(miniMessage()))
-                .registerTypeAdapterFactory(GsonTypeAdapters.key())
-                .registerTypeAdapterFactory(RuntimeTypeAdapterFactory.AUTO);
+        return builder;
     }
 
     protected void executeCore() {
@@ -350,16 +347,23 @@ public abstract class BaseInstanceModule<Instance extends BaseInstance<Instance>
     protected void configure() {
         bind(UnsafeMappingsUtility.class).toInstance(Unsafe.MAPPINGS);
 
+        bind(GsonTypeAdapters.class).to(gsonTypeAdapters()).asEagerSingleton();
         bind(Logger.class).toInstance(instance.logger());
         bind(Gson.class)
-                .toProvider(() -> {
-                    GsonBuilder builder = new GsonBuilder()
-                            .setFieldNamingPolicy(FieldNamingPolicy.LOWER_CASE_WITH_UNDERSCORES)
-                            .serializeNulls()
-                            .disableHtmlEscaping();
-                            //.setFormattingStyle(FormattingStyle.PRETTY.withIndent("    "));
-                    return configureGson(builder).create();
-                });
+                .toProvider(new Provider<>() {
+                    @Inject GsonTypeAdapters gsonTypeAdapters;
+
+                    @Override
+                    public Gson get() {
+                        GsonBuilder builder = new GsonBuilder()
+                                .setFieldNamingPolicy(FieldNamingPolicy.LOWER_CASE_WITH_UNDERSCORES)
+                                .serializeNulls()
+                                .disableHtmlEscaping();
+                        gsonTypeAdapters.factories().forEach(builder::registerTypeAdapterFactory);
+                        return BaseInstanceModule.this.configureGson(builder).create();
+                    }
+                })
+                .asEagerSingleton();
 
         bind(BaseInstance.class).toInstance(instance);
         bind(instanceClass).toInstance(instance);
