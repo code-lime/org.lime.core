@@ -1,5 +1,8 @@
 package org.lime.core.fabric;
 
+import net.kyori.adventure.platform.AudienceProvider;
+import net.kyori.adventure.platform.fabric.FabricAudiences;
+import net.kyori.adventure.platform.fabric.FabricServerAudiences;
 import net.minecraft.commands.Commands;
 import net.minecraft.core.RegistryAccess;
 import net.minecraft.server.MinecraftServer;
@@ -54,6 +57,7 @@ public class BaseFabricInstanceModule
         bind(BaseFabricMod.class).toInstance(instance);
 
         bind(MinecraftServer.class).toInstance(instance.server);
+        bindMappedCast(FabricServerAudiences.class, AudienceProvider.class, MinecraftServer.class, FabricServerAudiences::of);
         bindMapped(PlayerList.class, MinecraftServer.class, MinecraftServer::getPlayerList);
         bindMappedCast(ServerLevel.class, Level.class, MinecraftServer.class, MinecraftServer::overworld);
         bindMappedCast(ServerScoreboard.class, Scoreboard.class, MinecraftServer.class, MinecraftServer::getScoreboard);
