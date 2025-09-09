@@ -1,9 +1,9 @@
-package org.lime.core.common.utils.range;
+package org.lime.core.common.utils.range.number;
 
 import org.jetbrains.annotations.NotNull;
 
 public final class IntegerRange
-        extends BaseRange<IntegerRange, Integer> {
+        extends BaseNumberRange<IntegerRange, Integer> {
     public static final Factory<IntegerRange, Integer> FACTORY = createFactory(IntegerRange.class, IntegerRange::new);
 
     public IntegerRange(@NotNull Integer a, @NotNull Integer b) {

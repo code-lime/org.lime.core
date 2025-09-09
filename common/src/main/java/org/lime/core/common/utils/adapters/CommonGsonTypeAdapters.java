@@ -11,6 +11,10 @@ import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.minimessage.MiniMessage;
 import org.lime.core.common.utils.PlaceholderComponent;
 import org.lime.core.common.utils.range.*;
+import org.lime.core.common.utils.range.number.DoubleRange;
+import org.lime.core.common.utils.range.number.FloatRange;
+import org.lime.core.common.utils.range.number.IntegerRange;
+import org.lime.core.common.utils.range.number.LongRange;
 import org.lime.core.common.utils.system.execute.ActionEx2;
 import org.lime.core.common.utils.system.execute.FuncEx1;
 
