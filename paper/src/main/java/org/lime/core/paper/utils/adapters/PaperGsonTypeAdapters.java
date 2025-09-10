@@ -129,7 +129,7 @@ public class PaperGsonTypeAdapters
                         return;
                     if (!Registry.class.equals(registryType.getRawType()))
                         return;
-                    var typeToken = TypeToken.get(registryType);
+                    var typeToken = TypeToken.get(registryType.getActualTypeArguments()[0]);
                     ResourceKey<Registry<?>> resourceKey = (ResourceKey<Registry<?>>)v.get(null);
                     collected.computeIfAbsent(typeToken, vv -> new ArrayList<>()).add(resourceKey);
                 });
