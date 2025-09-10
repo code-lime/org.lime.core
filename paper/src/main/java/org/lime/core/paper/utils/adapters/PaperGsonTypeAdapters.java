@@ -183,22 +183,9 @@ public class PaperGsonTypeAdapters
                 TypeAdapters.newTypeHierarchyFactory(BlockPosition.class, new PositionTypeAdapters.BlockTypeAdapter()),
                 TypeAdapters.newTypeHierarchyFactory(Position.class, new PositionTypeAdapters.BaseTypeAdapter()));
     }
-    protected TypeAdapterFactory material() {
-        final TypeAdapter<Material> keyTypeAdapter = new StringTypeAdapter<>() {
-            @Override
-            public String write(Material value) {
-                return org.bukkit.Registry.MATERIAL.getKeyOrThrow(value).toString();
-            }
-            @Override
-            public Material read(String value) {
-                return org.bukkit.Registry.MATERIAL.getOrThrow(Key.key(value));
-            }
-        };
-        return TypeAdapters.newFactory(Material.class, keyTypeAdapter);
-    }
     protected TypeAdapterFactory registryKeyAuto(
             io.papermc.paper.registry.RegistryAccess registryAccess) {
-        Map<TypeToken<?>, List<RegistryKey<? extends @NotNull Keyed>>> collected = new HashMap<>();
+        Map<TypeToken<?>, List<org.bukkit.Registry<?>>> collected = new HashMap<>();
         Stream.of(RegistryKey.class.getDeclaredFields())
                 .map(ReflectionField::of)
                 .filter(v -> v.is(Modifier.PUBLIC, Modifier.STATIC, Modifier.FINAL))
@@ -213,10 +200,30 @@ public class PaperGsonTypeAdapters
                     if (itemTypeClass == null || !Keyed.class.isAssignableFrom(itemTypeClass))
                         return;
                     var typeToken = TypeToken.get(itemType);
-                    RegistryKey<? extends @NotNull Keyed> registryKey = (RegistryKey<? extends @NotNull Keyed>)v.get(null);
-                    collected.computeIfAbsent(typeToken, vv -> new ArrayList<>()).add(registryKey);
+                    @SuppressWarnings("unchecked")
+                    org.bukkit.Registry<?> registry = registryAccess.getRegistry((RegistryKey<? extends @NotNull Keyed>)v.get(null));
+                    collected.computeIfAbsent(typeToken, vv -> new ArrayList<>()).add(registry);
                 });
-        Map<TypeToken<?>, RegistryKey<? extends @NotNull Keyed>> registries = new HashMap<>();
+        Stream.of(org.bukkit.Registry.class.getDeclaredFields())
+                .map(ReflectionField::of)
+                .filter(v -> v.is(Modifier.PUBLIC, Modifier.STATIC, Modifier.FINAL))
+                .filter(v -> org.bukkit.Registry.class.isAssignableFrom(v.target().getType()))
+                .forEach(v -> {
+                    if (!(v.target().getGenericType() instanceof ParameterizedType registryKeyType))
+                        return;
+                    if (!org.bukkit.Registry.class.equals(registryKeyType.getRawType()))
+                        return;
+                    var itemType = registryKeyType.getActualTypeArguments()[0];
+                    var itemTypeClass = TypeUtils.getRawType(itemType, null);
+                    if (itemTypeClass == null || !Keyed.class.isAssignableFrom(itemTypeClass))
+                        return;
+                    var typeToken = TypeToken.get(itemType);
+                    org.bukkit.Registry<?> registry = (org.bukkit.Registry<?>)v.get(null);
+                    var list = collected.computeIfAbsent(typeToken, vv -> new ArrayList<>());
+                    if (list.isEmpty())
+                        list.add(registry);
+                });
+        Map<TypeToken<?>, org.bukkit.Registry<?>> registries = new HashMap<>();
         collected.forEach((type, list) -> {
             if (list.size() == 1)
                 registries.put(type, list.getFirst());
@@ -224,22 +231,20 @@ public class PaperGsonTypeAdapters
         return new TypeAdapterFactory() {
             @Override
             public <T> TypeAdapter<T> create(Gson gson, TypeToken<T> type) {
-                RegistryKey<? extends @NotNull Keyed> registryKey = registries.get(type);
-                if (registryKey == null)
+                org.bukkit.Registry<?> registry = registries.get(type);
+                if (registry == null)
                     return null;
-                return Optional.of(registryAccess.getRegistry(registryKey))
-                        .map(registry -> new StringTypeAdapter<T>() {
-                            @Override
-                            public String write(T value) throws IOException {
-                                return ((Keyed)value).key().asString();
-                            }
-                            @SuppressWarnings("unchecked")
-                            @Override
-                            public T read(String value) throws IOException {
-                                return (T)registry.getOrThrow(Key.key(value));
-                            }
-                        })
-                        .orElse(null);
+                return new StringTypeAdapter<>() {
+                    @Override
+                    public String write(T value) throws IOException {
+                        return ((Keyed) value).key().asString();
+                    }
+                    @SuppressWarnings({"unchecked", "PatternValidation"})
+                    @Override
+                    public T read(String value) throws IOException {
+                        return (T) registry.getOrThrow(Key.key(value));
+                    }
+                };
             }
         };
     }
@@ -250,9 +255,8 @@ public class PaperGsonTypeAdapters
                 blockPos(),
                 vec3(),
                 resourceKeyAuto(registryAccess),
-                registryKeyAuto(io.papermc.paper.registry.RegistryAccess.registryAccess()),
-                positions(),
-                material()
+                registryKeyAuto(registryAccessPaper),
+                positions()
         ));
     }
 }
