@@ -11,6 +11,7 @@ import com.google.inject.Inject;
 import io.papermc.paper.math.BlockPosition;
 import io.papermc.paper.math.FinePosition;
 import io.papermc.paper.math.Position;
+import io.papermc.paper.registry.RegistryKey;
 import net.kyori.adventure.key.Key;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.HolderLookup;
@@ -20,10 +21,9 @@ import net.minecraft.core.registries.Registries;
 import net.minecraft.resources.ResourceKey;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.phys.Vec3;
-import org.bukkit.Bukkit;
-import org.bukkit.Location;
-import org.bukkit.Material;
-import org.bukkit.World;
+import org.apache.commons.lang3.reflect.TypeUtils;
+import org.bukkit.*;
+import org.jetbrains.annotations.NotNull;
 import org.lime.core.common.reflection.ReflectionField;
 import org.lime.core.common.utils.adapters.CommonGsonTypeAdapters;
 import org.lime.core.common.utils.adapters.StringTypeAdapter;
@@ -195,6 +195,53 @@ public class PaperGsonTypeAdapters
         };
         return TypeAdapters.newFactory(Material.class, keyTypeAdapter);
     }
+    protected TypeAdapterFactory registryKeyAuto(
+            io.papermc.paper.registry.RegistryAccess registryAccess) {
+        Map<TypeToken<?>, List<RegistryKey<? extends @NotNull Keyed>>> collected = new HashMap<>();
+        Stream.of(RegistryKey.class.getDeclaredFields())
+                .map(ReflectionField::of)
+                .filter(v -> v.is(Modifier.PUBLIC, Modifier.STATIC, Modifier.FINAL))
+                .filter(v -> RegistryKey.class.isAssignableFrom(v.target().getType()))
+                .forEach(v -> {
+                    if (!(v.target().getGenericType() instanceof ParameterizedType registryKeyType))
+                        return;
+                    if (!RegistryKey.class.equals(registryKeyType.getRawType()))
+                        return;
+                    var itemType = registryKeyType.getActualTypeArguments()[0];
+                    var itemTypeClass = TypeUtils.getRawType(itemType, null);
+                    if (itemTypeClass == null || !Keyed.class.isAssignableFrom(itemTypeClass))
+                        return;
+                    var typeToken = TypeToken.get(itemType);
+                    RegistryKey<? extends @NotNull Keyed> registryKey = (RegistryKey<? extends @NotNull Keyed>)v.get(null);
+                    collected.computeIfAbsent(typeToken, vv -> new ArrayList<>()).add(registryKey);
+                });
+        Map<TypeToken<?>, RegistryKey<? extends @NotNull Keyed>> registries = new HashMap<>();
+        collected.forEach((type, list) -> {
+            if (list.size() == 1)
+                registries.put(type, list.getFirst());
+        });
+        return new TypeAdapterFactory() {
+            @Override
+            public <T> TypeAdapter<T> create(Gson gson, TypeToken<T> type) {
+                RegistryKey<? extends @NotNull Keyed> registryKey = registries.get(type);
+                if (registryKey == null)
+                    return null;
+                return Optional.of(registryAccess.getRegistry(registryKey))
+                        .map(registry -> new StringTypeAdapter<T>() {
+                            @Override
+                            public String write(T value) throws IOException {
+                                return ((Keyed)value).key().asString();
+                            }
+                            @SuppressWarnings("unchecked")
+                            @Override
+                            public T read(String value) throws IOException {
+                                return (T)registry.getOrThrow(Key.key(value));
+                            }
+                        })
+                        .orElse(null);
+            }
+        };
+    }
 
     @Override
     public Stream<TypeAdapterFactory> factories() {
@@ -202,6 +249,7 @@ public class PaperGsonTypeAdapters
                 blockPos(),
                 vec3(),
                 resourceKeyAuto(registryAccess),
+                registryKeyAuto(io.papermc.paper.registry.RegistryAccess.registryAccess()),
                 positions(),
                 material()
         ));
