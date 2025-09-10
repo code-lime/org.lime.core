@@ -37,6 +37,7 @@ import java.util.stream.Stream;
 public class PaperGsonTypeAdapters
         extends CommonGsonTypeAdapters {
     @Inject protected RegistryAccess registryAccess;
+    @Inject protected io.papermc.paper.registry.RegistryAccess registryAccessPaper;
 
     protected TypeAdapterFactory blockPos() {
         final TypeAdapter<BlockPos> keyTypeAdapter = new StringTypeAdapter<>() {

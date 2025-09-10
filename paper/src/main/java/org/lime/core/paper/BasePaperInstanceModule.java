@@ -3,6 +3,7 @@ package org.lime.core.paper;
 import com.google.inject.TypeLiteral;
 import io.papermc.paper.datapack.DatapackManager;
 import io.papermc.paper.datapack.PaperDatapackManager;
+import io.papermc.paper.registry.PaperRegistryAccess;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.minimessage.MiniMessage;
 import net.kyori.adventure.text.minimessage.tag.Tag;
@@ -111,6 +112,8 @@ public class BasePaperInstanceModule<Instance extends BasePaperInstance<Instance
         bindMappedCast(CraftStructureManager.class, StructureManager.class, CraftServer.class, v -> (CraftStructureManager)v.getStructureManager());
         bindMappedCast(PaperDatapackManager.class, DatapackManager.class, CraftServer.class, CraftServer::getDatapackManager);
         bindMapped(ServerTickManager.class, CraftServer.class, CraftServer::getServerTickManager);
+        bind(PaperRegistryAccess.class).toInstance(PaperRegistryAccess.instance());
+        bindCast(io.papermc.paper.registry.RegistryAccess.class, PaperRegistryAccess.class);
 
         bind(PluginManager.class).toInstance(Bukkit.getPluginManager());
 
