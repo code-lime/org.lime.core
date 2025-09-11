@@ -116,7 +116,7 @@ public class PaperGsonTypeAdapters
     }
     protected TypeAdapterFactory resourceKeyAuto(
             RegistryAccess registryAccess) {
-        Map<TypeToken<?>, List<ResourceKey<Registry<?>>>> collected = new HashMap<>();
+        Map<TypeToken<? extends ResourceKey<?>>, List<ResourceKey<Registry<?>>>> collected = new HashMap<>();
         Stream.of(Registries.class.getDeclaredFields())
                 .map(ReflectionField::of)
                 .filter(v -> v.is(Modifier.PUBLIC, Modifier.STATIC, Modifier.FINAL))
@@ -130,11 +130,14 @@ public class PaperGsonTypeAdapters
                         return;
                     if (!Registry.class.equals(registryType.getRawType()))
                         return;
-                    var typeToken = TypeToken.get(registryType.getActualTypeArguments()[0]);
+                    var type = registryType.getActualTypeArguments()[0];
+                    if (type.getTypeName().startsWith("java"))
+                        return;
+                    var typeToken = (TypeToken<? extends ResourceKey<?>>)TypeToken.getParameterized(ResourceKey.class, type);
                     ResourceKey<Registry<?>> resourceKey = (ResourceKey<Registry<?>>)v.get(null);
                     collected.computeIfAbsent(typeToken, vv -> new ArrayList<>()).add(resourceKey);
                 });
-        Map<TypeToken<?>, ResourceKey<Registry<?>>> registries = new HashMap<>();
+        Map<TypeToken<? extends ResourceKey<?>>, ResourceKey<Registry<?>>> registries = new HashMap<>();
         collected.forEach((type, list) -> {
             if (list.size() == 1)
                 registries.put(type, list.get(0));
