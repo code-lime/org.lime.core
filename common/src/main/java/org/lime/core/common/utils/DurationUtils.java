@@ -1,4 +1,4 @@
-package org.lime.core.common.utils.adapters;
+package org.lime.core.common.utils;
 
 import java.time.Duration;
 import java.time.temporal.ChronoUnit;
