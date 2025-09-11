@@ -5,7 +5,7 @@ import java.time.temporal.ChronoUnit;
 import java.time.temporal.TemporalUnit;
 
 public class DurationUtils {
-    private static final int MILLIS_PER_TICK = 50;
+    public static final int MILLIS_PER_TICK = 50;
 
     private static void addPart(StringBuilder builder, long value, String suffix) {
         if (value <= 0)
@@ -57,5 +57,12 @@ public class DurationUtils {
             duration = duration.plusSeconds(amount);
 
         return duration;
+    }
+
+    public static Duration ofTicks(long ticks) {
+        return Duration.ofMillis(ticks * MILLIS_PER_TICK);
+    }
+    public static long toTicks(Duration duration) {
+        return duration.toMillis() / MILLIS_PER_TICK;
     }
 }
