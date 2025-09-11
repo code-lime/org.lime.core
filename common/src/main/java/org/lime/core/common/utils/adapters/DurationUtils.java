@@ -5,6 +5,8 @@ import java.time.temporal.ChronoUnit;
 import java.time.temporal.TemporalUnit;
 
 public class DurationUtils {
+    private static final int MILLIS_PER_TICK = 50;
+
     private static void addPart(StringBuilder builder, long value, String suffix) {
         if (value <= 0)
             return;
@@ -16,6 +18,7 @@ public class DurationUtils {
 
         StringBuilder builder = new StringBuilder();
 
+        addPart(builder, value.toMillisPart() / MILLIS_PER_TICK, "t");
         addPart(builder, value.toSecondsPart(), "s");
         addPart(builder, value.toMinutesPart(), "m");
         addPart(builder, value.toHoursPart(), "h");
@@ -27,21 +30,25 @@ public class DurationUtils {
         return builder.toString();
     }
     public static Duration read(String value) {
-        int amount = 0;
+        long amount = 0;
         Duration duration = Duration.ZERO;
 
         for (char ch : value.toCharArray()) {
             if ('0' <= ch && ch <= '9') {
                 amount = amount * 10 + (ch - '0');
             } else {
-                TemporalUnit unit = switch (ch) {
-                    case 's' -> ChronoUnit.SECONDS;
-                    case 'm' -> ChronoUnit.MINUTES;
-                    case 'h' -> ChronoUnit.HOURS;
-                    case 'd' -> ChronoUnit.DAYS;
-                    default -> throw new IllegalStateException("Unexpected character: " + ch);
-                };
-                duration = duration.plus(amount, unit);
+                if (ch == 't') {
+                    duration = duration.plus(amount * MILLIS_PER_TICK, ChronoUnit.MILLIS);
+                } else {
+                    TemporalUnit unit = switch (ch) {
+                        case 's' -> ChronoUnit.SECONDS;
+                        case 'm' -> ChronoUnit.MINUTES;
+                        case 'h' -> ChronoUnit.HOURS;
+                        case 'd' -> ChronoUnit.DAYS;
+                        default -> throw new IllegalStateException("Unexpected character: " + ch);
+                    };
+                    duration = duration.plus(amount, unit);
+                }
                 amount = 0;
             }
         }
