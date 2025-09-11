@@ -8,6 +8,8 @@ import com.google.gson.stream.JsonWriter;
 import com.google.inject.Inject;
 import net.kyori.adventure.key.Key;
 import net.kyori.adventure.text.Component;
+import net.kyori.adventure.text.format.NamedTextColor;
+import net.kyori.adventure.text.format.TextColor;
 import net.kyori.adventure.text.minimessage.MiniMessage;
 import org.lime.core.common.utils.PlaceholderComponent;
 import org.lime.core.common.utils.range.*;
@@ -85,6 +87,34 @@ public abstract class CommonGsonTypeAdapters
                     }
                 });
     }
+    protected TypeAdapterFactory rgbColor() {
+        return combine(
+                TypeAdapters.newFactory(
+                        TextColor.class,
+                        new StringTypeAdapter<>() {
+                            @Override
+                            public String write(TextColor value) {
+                                return value.asHexString();
+                            }
+                            @Override
+                            public TextColor read(String value) {
+                                return TextColor.fromHexString(value);
+                            }
+                        }),
+                TypeAdapters.newFactory(
+                        NamedTextColor.class,
+                        new StringTypeAdapter<>() {
+                            @Override
+                            public String write(NamedTextColor value) {
+                                return NamedTextColor.NAMES.keyOrThrow(value);
+                            }
+                            @Override
+                            public NamedTextColor read(String value) {
+                                return NamedTextColor.NAMES.valueOrThrow(value);
+                            }
+                        })
+        );
+    }
 
     protected <T extends Comparable<T>, R extends Range<T>>TypeAdapterFactory range(
             Range.Factory<R, T> factory,
@@ -134,6 +164,12 @@ public abstract class CommonGsonTypeAdapters
     }
 
     public Stream<TypeAdapterFactory> factories() {
-        return Stream.of(key(), miniMessage(miniMessage), duration(), range(), RuntimeTypeAdapterFactory.AUTO);
+        return Stream.of(
+            key(),
+            miniMessage(miniMessage),
+            duration(),
+            rgbColor(),
+            range(),
+            RuntimeTypeAdapterFactory.AUTO);
     }
 }
