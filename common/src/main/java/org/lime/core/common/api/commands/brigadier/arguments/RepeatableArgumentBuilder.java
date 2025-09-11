@@ -11,6 +11,7 @@ import org.jetbrains.annotations.Nullable;
 import org.jetbrains.annotations.Range;
 import org.lime.core.common.reflection.ReflectionField;
 import org.lime.core.common.utils.system.execute.Func1;
+import org.lime.core.common.utils.system.execute.Func2;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -59,10 +60,16 @@ public class RepeatableArgumentBuilder<S, T>
             final CommandContext<?> ctx,
             final String name,
             final Class<T> type) {
+        return readRepeatable(ctx, name, (context, indexedName) -> context.getArgument(indexedName, type));
+    }
+    public static <T>Stream<T> readRepeatable(
+            final CommandContext<?> ctx,
+            final String name,
+            final Func2<CommandContext<?>, String, T> reader) {
         return IntStream.rangeClosed(0, LIMIT_MAX_COUNT)
                 .mapToObj(index -> getIndexedName(name, index))
                 .takeWhile(ARGUMENTS_GETTER.apply(ctx)::containsKey)
-                .map(indexedName -> ctx.getArgument(indexedName, type));
+                .map(indexedName -> reader.invoke(ctx, indexedName));
     }
 
     public RepeatableArgumentBuilder<S, T> suggests(
