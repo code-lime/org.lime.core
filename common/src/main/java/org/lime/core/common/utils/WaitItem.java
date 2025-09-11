@@ -16,7 +16,7 @@ public record WaitItem<T>(T item, long time) {
         return waitSeconds(System.currentTimeMillis());
     }
     public int waitSeconds(long now) {
-        return (int) Math.max(0, time - now);
+        return (int) (Math.max(0, time - now) / 1000);
     }
 
     public WaitItem<T> change(T otherItem) {
