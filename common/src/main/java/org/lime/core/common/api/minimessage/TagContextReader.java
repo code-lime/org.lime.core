@@ -96,6 +96,10 @@ public record TagContextReader(
         return func.invoke();
     }
 
+    public boolean hasNext() {
+        return args.hasNext();
+    }
+
     public static TagContextReader of(String tag, ArgumentQueue args, Context context) {
         return new TagContextReader(tag, args, context);
     }
