@@ -100,18 +100,6 @@ public abstract class CommonGsonTypeAdapters
                             public TextColor read(String value) {
                                 return TextColor.fromHexString(value);
                             }
-                        }),
-                TypeAdapters.newFactory(
-                        NamedTextColor.class,
-                        new StringTypeAdapter<>() {
-                            @Override
-                            public String write(NamedTextColor value) {
-                                return NamedTextColor.NAMES.keyOrThrow(value);
-                            }
-                            @Override
-                            public NamedTextColor read(String value) {
-                                return NamedTextColor.NAMES.valueOrThrow(value);
-                            }
                         })
         );
     }
