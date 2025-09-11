@@ -1,6 +1,8 @@
 package org.lime.core.common.api.commands.brigadier.arguments;
 
 import com.google.common.collect.Streams;
+import com.google.gson.JsonPrimitive;
+import com.mojang.brigadier.StringReader;
 import com.mojang.brigadier.arguments.ArgumentType;
 import com.mojang.brigadier.arguments.StringArgumentType;
 import com.mojang.brigadier.context.CommandContext;
@@ -83,12 +85,19 @@ public class CustomArgumentBuilder<J, T, Source> {
         return this;
     }
 
+    private String applyQuotable(String str) {
+        if (str.chars().allMatch(ch -> StringReader.isAllowedInUnquotedString((char)ch)))
+            return str;
+        return new JsonPrimitive(str).toString();
+    }
+
     public ArgumentType<@NotNull T> build() {
         StringArgumentType nativeType = switch (type) {
             case SINGLE_WORD -> StringArgumentType.word();
             case QUOTABLE_PHRASE -> StringArgumentType.string();
             case GREEDY_PHRASE -> StringArgumentType.greedyString();
         };
+        boolean isQuotable = type == StringArgumentType.StringType.QUOTABLE_PHRASE;
         return factory.argument(new BaseMappedArgument<@NotNull T, String>() {
             @Override
             public @NotNull ArgumentType<String> nativeType() {
@@ -109,7 +118,9 @@ public class CustomArgumentBuilder<J, T, Source> {
                     if (filter != null && !filter.invoke(value, source))
                         return;
 
-                    final String rawValue = serialize.invoke(value);
+                    String rawValue = serialize.invoke(value);
+
+                    rawValue = isQuotable ? applyQuotable(rawValue) : rawValue;
 
                     final String input;
                     final String checkValue;
