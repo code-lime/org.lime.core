@@ -83,6 +83,14 @@ tasks.register("upload") {
         if (remoteKey)
             jsch.addIdentity(file(remoteKey).absolutePath)
 
+        if (!remotePort) {
+            def remoteAddressParts = remoteAddress.split(':', 2)
+            if (remoteAddressParts.length > 1) {
+                remoteAddress = remoteAddressParts[0]
+                remotePort = remoteAddressParts[1]
+            }
+        }
+
         Session session = remotePort
                 ? jsch.getSession(remoteUser, remoteAddress, Integer.parseInt(remotePort))
                 : jsch.getSession(remoteUser, remoteAddress)
