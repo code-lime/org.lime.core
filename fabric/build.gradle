@@ -14,7 +14,6 @@ dependencies {
 versionByteBuddy = project(":common").versionByteBuddy
 versionCommonsLang3 = project(":common").versionCommonsLang3
 versionGuice = project(":common").versionGuice
-versionLiteCommands = project(":common").versionLiteCommands
 versionAdventureApi = project(":common").versionAdventureApi
 versionAdventurePlatform = project(":common").versionAdventurePlatform
 
@@ -93,17 +92,6 @@ dependencies {
 //<editor-fold desc="Settings: Libraries: com.google.inject#guice">
 dependencies {
     transitiveInclude implementation("com.google.inject:guice:${versionGuice}")
-}
-//</editor-fold>
-//<editor-fold desc="Settings: Libraries: LiteCommands">
-repositories {
-    maven {
-        url "https://repo.panda-lang.org/releases"
-    }
-}
-
-dependencies {
-    modImplementation include("dev.rollczi:litecommands-fabric:${versionLiteCommands}")
 }
 //</editor-fold>
 afterEvaluate {

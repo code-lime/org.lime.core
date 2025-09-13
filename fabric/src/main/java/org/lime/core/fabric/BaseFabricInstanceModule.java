@@ -19,7 +19,6 @@ import org.lime.core.common.BaseInstanceModule;
 import org.lime.core.common.services.ScheduleTaskService;
 import org.lime.core.common.services.UnsafeMappingsUtility;
 import org.lime.core.common.utils.system.Lazy;
-import org.lime.core.fabric.commands.LiteCommandConsumerFactory;
 import org.lime.core.fabric.commands.NativeCommandConsumerFactory;
 import org.lime.core.fabric.utils.adapters.FabricGsonTypeAdapters;
 
@@ -35,10 +34,6 @@ public class BaseFabricInstanceModule
     @Override
     protected UnsafeMappingsUtility mappings() {
         return FabricUnsafeMappingsUtility.instance();
-    }
-    @Override
-    protected LiteCommandConsumerFactory liteCommandFactory() {
-        return LiteCommandConsumerFactory.INSTANCE;
     }
     @Override
     protected NativeCommandConsumerFactory nativeCommandFactory() {
@@ -69,7 +64,6 @@ public class BaseFabricInstanceModule
         bindMapped(StructureTemplateManager.class, MinecraftServer.class, MinecraftServer::getStructureManager);
 
         bind(ScheduleTaskService.class).toInstance(instance.scheduleTaskService);
-        bind(LiteCommandConsumerFactory.class).toInstance(liteCommandFactory());
         bind(NativeCommandConsumerFactory.class).toInstance(nativeCommandFactory());
     }
 }

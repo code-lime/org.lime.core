@@ -1,19 +1,14 @@
 package org.lime.core.fabric;
 
-import dev.rollczi.litecommands.LiteCommandsBuilder;
-import dev.rollczi.litecommands.fabric.LiteFabricFactory;
-import dev.rollczi.litecommands.fabric.LiteFabricSettings;
 import net.fabricmc.api.ModInitializer;
 import net.fabricmc.fabric.api.event.lifecycle.v1.ServerLifecycleEvents;
 import net.fabricmc.fabric.api.event.lifecycle.v1.ServerTickEvents;
 import net.fabricmc.loader.api.FabricLoader;
 import net.fabricmc.loader.api.metadata.ModMetadata;
-import net.minecraft.commands.CommandSourceStack;
 import net.minecraft.server.MinecraftServer;
 import org.lime.core.common.Artifact;
 import org.lime.core.common.BaseInstance;
 import org.lime.core.common.api.commands.CommandConsumer;
-import org.lime.core.fabric.commands.LiteCommandConsumerFactory;
 import org.lime.core.fabric.commands.NativeCommandConsumerFactory;
 import org.lime.core.fabric.tasks.FabricScheduleTaskService;
 import org.slf4j.Logger;
@@ -67,9 +62,7 @@ public abstract class BaseFabricMod
 
     @Override
     public void enable() {
-        LiteCommandsBuilder<CommandSourceStack, LiteFabricSettings, ?> liteCommandsBuilder = LiteFabricFactory.server();
         commandRegisters = List.of(
-                new LiteCommandConsumerFactory.LiteRegister(liteCommandsBuilder),
                 new NativeCommandConsumerFactory.NativeRegister(server.getCommands().getDispatcher(), new ArrayList<>()));
         super.enable();
         commandRegisters.forEach(register -> compositeDisposable.add(register.apply()));

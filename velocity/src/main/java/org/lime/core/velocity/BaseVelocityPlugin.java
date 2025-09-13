@@ -2,7 +2,6 @@ package org.lime.core.velocity;
 
 import com.google.common.base.Charsets;
 import com.google.gson.JsonObject;
-import com.velocitypowered.api.command.CommandSource;
 import com.velocitypowered.api.event.Subscribe;
 import com.velocitypowered.api.event.proxy.ProxyInitializeEvent;
 import com.velocitypowered.api.event.proxy.ProxyShutdownEvent;
@@ -10,9 +9,6 @@ import com.velocitypowered.api.plugin.PluginContainer;
 import com.velocitypowered.api.plugin.PluginDescription;
 import com.velocitypowered.api.plugin.annotation.DataDirectory;
 import com.velocitypowered.api.proxy.ProxyServer;
-import dev.rollczi.litecommands.LiteCommandsBuilder;
-import dev.rollczi.litecommands.velocity.LiteVelocityFactory;
-import dev.rollczi.litecommands.velocity.LiteVelocitySettings;
 import org.lime.core.common.Artifact;
 import org.lime.core.common.BaseInstance;
 import org.lime.core.common.api.Service;
@@ -22,7 +18,6 @@ import org.lime.core.common.utils.json.builder.Json;
 import org.lime.core.common.utils.system.execute.ActionEx2;
 import org.lime.core.common.utils.system.tuple.Tuple;
 import org.lime.core.common.utils.system.tuple.Tuple1;
-import org.lime.core.velocity.commands.LiteCommandConsumerFactory;
 import org.lime.core.velocity.commands.NativeCommandConsumerFactory;
 import org.lime.core.velocity.libby.VelocityDependencyLoader;
 import org.lime.core.velocity.tasks.VelocityScheduleTaskService;
@@ -122,9 +117,7 @@ public abstract class BaseVelocityPlugin
         if (velocityDependency.val0 != null)
             loadDependencies(velocityDependency.val0);
 
-        LiteCommandsBuilder<CommandSource, LiteVelocitySettings, ?> liteCommandsBuilder = LiteVelocityFactory.builder(server);
         commandRegisters = List.of(
-                new LiteCommandConsumerFactory.LiteRegister(liteCommandsBuilder),
                 new NativeCommandConsumerFactory.NativeRegister(this, server.getCommandManager(), new ArrayList<>()));
         super.enable();
         commandRegisters.forEach(v -> compositeDisposable.add(v.apply()));

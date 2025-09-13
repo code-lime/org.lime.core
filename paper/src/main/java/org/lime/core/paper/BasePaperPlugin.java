@@ -1,12 +1,7 @@
 package org.lime.core.paper;
 
-import dev.rollczi.litecommands.LiteCommandsBuilder;
-import dev.rollczi.litecommands.bukkit.LiteBukkitFactory;
-import dev.rollczi.litecommands.bukkit.LiteBukkitSettings;
-import org.bukkit.command.CommandSender;
 import org.bukkit.plugin.java.JavaPlugin;
 import org.lime.core.common.api.commands.CommandConsumer;
-import org.lime.core.paper.commands.LiteCommandConsumerFactory;
 import org.lime.core.paper.commands.NativeCommandConsumerFactory;
 
 import java.io.File;
@@ -30,9 +25,7 @@ public abstract class BasePaperPlugin
 
         @Override
         public void enable() {
-            LiteCommandsBuilder<CommandSender, LiteBukkitSettings, ?> liteCommandsBuilder = LiteBukkitFactory.builder(plugin);
             commandRegisters = List.of(
-                    new LiteCommandConsumerFactory.LiteRegister(liteCommandsBuilder),
                     new NativeCommandConsumerFactory.NativeRegister(plugin.getLifecycleManager(), new ArrayList<>()));
             super.enable();
             commandRegisters.forEach(v -> compositeDisposable.add(v.apply()));

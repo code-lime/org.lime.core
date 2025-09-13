@@ -1,12 +1,9 @@
 {
-  "maven": {
-    "panda-repo": "https://repo.panda-lang.org/releases"
-  },
+  "maven": {},
   "libraries": [
     "org.ow2.asm:asm:${versionObjectWebAsm}",
     "commons-io:commons-io:${versionCommonsIO}",
     "org.apache.commons:commons-lang3:${versionCommonsLang3}",
-    "net.bytebuddy:byte-buddy:${versionByteBuddy}",
-    "dev.rollczi:litecommands-velocity:${versionLiteCommands}"
+    "net.bytebuddy:byte-buddy:${versionByteBuddy}"
   ]
 }

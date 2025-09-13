@@ -18,7 +18,6 @@ import org.lime.core.common.api.minimessage.TagContextReader;
 import org.lime.core.common.utils.Unsafe;
 import org.lime.core.common.services.UnsafeMappingsUtility;
 import org.lime.core.common.api.*;
-import org.lime.core.common.api.commands.LiteCommandConsumer;
 import org.lime.core.common.api.commands.NativeCommandConsumer;
 import org.lime.core.common.api.impl.ConfigAccessImpl;
 import org.lime.core.common.services.UpdateConfigService;
@@ -26,7 +25,6 @@ import org.lime.core.common.utils.*;
 import org.lime.core.common.utils.adapters.CommonGsonTypeAdapters;
 import org.lime.core.common.utils.adapters.GsonTypeAdapters;
 import org.lime.core.common.utils.json.builder.Json;
-import org.lime.core.common.utils.range.number.IntegerRange;
 import org.lime.core.common.utils.system.Lazy;
 import org.lime.core.common.utils.system.execute.Func1;
 import org.slf4j.Logger;
@@ -69,7 +67,6 @@ public abstract class BaseInstanceModule<Instance extends BaseInstance<Instance>
 
     protected abstract UnsafeMappingsUtility mappings();
 
-    protected abstract LiteCommandConsumer.Factory<?,?,?> liteCommandFactory();
     protected abstract NativeCommandConsumer.Factory<?,?> nativeCommandFactory();
 
     private static void addPart(
@@ -389,11 +386,9 @@ public abstract class BaseInstanceModule<Instance extends BaseInstance<Instance>
 
         bind(BaseInstance.class).toInstance(instance);
         bind(instanceClass).toInstance(instance);
-        bind(LiteCommandConsumer.Factory.class).toInstance(liteCommandFactory());
         bind(NativeCommandConsumer.Factory.class).toInstance(nativeCommandFactory());
 
         bind(new TypeLiteral<BaseInstance<?>>() {}).toInstance(instance);
-        bind(new TypeLiteral<LiteCommandConsumer.Factory<?,?,?>>() {}).toInstance(liteCommandFactory());
         bind(new TypeLiteral<NativeCommandConsumer.Factory<?,?>>() {}).toInstance(nativeCommandFactory());
 
         bindCustom(UpdateConfigService.class);

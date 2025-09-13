@@ -4,10 +4,7 @@ import com.google.inject.TypeLiteral;
 import io.papermc.paper.datapack.DatapackManager;
 import io.papermc.paper.datapack.PaperDatapackManager;
 import io.papermc.paper.registry.PaperRegistryAccess;
-import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.minimessage.MiniMessage;
-import net.kyori.adventure.text.minimessage.tag.Tag;
-import net.kyori.adventure.text.minimessage.tag.resolver.TagResolver;
 import net.minecraft.commands.Commands;
 import net.minecraft.core.RegistryAccess;
 import net.minecraft.server.MinecraftServer;
@@ -41,7 +38,6 @@ import org.lime.core.common.services.UnsafeMappingsUtility;
 import org.lime.core.common.services.ScheduleTaskService;
 import org.lime.core.common.BaseInstanceModule;
 import org.lime.core.common.utils.adapters.CommonGsonTypeAdapters;
-import org.lime.core.paper.commands.LiteCommandConsumerFactory;
 import org.lime.core.paper.commands.NativeCommandConsumerFactory;
 import org.lime.core.paper.tasks.BukkitScheduleTaskService;
 import org.lime.core.paper.utils.adapters.PaperGsonTypeAdapters;
@@ -56,10 +52,6 @@ public class BasePaperInstanceModule<Instance extends BasePaperInstance<Instance
     @Override
     protected UnsafeMappingsUtility mappings() {
         return PaperUnsafeMappingsUtility.instance();
-    }
-    @Override
-    protected LiteCommandConsumerFactory liteCommandFactory() {
-        return LiteCommandConsumerFactory.INSTANCE;
     }
     @Override
     protected NativeCommandConsumerFactory nativeCommandFactory() {
@@ -121,7 +113,6 @@ public class BasePaperInstanceModule<Instance extends BasePaperInstance<Instance
 
         bind(BukkitScheduler.class).toInstance(Bukkit.getScheduler());
         bind(ScheduleTaskService.class).to(BukkitScheduleTaskService.class);
-        bind(LiteCommandConsumerFactory.class).toInstance(liteCommandFactory());
         bind(NativeCommandConsumerFactory.class).toInstance(nativeCommandFactory());
     }
 }
