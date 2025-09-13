@@ -88,24 +88,32 @@ public final class ClassPatcher<T> {
                 super.visitEnd();
                 throwNotFoundCheck();
             }
+            private final List<String> existMethods = new ArrayList<>();
             private void throwNotFoundCheck() {
                 filters.forEach((filter, patcher) -> {
-                    throw new PatchException("METHOD '" + filter.toInfo() + "' NOT FOUNDED FOR PATCH!", jar, filter);
+                    throw new PatchException("METHOD '" + filter.toInfo() + "' NOT FOUNDED FOR PATCH!", jar, filter).addAdditional(existMethods);
                 });
             }
             private boolean isSuper = false;
             @Override public MethodVisitor visitMethod(int access, String name, String descriptor, String signature, String[] exceptions) {
                 if (!isSuper) {
+                    existMethods.add(access + " " + name + descriptor +
+                            "[" + signature + "]" +
+                            (exceptions == null ? "" : String.join("|", exceptions)));
                     for (Map.Entry<MethodFilter<T>, MethodPatcher> kv : patchMethods.entrySet()) {
                         MethodFilter<T> filter = kv.getKey();
                         if (filter.test(access, name, descriptor, signature, exceptions)) {
                             filters.remove(filter);
                             Native.log("Patch method " + filter.toInfo() + "...");
+                            ProgressMethodVisitor progressVisitor;
                             isSuper = true;
-                            ProgressMethodVisitor progressVisitor = kv.getValue().patch(jar, filter, this, access, name, descriptor, signature, exceptions);
-                            progressVisitors.add(progressVisitor);
-                            isSuper = false;
-                            return progressVisitor;
+                            try {
+                                progressVisitor = kv.getValue().patch(jar, filter, this, access, name, descriptor, signature, exceptions);
+                                progressVisitors.add(progressVisitor);
+                                return progressVisitor;
+                            } finally {
+                                isSuper = false;
+                            }
                         }
                     }
                 }
