@@ -283,10 +283,6 @@ public abstract class BaseInstanceModule<Instance extends BaseInstance<Instance>
                 })
                 .asEagerSingleton();
     }
-    protected void bindCustom(
-            Class<? extends Service> custom) {
-        bindCustom(custom, true);
-    }
     protected <T>void bindCustom(
             Class<T> custom,
             boolean singelton) {
@@ -302,6 +298,8 @@ public abstract class BaseInstanceModule<Instance extends BaseInstance<Instance>
         }
         if (singelton) {
             bind(custom).asEagerSingleton();
+        } else {
+            bind(custom);
         }
 
         AnnotationUtils.recursiveAnnotations(RequireConfig.class, custom)
@@ -390,7 +388,7 @@ public abstract class BaseInstanceModule<Instance extends BaseInstance<Instance>
         bind(new TypeLiteral<BaseInstance<?>>() {}).toInstance(instance);
         bind(new TypeLiteral<NativeCommandConsumer.Factory<?,?>>() {}).toInstance(nativeCommandFactory());
 
-        bindCustom(UpdateConfigService.class);
+        bindCustom(UpdateConfigService.class, true);
 
         instance
                 .findAnnotatedClasses(BindService.class)
