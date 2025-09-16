@@ -15,6 +15,7 @@ import net.kyori.adventure.text.serializer.plain.PlainTextComponentSerializer;
 import net.minecraft.unsafe.GlobalConfigure;
 import org.apache.commons.lang3.reflect.TypeUtils;
 import org.lime.core.common.api.minimessage.TagContextReader;
+import org.lime.core.common.reflection.ReflectionConstructor;
 import org.lime.core.common.utils.Unsafe;
 import org.lime.core.common.services.UnsafeMappingsUtility;
 import org.lime.core.common.api.*;
@@ -119,12 +120,10 @@ public abstract class BaseInstanceModule<Instance extends BaseInstance<Instance>
                 })
                 .orElseGet(() -> {
                     try {
-                        return rawConfigClass.getDeclaredConstructor().newInstance();
-                    } catch (NoSuchMethodException e) {
-                        throw new IllegalArgumentException("Not found empty constructor for initialize config file " + file + " of " + configClass);
-                    } catch (InstantiationException
-                             | IllegalAccessException
-                             | InvocationTargetException e) {
+                        return ReflectionConstructor.of(rawConfigClass)
+                                .access()
+                                .newInstance();
+                    } catch (Exception e) {
                         throw new IllegalArgumentException("Error create new instance for config file " + file + " of " + configClass, e);
                     }
                 });
