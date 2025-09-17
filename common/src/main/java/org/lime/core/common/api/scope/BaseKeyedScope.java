@@ -66,6 +66,18 @@ public abstract class BaseKeyedScope<Instance extends BaseInstance<Instance>, TK
         enter(key);
         return () -> exit(key);
     }
+    public boolean existUse(TKey key, Action0 execute) {
+        Objects.requireNonNull(key, "key is null");
+        if (!sessions.containsKey(key))
+            return false;
+        enter(key);
+        try {
+            execute.invoke();
+        } finally {
+            exit(key);
+        }
+        return true;
+    }
     public void sync(Iterable<TKey> key, @Nullable Action0 execute) {
         Set<TKey> removeKeys = new HashSet<>(sessions.keySet());
         key.forEach(sessionKey -> {
