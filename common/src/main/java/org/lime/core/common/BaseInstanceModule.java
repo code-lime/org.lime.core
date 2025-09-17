@@ -15,6 +15,8 @@ import net.kyori.adventure.text.serializer.plain.PlainTextComponentSerializer;
 import net.minecraft.unsafe.GlobalConfigure;
 import org.apache.commons.lang3.reflect.TypeUtils;
 import org.lime.core.common.api.minimessage.TagContextReader;
+import org.lime.core.common.api.scope.BaseKeyedScope;
+import org.lime.core.common.api.scope.ScopeKey;
 import org.lime.core.common.reflection.ReflectionConstructor;
 import org.lime.core.common.utils.Unsafe;
 import org.lime.core.common.services.UnsafeMappingsUtility;
@@ -32,6 +34,7 @@ import org.slf4j.Logger;
 
 import java.io.File;
 import java.io.IOException;
+import java.lang.annotation.Annotation;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Modifier;
 import java.lang.reflect.ParameterizedType;
@@ -333,6 +336,19 @@ public abstract class BaseInstanceModule<Instance extends BaseInstance<Instance>
     protected <F, T extends TSub, TSub>void bindMappedCast(Class<T> serviceClass, Class<TSub> subClass, Class<F> targetClass, Func1<F, T> provider) {
         bindMapped(serviceClass, targetClass, provider);
         bindCast(subClass, serviceClass);
+    }
+    protected <TScope extends BaseKeyedScope<Instance, TKey>, TKey>void bindKeyedScope(
+            Class<TScope> scopeClass,
+            Class<? extends Annotation> annotation,
+            TypeLiteral<TKey> key,
+            TScope scope) {
+        bindScope(annotation, scope);
+        bind(key)
+                .annotatedWith(ScopeKey.class)
+                .toProvider(() -> Objects.requireNonNull(scope.current(), "Invalid key"))
+                .in(scope);
+        bind(scopeClass).toInstance(scope);
+        compositeDisposable.add(scope);
     }
 
     protected MiniMessage.Builder miniMessage() {
