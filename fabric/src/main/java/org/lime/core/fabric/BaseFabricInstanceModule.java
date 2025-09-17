@@ -1,7 +1,6 @@
 package org.lime.core.fabric;
 
 import net.kyori.adventure.platform.AudienceProvider;
-import net.kyori.adventure.platform.fabric.FabricAudiences;
 import net.kyori.adventure.platform.fabric.FabricServerAudiences;
 import net.minecraft.commands.Commands;
 import net.minecraft.core.RegistryAccess;
