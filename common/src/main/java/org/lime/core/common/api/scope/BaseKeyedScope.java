@@ -8,10 +8,7 @@ import org.jetbrains.annotations.Nullable;
 import org.lime.core.common.BaseInstance;
 import org.lime.core.common.api.Service;
 import org.lime.core.common.utils.Disposable;
-import org.lime.core.common.utils.system.execute.Action0;
-import org.lime.core.common.utils.system.execute.Execute;
-import org.lime.core.common.utils.system.execute.Func0;
-import org.lime.core.common.utils.system.execute.Func1;
+import org.lime.core.common.utils.system.execute.*;
 
 import java.io.Closeable;
 import java.util.*;
@@ -84,7 +81,7 @@ public abstract class BaseKeyedScope<Instance extends BaseInstance<Instance>, TK
     }
 
     public void sync(Iterable<TKey> key) {
-        sync(key, null);
+        sync(key, (Action0)null);
     }
     public void sync(Iterable<TKey> key, @Nullable Action0 execute) {
         Set<TKey> removeKeys = new HashSet<>(sessions.keySet());
@@ -94,6 +91,18 @@ public abstract class BaseKeyedScope<Instance extends BaseInstance<Instance>, TK
             try (var ignored = use(sessionKey)) {
                 if (execute != null)
                     execute.invoke();
+            }
+        });
+        removeKeys.forEach(this::destroy);
+    }
+    public void sync(Iterable<TKey> key, @Nullable Action1<TKey> execute) {
+        Set<TKey> removeKeys = new HashSet<>(sessions.keySet());
+        key.forEach(sessionKey -> {
+            removeKeys.remove(sessionKey);
+
+            try (var ignored = use(sessionKey)) {
+                if (execute != null)
+                    execute.invoke(sessionKey);
             }
         });
         removeKeys.forEach(this::destroy);
