@@ -78,6 +78,10 @@ public abstract class BaseKeyedScope<Instance extends BaseInstance<Instance>, TK
         }
         return true;
     }
+
+    public void sync(Iterable<TKey> key) {
+        sync(key, null);
+    }
     public void sync(Iterable<TKey> key, @Nullable Action0 execute) {
         Set<TKey> removeKeys = new HashSet<>(sessions.keySet());
         key.forEach(sessionKey -> {
