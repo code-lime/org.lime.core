@@ -10,12 +10,11 @@ import org.lime.core.common.api.Service;
 import org.lime.core.common.utils.Disposable;
 import org.lime.core.common.utils.system.execute.Action0;
 import org.lime.core.common.utils.system.execute.Execute;
+import org.lime.core.common.utils.system.execute.Func0;
+import org.lime.core.common.utils.system.execute.Func1;
 
 import java.io.Closeable;
-import java.util.HashSet;
-import java.util.Map;
-import java.util.Objects;
-import java.util.Set;
+import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicReference;
 
@@ -74,6 +73,14 @@ public abstract class BaseKeyedScope<Instance extends BaseInstance<Instance>, TK
             execute.invoke();
         }
         return true;
+    }
+    public <T>Optional<T> existUse(TKey key, Func0<T> execute) {
+        Objects.requireNonNull(key, "key is null");
+        if (!sessions.containsKey(key))
+            return Optional.empty();
+        try (var ignored = use(key)) {
+            return Optional.ofNullable(execute.invoke());
+        }
     }
 
     public void sync(Iterable<TKey> key) {
