@@ -116,18 +116,20 @@ public abstract class BaseInstance<Instance extends BaseInstance<Instance>> {
     }
     public void disable() {
         Logger logger = logger();
-        module.services
-                .descendingIterator()
-                .forEachRemaining(serviceClass -> {
-                    var service = injector.getInstance(serviceClass);
-                    try {
-                        service.unregister();
-                        disableService(service);
-                        logger.info("Service '{}' unloaded", service.getClass().getSimpleName());
-                    } catch (Exception e) {
-                        logger.error("Service '{}' error unloading", service.getClass().getSimpleName(), e);
-                    }
-                });
+        if (injector != null) {
+            module.services
+                    .descendingIterator()
+                    .forEachRemaining(serviceClass -> {
+                        var service = injector.getInstance(serviceClass);
+                        try {
+                            service.unregister();
+                            disableService(service);
+                            logger.info("Service '{}' unloaded", service.getClass().getSimpleName());
+                        } catch (Exception e) {
+                            logger.error("Service '{}' error unloading", service.getClass().getSimpleName(), e);
+                        }
+                    });
+        }
         compositeDisposable.close();
     }
 
