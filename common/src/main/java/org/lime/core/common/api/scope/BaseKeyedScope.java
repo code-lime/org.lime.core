@@ -70,11 +70,8 @@ public abstract class BaseKeyedScope<Instance extends BaseInstance<Instance>, TK
         Objects.requireNonNull(key, "key is null");
         if (!sessions.containsKey(key))
             return false;
-        enter(key);
-        try {
+        try (var ignored = use(key)) {
             execute.invoke();
-        } finally {
-            exit(key);
         }
         return true;
     }
