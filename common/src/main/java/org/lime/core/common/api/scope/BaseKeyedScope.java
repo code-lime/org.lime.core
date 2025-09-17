@@ -91,12 +91,9 @@ public abstract class BaseKeyedScope<Instance extends BaseInstance<Instance>, TK
         key.forEach(sessionKey -> {
             removeKeys.remove(sessionKey);
 
-            enter(sessionKey);
-            try {
+            try (var ignored = use(sessionKey)) {
                 if (execute != null)
                     execute.invoke();
-            } finally {
-                exit(sessionKey);
             }
         });
         removeKeys.forEach(this::destroy);
