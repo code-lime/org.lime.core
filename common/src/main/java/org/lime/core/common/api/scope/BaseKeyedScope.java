@@ -13,6 +13,7 @@ import org.lime.core.common.utils.system.execute.*;
 import java.io.Closeable;
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicReference;
 
 @SuppressWarnings("resource")
@@ -26,11 +27,14 @@ public abstract class BaseKeyedScope<Instance extends BaseInstance<Instance>, TK
             implements Disposable {
         @SuppressWarnings("unchecked")
         public <T> T accessElement(Key<T> elementKey, Provider<T> unscoped) {
-            return (T)elements.computeIfAbsent(elementKey, v -> {
-                var element = unscoped.get();
-                this.disposable.add(scope.register(elementKey, element));
-                return element;
+            AtomicBoolean register = new AtomicBoolean(false);
+            T element = (T)elements.computeIfAbsent(elementKey, v -> {
+                register.set(true);
+                return unscoped.get();
             });
+            if (register.get())
+                this.disposable.add(scope.register(elementKey, element));
+            return element;
         }
         @Override
         public void close() {
