@@ -3,30 +3,37 @@ package org.lime.core.velocity;
 import com.google.inject.Provider;
 import com.velocitypowered.api.plugin.PluginContainer;
 import com.velocitypowered.api.proxy.ProxyServer;
+import org.lime.core.common.BaseInstance;
 import org.lime.core.common.BaseInstanceProvider;
 
 import java.util.Optional;
 
-public abstract class VelocityInstanceProvider<Instance extends BaseVelocityPlugin>
-        extends BaseInstanceProvider<Instance> {
+public abstract class VelocityInstanceProvider<Owner extends BaseVelocityPlugin>
+        extends BaseInstanceProvider<Owner> {
     static ProxyServer proxyServer;
     static {
         BaseInstanceProvider.setStorage(Storage.of(BaseVelocityPlugin.class, () -> proxyServer.getPluginManager()
                 .getPlugins()
                 .stream()
                 .map(PluginContainer::getInstance)
-                .flatMap(Optional::stream)));
+                .flatMap(Optional::stream)
+                .filter(BaseVelocityPlugin.class::isInstance)
+                .map(BaseVelocityPlugin.class::cast)));
     }
 
-    public static <Instance extends BaseVelocityPlugin>VelocityInstanceProvider<Instance> getProvider(Class<Instance> instanceClass) {
+    public static <Owner extends BaseVelocityPlugin>VelocityInstanceProvider<Owner> getProvider(Class<Owner> instanceClass) {
         return new VelocityInstanceProvider<>() {
             @Override
-            protected Class<Instance> instanceClass() {
+            protected Class<Owner> ownerClass() {
                 return instanceClass;
+            }
+            @Override
+            protected BaseInstance<?> instance(Owner owner) {
+                return owner;
             }
         };
     }
-    public static <Instance extends BaseVelocityPlugin, T>Provider<T> getInjectorProvider(Class<Instance> instanceClass, Class<T> type) {
+    public static <Owner extends BaseVelocityPlugin, T>Provider<T> getInjectorProvider(Class<Owner> instanceClass, Class<T> type) {
         return getProvider(instanceClass).provider(type);
     }
 }

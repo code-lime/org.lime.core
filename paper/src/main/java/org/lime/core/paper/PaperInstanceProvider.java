@@ -2,27 +2,32 @@ package org.lime.core.paper;
 
 import com.google.inject.Provider;
 import org.bukkit.Bukkit;
+import org.lime.core.common.BaseInstance;
 import org.lime.core.common.BaseInstanceProvider;
 
 import java.util.Arrays;
-import java.util.stream.Stream;
 
-public abstract class PaperInstanceProvider<Instance extends BasePaperInstance<Instance>>
-        extends BaseInstanceProvider<Instance> {
+public abstract class PaperInstanceProvider<Owner extends BasePaperPlugin>
+        extends BaseInstanceProvider<Owner> {
     static {
-        BaseInstanceProvider.setStorage(Storage.of(BasePaperInstance.class, () -> Arrays.stream(Bukkit.getPluginManager().getPlugins())
-                .flatMap(v -> v instanceof BasePaperPlugin paperPlugin ? Stream.of(paperPlugin) : Stream.empty())));
+        BaseInstanceProvider.setStorage(Storage.of(BasePaperPlugin.class, () -> Arrays.stream(Bukkit.getPluginManager().getPlugins())
+                .filter(BasePaperPlugin.class::isInstance)
+                .map(BasePaperPlugin.class::cast)));
     }
 
-    public static <Instance extends BasePaperInstance<Instance>>PaperInstanceProvider<Instance> getProvider(Class<Instance> instanceClass) {
+    public static <Owner extends BasePaperPlugin>PaperInstanceProvider<Owner> getProvider(Class<Owner> ownerClass) {
         return new PaperInstanceProvider<>() {
             @Override
-            protected Class<Instance> instanceClass() {
-                return instanceClass;
+            protected Class<Owner> ownerClass() {
+                return ownerClass;
+            }
+            @Override
+            protected BaseInstance<?> instance(Owner owner) {
+                return owner.instance;
             }
         };
     }
-    public static <Instance extends BasePaperInstance<Instance>, T>Provider<T> getInjectorProvider(Class<Instance> instanceClass, Class<T> type) {
-        return getProvider(instanceClass).provider(type);
+    public static <Owner extends BasePaperPlugin, T>Provider<T> getInjectorProvider(Class<Owner> ownerClass, Class<T> type) {
+        return getProvider(ownerClass).provider(type);
     }
 }

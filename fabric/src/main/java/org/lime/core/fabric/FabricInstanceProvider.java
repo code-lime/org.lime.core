@@ -4,6 +4,7 @@ import com.google.inject.Provider;
 import net.fabricmc.api.ModInitializer;
 import net.fabricmc.loader.api.FabricLoader;
 import net.fabricmc.loader.api.entrypoint.EntrypointContainer;
+import org.lime.core.common.BaseInstance;
 import org.lime.core.common.BaseInstanceProvider;
 
 public abstract class FabricInstanceProvider<Instance extends BaseFabricMod>
@@ -12,18 +13,24 @@ public abstract class FabricInstanceProvider<Instance extends BaseFabricMod>
         BaseInstanceProvider.setStorage(Storage.of(BaseFabricMod.class, () -> FabricLoader.getInstance()
                 .getEntrypointContainers("main", ModInitializer.class)
                 .stream()
-                .map(EntrypointContainer::getEntrypoint)));
+                .map(EntrypointContainer::getEntrypoint)
+                .filter(BaseFabricMod.class::isInstance)
+                .map(BaseFabricMod.class::cast)));
     }
 
-    public static <Instance extends BaseFabricMod>FabricInstanceProvider<Instance> getProvider(Class<Instance> instanceClass) {
+    public static <Owner extends BaseFabricMod>FabricInstanceProvider<Owner> getProvider(Class<Owner> ownerClass) {
         return new FabricInstanceProvider<>() {
             @Override
-            protected Class<Instance> instanceClass() {
-                return instanceClass;
+            protected Class<Owner> ownerClass() {
+                return ownerClass;
+            }
+            @Override
+            protected BaseInstance<?> instance(Owner owner) {
+                return owner;
             }
         };
     }
-    public static <Instance extends BaseFabricMod, T>Provider<T> getInjectorProvider(Class<Instance> instanceClass, Class<T> type) {
-        return getProvider(instanceClass).provider(type);
+    public static <Instance extends BaseFabricMod, T>Provider<T> getInjectorProvider(Class<Instance> ownerClass, Class<T> type) {
+        return getProvider(ownerClass).provider(type);
     }
 }
