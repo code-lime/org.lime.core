@@ -47,6 +47,9 @@ public class IterableUtils {
     public static <T>Iterable<T> iterable(Func0<Stream<T>> streamGetter) {
         return () -> streamGetter.invoke().iterator();
     }
+    public static <T>Iterable<T> shadow(Func0<Iterable<T>> iterableGetter) {
+        return () -> iterableGetter.invoke().iterator();
+    }
 
     public static <T> Stream<T> skipLast(Stream<T> s, int count) {
         if(count <= 0) {
