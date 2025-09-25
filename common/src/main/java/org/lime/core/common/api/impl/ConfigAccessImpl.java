@@ -24,7 +24,6 @@ public abstract class ConfigAccessImpl<T>
         write(value);
     }
 
-    @Override
     public boolean update() {
         if (!updated)
             return false;

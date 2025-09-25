@@ -51,7 +51,7 @@ public abstract class BaseInstanceModule<Instance extends BaseInstance<Instance>
 
     protected final Deque<Class<? extends Service>> services = new ConcurrentLinkedDeque<>();
     protected final Set<Class<?>> bindCache = ConcurrentHashMap.newKeySet();
-    protected final ConcurrentHashMap<String, List<ConfigAccess<?>>> configs = new ConcurrentHashMap<>();
+    protected final ConcurrentHashMap<String, List<ConfigAccessImpl<?>>> configs = new ConcurrentHashMap<>();
 
     protected final Class<Instance> instanceClass;
     protected final Instance instance;
@@ -234,7 +234,7 @@ public abstract class BaseInstanceModule<Instance extends BaseInstance<Instance>
                         Path configFile = instance.dataFolder()
                                 .toPath()
                                 .resolve(filePath);
-                        ConfigAccess<T> configAccess = new ConfigAccessImpl<>(config.updatable()) {
+                        ConfigAccessImpl<T> configAccess = new ConfigAccessImpl<>(config.updatable()) {
                             @Override
                             protected T read() {
                                 return readConfig(configFile, part, gson, configType);
@@ -423,7 +423,7 @@ public abstract class BaseInstanceModule<Instance extends BaseInstance<Instance>
             var configList = configs.get(key);
             if (configList == null)
                 continue;
-            for (ConfigAccess<?> configAccess : configList) {
+            for (ConfigAccessImpl<?> configAccess : configList) {
                 if (configAccess.update())
                     count++;
             }
