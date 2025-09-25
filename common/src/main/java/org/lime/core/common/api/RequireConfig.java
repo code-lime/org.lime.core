@@ -14,5 +14,5 @@ public @interface RequireConfig {
     String key() default "";
     String[] path() default {};
     String[] part() default {};
-    boolean updatable() default false;
+    boolean updatable() default true;
 }
