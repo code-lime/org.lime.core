@@ -30,16 +30,17 @@ dependencies {
     implementation "net.kyori:adventure-text-serializer-json:${versionAdventureApi}"
     implementation "net.kyori:adventure-text-serializer-legacy:${versionAdventureApi}"
     implementation "net.kyori:adventure-text-serializer-plain:${versionAdventureApi}"
-    implementation "com.mojang:brigadier:${versionBrigadierApi}"
-    implementation "com.google.guava:guava:31.1-jre"
-    implementation "com.google.code.gson:gson:2.10"
     implementation "commons-io:commons-io:${versionCommonsIO}"
     implementation "org.apache.commons:commons-lang3:${versionCommonsLang3}"
     implementation "org.ow2.asm:asm:9.7.1"
-    implementation 'org.slf4j:slf4j-api:2.0.1'
+    compileOnly "com.mojang:brigadier:${versionBrigadierApi}"
+    compileOnly 'org.slf4j:slf4j-api:2.0.1'
+    compileOnly "com.google.guava:guava:31.1-jre"
+    compileOnly "com.google.code.gson:gson:2.10"
 }
 dependencies {
     implementation "net.bytebuddy:byte-buddy-agent:${versionByteBuddy}"
+    implementation "net.bytebuddy:byte-buddy:${versionByteBuddy}"
     implementation "org.graalvm.js:js:${versionGraalVm}"
     implementation "org.graalvm.js:js-scriptengine:${versionGraalVm}"
     implementation "org.graalvm.truffle:truffle-api:${versionGraalVm}"

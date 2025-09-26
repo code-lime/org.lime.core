@@ -60,9 +60,10 @@ configurations {
         exclude group: 'com.google.guava'
     }
 }
-//<editor-fold desc="Settings: Libraries: ByteBuddyAgent">
+//<editor-fold desc="Settings: Libraries: ByteBuddy">
 dependencies {
     modImplementation include("net.bytebuddy:byte-buddy-agent:${versionByteBuddy}")
+    modImplementation include("net.bytebuddy:byte-buddy:${versionByteBuddy}")
 }
 //</editor-fold>
 //<editor-fold desc="Settings: Libraries: Commons Lang v3">

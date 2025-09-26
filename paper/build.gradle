@@ -34,7 +34,7 @@ processResources {
 //<editor-fold desc="Settings: Libraries">
 //<editor-fold desc="Settings: Libraries: ProtocolLib">
 dependencies {
-    implementation "net.dmulloy2:ProtocolLib:${versionProtocolLib}"
+    compileOnly "net.dmulloy2:ProtocolLib:${versionProtocolLib}"
 }
 //</editor-fold>
 //<editor-fold desc="Settings: Libraries: com.google.inject#guice">

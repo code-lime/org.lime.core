@@ -51,14 +51,13 @@ configurations {
 }
 
 //<editor-fold desc="Settings: Libraries">
-//<editor-fold desc="Settings: Libraries: ByteBuddyAgent">
+//<editor-fold desc="Settings: Libraries: ByteBuddy">
 dependencies {
+    compileOnly "net.bytebuddy:byte-buddy-agent:${versionByteBuddy}"
+    compileOnly "net.bytebuddy:byte-buddy:${versionByteBuddy}"
+
     embedded "net.bytebuddy:byte-buddy-agent:${versionByteBuddy}"
-}
-//</editor-fold>
-//<editor-fold desc="Settings: Libraries: ByteBuddyt">
-dependencies {
-    implementation "net.bytebuddy:byte-buddy:${versionByteBuddy}"
+    embedded "net.bytebuddy:byte-buddy:${versionByteBuddy}"
 }
 //</editor-fold>
 //<editor-fold desc="Settings: Libraries: Libby">
@@ -69,24 +68,24 @@ repositories {
 }
 
 dependencies {
-    implementation "com.alessiodp.libby:libby-velocity:${versionLibby}"
+    compileOnly "com.alessiodp.libby:libby-velocity:${versionLibby}"
     embedded "com.alessiodp.libby:libby-velocity:${versionLibby}"
 }
 //</editor-fold>
 //<editor-fold desc="Settings: Libraries: ObjectWebAsm">
 dependencies {
-    implementation "org.ow2.asm:asm:${versionObjectWebAsm}"
+    compileOnly "org.ow2.asm:asm:${versionObjectWebAsm}"
 }
 //</editor-fold>
 //<editor-fold desc="Settings: Libraries: Apache Commons">
 dependencies {
-    implementation "commons-io:commons-io:${versionCommonsIO}"
-    implementation "org.apache.commons:commons-lang3:${versionCommonsLang3}"
+    compileOnly "commons-io:commons-io:${versionCommonsIO}"
+    compileOnly "org.apache.commons:commons-lang3:${versionCommonsLang3}"
 }
 //</editor-fold>
 //<editor-fold desc="Settings: Libraries: com.google.inject#guice">
 dependencies {
-    implementation "com.google.inject:guice:${versionGuice}"
+    compileOnly "com.google.inject:guice:${versionGuice}"
 }
 //</editor-fold>
 //</editor-fold>
