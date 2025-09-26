@@ -2,14 +2,14 @@ package org.lime.core.common.utils.range;
 
 import org.apache.commons.lang3.compare.ComparableUtils;
 import org.jetbrains.annotations.NotNull;
-import org.lime.core.common.utils.system.execute.Func2;
+import org.lime.core.common.utils.execute.Func2;
 
 public abstract class BaseRange<Self extends BaseRange<Self, T>, T extends Comparable<T>>
         implements FactoryRange<Self, T> {
-    private final Factory<Self, T> factory;
+    protected final Factory<Self, T> factory;
 
-    private final @NotNull T min;
-    private final @NotNull T max;
+    protected final @NotNull T min;
+    protected final @NotNull T max;
 
     protected BaseRange(@NotNull T a, @NotNull T b, Factory<Self, T> factory) {
         this.factory = factory;

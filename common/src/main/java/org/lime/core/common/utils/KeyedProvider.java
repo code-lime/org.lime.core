@@ -1,7 +1,6 @@
 package org.lime.core.common.utils;
 
-import org.lime.core.common.utils.system.Lock;
-import org.lime.core.common.utils.system.execute.Func1;
+import org.lime.core.common.utils.execute.Func1;
 
 import java.util.Objects;
 

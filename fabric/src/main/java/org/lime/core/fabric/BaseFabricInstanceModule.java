@@ -17,7 +17,7 @@ import net.minecraft.world.scores.Scoreboard;
 import org.lime.core.common.BaseInstanceModule;
 import org.lime.core.common.services.ScheduleTaskService;
 import org.lime.core.common.services.UnsafeMappingsUtility;
-import org.lime.core.common.utils.system.Lazy;
+import org.lime.core.common.utils.Lazy;
 import org.lime.core.fabric.commands.NativeCommandConsumerFactory;
 import org.lime.core.fabric.utils.adapters.FabricGsonTypeAdapters;
 

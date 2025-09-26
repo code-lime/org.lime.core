@@ -10,8 +10,8 @@ import com.mojang.brigadier.tree.CommandNode;
 import org.jetbrains.annotations.Nullable;
 import org.jetbrains.annotations.Range;
 import org.lime.core.common.reflection.ReflectionField;
-import org.lime.core.common.utils.system.execute.Func1;
-import org.lime.core.common.utils.system.execute.Func2;
+import org.lime.core.common.utils.execute.Func1;
+import org.lime.core.common.utils.execute.Func2;
 
 import java.util.ArrayList;
 import java.util.List;

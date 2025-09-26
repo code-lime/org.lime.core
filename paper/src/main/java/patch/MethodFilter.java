@@ -1,8 +1,8 @@
 package patch;
 
 import org.lime.core.common.reflection.LambdaInfo;
-import org.lime.core.common.utils.system.execute.Execute;
-import org.lime.core.common.utils.system.execute.Callable;
+import org.lime.core.common.utils.execute.Execute;
+import org.lime.core.common.utils.execute.Callable;
 import org.lime.core.paper.PaperUnsafeMappingsUtility;
 import org.objectweb.asm.Type;
 

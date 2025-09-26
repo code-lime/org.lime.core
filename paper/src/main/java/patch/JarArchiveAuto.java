@@ -1,6 +1,6 @@
 package patch;
 
-import org.lime.core.common.utils.system.execute.Func2;
+import org.lime.core.common.utils.execute.Func2;
 import org.objectweb.asm.ClassVisitor;
 import org.objectweb.asm.ClassWriter;
 

@@ -4,9 +4,9 @@ import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import org.bukkit.plugin.java.JavaPlugin;
 import org.lime.core.common.utils.json.builder.Json;
-import org.lime.core.common.utils.system.Regex;
-import org.lime.core.common.utils.system.tuple.Tuple;
-import org.lime.core.common.utils.system.utils.IterableUtils;
+import org.lime.core.common.utils.RegexUtils;
+import org.lime.core.common.utils.tuple.Tuple;
+import org.lime.core.common.utils.IterableUtils;
 
 import javax.annotation.Nullable;
 import java.net.URL;
@@ -77,7 +77,7 @@ public abstract class BasePluginPatcher implements SignatureTools {
                     .forEach(v -> v.invoke((regex, patch) -> Native.subLog("Append group '"+regex+"'", () -> pluginArchive.entries
                             .entrySet()
                             .stream()
-                            .filter(kv -> Regex.compareRegex(kv.getKey(), regex))
+                            .filter(kv -> RegexUtils.compareRegex(kv.getKey(), regex))
                             .forEach(kv -> {
                                 //Native.log(kv.getKey() + " ["+(patch ? "PATCH" : "CHECK")+"]");
                                 classes.add(new ModifyClass(kv.getKey(), kv.getValue(), patch));

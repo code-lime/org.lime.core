@@ -16,7 +16,7 @@ import org.lime.core.common.api.commands.NativeCommandConsumer;
 import org.lime.core.common.api.commands.brigadier.arguments.BaseMappedArgument;
 import org.lime.core.common.api.commands.brigadier.arguments.RepeatableArgumentBuilder;
 import org.lime.core.common.utils.Disposable;
-import org.lime.core.common.utils.system.execute.Action1;
+import org.lime.core.common.utils.execute.Action1;
 import org.lime.core.fabric.commands.brigadier.CustomArgumentType;
 
 import java.util.List;

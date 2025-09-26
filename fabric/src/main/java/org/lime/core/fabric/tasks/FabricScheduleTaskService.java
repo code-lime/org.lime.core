@@ -2,7 +2,7 @@ package org.lime.core.fabric.tasks;
 
 import org.lime.core.common.utils.ScheduleTask;
 import org.lime.core.common.services.ScheduleTaskService;
-import org.lime.core.common.utils.system.execute.Action0;
+import org.lime.core.common.utils.execute.Action0;
 import org.slf4j.Logger;
 
 import java.io.Closeable;

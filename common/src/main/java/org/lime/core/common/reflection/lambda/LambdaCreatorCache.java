@@ -1,7 +1,7 @@
 package org.lime.core.common.reflection.lambda;
 
-import org.lime.core.common.utils.system.tuple.Tuple;
-import org.lime.core.common.utils.system.tuple.Tuple3;
+import org.lime.core.common.utils.tuple.Tuple;
+import org.lime.core.common.utils.tuple.Tuple3;
 
 import java.lang.reflect.Executable;
 import java.lang.reflect.Field;

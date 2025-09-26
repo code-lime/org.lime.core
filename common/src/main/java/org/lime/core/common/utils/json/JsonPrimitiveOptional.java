@@ -1,7 +1,7 @@
 package org.lime.core.common.utils.json;
 
 import com.google.gson.JsonPrimitive;
-import org.lime.core.common.utils.system.utils.EnumUtils;
+import org.lime.core.common.utils.EnumUtils;
 
 import java.math.BigDecimal;
 import java.math.BigInteger;

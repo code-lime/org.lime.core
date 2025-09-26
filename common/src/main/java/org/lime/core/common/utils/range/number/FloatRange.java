@@ -10,6 +10,11 @@ public final class FloatRange
         super(a, b, FACTORY);
     }
 
+    @Override
+    public @NotNull Float percent(double percent) {
+        return (float)(min + (max - min) * percent);
+    }
+
     public static FloatRange of(float a, float b) {
         return new FloatRange(a, b);
     }

@@ -16,11 +16,11 @@ import org.bukkit.plugin.Plugin;
 import org.lime.core.common.utils.Disposable;
 import org.lime.core.common.utils.Unsafe;
 import org.lime.core.common.reflection.ReflectionMethod;
-import org.lime.core.common.utils.system.ListBuilder;
-import org.lime.core.common.utils.system.execute.Action1;
-import org.lime.core.common.utils.system.execute.Action2;
-import org.lime.core.common.utils.system.tuple.Tuple;
-import org.lime.core.common.utils.system.tuple.Tuple2;
+import org.lime.core.common.utils.ListBuilder;
+import org.lime.core.common.utils.execute.Action1;
+import org.lime.core.common.utils.execute.Action2;
+import org.lime.core.common.utils.tuple.Tuple;
+import org.lime.core.common.utils.tuple.Tuple2;
 
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;

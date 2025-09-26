@@ -1,10 +1,10 @@
 package org.lime.core.common.utils;
 
 import com.google.common.collect.Streams;
-import org.lime.core.common.utils.system.execute.Action2;
-import org.lime.core.common.utils.system.execute.ActionEx2;
-import org.lime.core.common.utils.system.tuple.Tuple;
-import org.lime.core.common.utils.system.tuple.Tuple1;
+import org.lime.core.common.utils.execute.Action2;
+import org.lime.core.common.utils.execute.ActionEx2;
+import org.lime.core.common.utils.tuple.Tuple;
+import org.lime.core.common.utils.tuple.Tuple1;
 
 import java.io.*;
 import java.util.*;

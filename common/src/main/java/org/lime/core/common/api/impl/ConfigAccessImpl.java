@@ -1,9 +1,9 @@
 package org.lime.core.common.api.impl;
 
 import org.lime.core.common.utils.Disposable;
-import org.lime.core.common.utils.system.Lazy;
+import org.lime.core.common.utils.Lazy;
 import org.lime.core.common.api.ConfigAccess;
-import org.lime.core.common.utils.system.execute.Action1;
+import org.lime.core.common.utils.execute.Action1;
 
 import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.atomic.AtomicLong;

@@ -10,8 +10,8 @@ import org.lime.core.common.api.commands.NativeCommandConsumer;
 import org.lime.core.common.api.commands.brigadier.arguments.CustomArgumentBuilder;
 import org.lime.core.common.api.commands.brigadier.exceptions.CommandExceptions;
 import org.lime.core.common.api.commands.brigadier.exceptions.Generic2CommandExceptionType;
-import org.lime.core.common.utils.system.execute.Func1;
-import org.lime.core.common.utils.system.execute.Func2;
+import org.lime.core.common.utils.execute.Func1;
+import org.lime.core.common.utils.execute.Func2;
 
 import java.util.*;
 import java.util.stream.Stream;

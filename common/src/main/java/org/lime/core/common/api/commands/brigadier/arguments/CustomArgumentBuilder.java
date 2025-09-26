@@ -16,8 +16,8 @@ import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 import org.lime.core.common.api.commands.NativeCommandConsumer;
 import org.lime.core.common.api.commands.brigadier.exceptions.Generic2CommandExceptionType;
-import org.lime.core.common.utils.system.execute.Func1;
-import org.lime.core.common.utils.system.execute.Func2;
+import org.lime.core.common.utils.execute.Func1;
+import org.lime.core.common.utils.execute.Func2;
 
 import java.util.Locale;
 import java.util.Optional;

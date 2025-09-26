@@ -2,7 +2,7 @@ package org.lime.core.common.utils.json.builder;
 
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
-import org.lime.core.common.utils.system.execute.Func1;
+import org.lime.core.common.utils.execute.Func1;
 
 import java.util.Iterator;
 import java.util.Map;

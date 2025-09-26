@@ -11,9 +11,9 @@ import net.kyori.adventure.text.minimessage.tag.resolver.TagResolver;
 import org.jetbrains.annotations.Nullable;
 import org.lime.core.common.utils.range.number.BaseNumberRange;
 import org.lime.core.common.utils.range.number.IntegerRange;
-import org.lime.core.common.utils.system.execute.Func0;
-import org.lime.core.common.utils.system.execute.Func1;
-import org.lime.core.common.utils.system.execute.FuncEx1;
+import org.lime.core.common.utils.execute.Func0;
+import org.lime.core.common.utils.execute.Func1;
+import org.lime.core.common.utils.execute.FuncEx1;
 
 import java.util.List;
 import java.util.Map;

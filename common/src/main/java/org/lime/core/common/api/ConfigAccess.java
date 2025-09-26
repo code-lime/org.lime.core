@@ -1,7 +1,7 @@
 package org.lime.core.common.api;
 
 import org.lime.core.common.utils.Disposable;
-import org.lime.core.common.utils.system.execute.Action1;
+import org.lime.core.common.utils.execute.Action1;
 
 public interface ConfigAccess<T> {
     T value();

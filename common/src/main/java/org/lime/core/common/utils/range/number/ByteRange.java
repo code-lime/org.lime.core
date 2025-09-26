@@ -10,6 +10,11 @@ public final class ByteRange
         super(a, b, FACTORY);
     }
 
+    @Override
+    public @NotNull Byte percent(double percent) {
+        return (byte)Math.round(min + (max - min) * percent);
+    }
+
     public static ByteRange of(byte a, byte b) {
         return new ByteRange(a, b);
     }

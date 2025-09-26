@@ -14,8 +14,8 @@ import org.lime.core.common.utils.DurationUtils;
 import org.lime.core.common.utils.PlaceholderComponent;
 import org.lime.core.common.utils.range.*;
 import org.lime.core.common.utils.range.number.*;
-import org.lime.core.common.utils.system.execute.ActionEx2;
-import org.lime.core.common.utils.system.execute.FuncEx1;
+import org.lime.core.common.utils.execute.ActionEx2;
+import org.lime.core.common.utils.execute.FuncEx1;
 
 import java.io.IOException;
 import java.lang.reflect.Type;

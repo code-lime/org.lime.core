@@ -5,7 +5,7 @@ import org.bukkit.plugin.Plugin;
 import org.bukkit.scheduler.BukkitScheduler;
 import org.lime.core.common.utils.ScheduleTask;
 import org.lime.core.common.services.ScheduleTaskService;
-import org.lime.core.common.utils.system.execute.Action0;
+import org.lime.core.common.utils.execute.Action0;
 
 import java.util.logging.Logger;
 

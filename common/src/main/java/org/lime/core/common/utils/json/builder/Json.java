@@ -8,9 +8,9 @@ import net.kyori.adventure.text.JoinConfiguration;
 import net.kyori.adventure.text.event.ClickEvent;
 import net.kyori.adventure.text.event.HoverEvent;
 import net.kyori.adventure.text.format.TextColor;
-import org.lime.core.common.utils.system.execute.Func1;
-import org.lime.core.common.utils.system.execute.Func3;
-import org.lime.core.common.utils.system.utils.IterableUtils;
+import org.lime.core.common.utils.execute.Func1;
+import org.lime.core.common.utils.execute.Func3;
+import org.lime.core.common.utils.IterableUtils;
 
 import org.jetbrains.annotations.Nullable;
 import java.io.IOException;

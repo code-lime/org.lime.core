@@ -3,7 +3,7 @@ package org.lime.core.velocity.tasks;
 import com.velocitypowered.api.scheduler.Scheduler;
 import org.lime.core.common.utils.ScheduleTask;
 import org.lime.core.common.services.ScheduleTaskService;
-import org.lime.core.common.utils.system.execute.Action0;
+import org.lime.core.common.utils.execute.Action0;
 import org.lime.core.velocity.BaseVelocityPlugin;
 
 import java.util.concurrent.TimeUnit;

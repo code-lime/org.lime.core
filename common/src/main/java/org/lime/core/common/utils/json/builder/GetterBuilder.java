@@ -4,10 +4,10 @@ import com.google.gson.JsonArray;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonPrimitive;
-import org.lime.core.common.utils.system.execute.Func0;
-import org.lime.core.common.utils.system.execute.Func1;
-import org.lime.core.common.utils.system.tuple.Tuple;
-import org.lime.core.common.utils.system.tuple.Tuple2;
+import org.lime.core.common.utils.execute.Func0;
+import org.lime.core.common.utils.execute.Func1;
+import org.lime.core.common.utils.tuple.Tuple;
+import org.lime.core.common.utils.tuple.Tuple2;
 
 import java.util.ArrayList;
 import java.util.List;

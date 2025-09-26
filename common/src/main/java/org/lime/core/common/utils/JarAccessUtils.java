@@ -1,9 +1,8 @@
 package org.lime.core.common.utils;
 
 import org.jetbrains.annotations.Nullable;
-import org.lime.core.common.utils.system.execute.Func0;
-import org.lime.core.common.utils.system.execute.FuncEx2;
-import org.lime.core.common.api.BindService;
+import org.lime.core.common.utils.execute.Func0;
+import org.lime.core.common.utils.execute.FuncEx2;
 import org.objectweb.asm.*;
 import org.slf4j.Logger;
 

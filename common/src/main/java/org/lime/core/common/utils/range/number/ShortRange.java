@@ -10,6 +10,11 @@ public final class ShortRange
         super(a, b, FACTORY);
     }
 
+    @Override
+    public @NotNull Short percent(double percent) {
+        return (short)Math.round(min + (max - min) * percent);
+    }
+
     public static ShortRange of(short a, short b) {
         return new ShortRange(a, b);
     }

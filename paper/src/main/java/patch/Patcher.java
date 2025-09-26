@@ -5,10 +5,10 @@ import org.apache.commons.io.FilenameUtils;
 import org.bukkit.Bukkit;
 import org.lime.core.common.utils.json.JsonElementOptional;
 import org.lime.core.common.utils.json.builder.Json;
-import org.lime.core.common.utils.system.Digest;
-import org.lime.core.common.utils.system.execute.Action1;
-import org.lime.core.common.utils.system.tuple.Tuple;
-import org.lime.core.common.utils.system.tuple.Tuple2;
+import org.lime.core.common.utils.Digest;
+import org.lime.core.common.utils.execute.Action1;
+import org.lime.core.common.utils.tuple.Tuple;
+import org.lime.core.common.utils.tuple.Tuple2;
 
 import javax.annotation.Nullable;
 import java.io.File;

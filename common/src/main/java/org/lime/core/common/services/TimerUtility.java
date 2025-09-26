@@ -3,9 +3,9 @@ package org.lime.core.common.services;
 import com.google.errorprone.annotations.CanIgnoreReturnValue;
 import com.google.inject.Inject;
 import org.lime.core.common.utils.ScheduleTask;
-import org.lime.core.common.utils.system.execute.Action0;
-import org.lime.core.common.utils.system.execute.Action1;
-import org.lime.core.common.utils.system.execute.Func0;
+import org.lime.core.common.utils.execute.Action0;
+import org.lime.core.common.utils.execute.Action1;
+import org.lime.core.common.utils.execute.Func0;
 import org.lime.core.common.api.Service;
 
 public class TimerUtility

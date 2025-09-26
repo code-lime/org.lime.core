@@ -10,7 +10,7 @@ import org.jetbrains.annotations.Range;
 import org.lime.core.common.api.commands.brigadier.arguments.BaseMappedArgument;
 import org.lime.core.common.api.commands.brigadier.arguments.RepeatableArgumentBuilder;
 import org.lime.core.common.utils.Disposable;
-import org.lime.core.common.utils.system.execute.Action1;
+import org.lime.core.common.utils.execute.Action1;
 
 import java.util.ArrayList;
 import java.util.HashMap;

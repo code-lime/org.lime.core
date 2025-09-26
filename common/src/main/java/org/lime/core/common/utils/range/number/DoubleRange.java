@@ -10,6 +10,11 @@ public final class DoubleRange
         super(a, b, FACTORY);
     }
 
+    @Override
+    public @NotNull Double percent(double percent) {
+        return min + (max - min) * percent;
+    }
+
     public static DoubleRange of(double a, double b) {
         return new DoubleRange(a, b);
     }

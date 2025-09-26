@@ -17,8 +17,8 @@ import net.bytebuddy.matcher.ElementMatchers;
 import org.jetbrains.annotations.NotNull;
 import org.lime.core.common.utils.Unsafe;
 import org.lime.core.common.reflection.ReflectionField;
-import org.lime.core.common.utils.system.execute.Action2;
-import org.lime.core.common.utils.system.execute.Action3;
+import org.lime.core.common.utils.execute.Action2;
+import org.lime.core.common.utils.execute.Action3;
 
 import java.util.concurrent.Callable;
 

@@ -2,8 +2,8 @@ package org.lime.core.common.reflection;
 
 import org.lime.core.common.reflection.lambda.LambdaCreator;
 import org.lime.core.common.reflection.lambda.LambdaCreatorProxy;
-import org.lime.core.common.utils.system.execute.Execute;
-import org.lime.core.common.utils.system.execute.Callable;
+import org.lime.core.common.utils.execute.Execute;
+import org.lime.core.common.utils.execute.Callable;
 
 import java.lang.reflect.*;
 import java.util.Arrays;

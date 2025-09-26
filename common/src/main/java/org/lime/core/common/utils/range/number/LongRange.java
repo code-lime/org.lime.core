@@ -10,6 +10,11 @@ public final class LongRange
         super(a, b, FACTORY);
     }
 
+    @Override
+    public @NotNull Long percent(double percent) {
+        return Math.round(min + (max - min) * percent);
+    }
+
     public static LongRange of(long a, long b) {
         return new LongRange(a, b);
     }

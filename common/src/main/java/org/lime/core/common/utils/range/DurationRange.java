@@ -12,6 +12,14 @@ public final class DurationRange
         super(a, b, FACTORY);
     }
 
+    @Override
+    public @NotNull Duration percent(double percent) {
+        var min = this.min.toNanos();
+        var max = this.max.toNanos();
+
+        return Duration.ofNanos(Math.round(min + (max - min) * percent));
+    }
+
     public static DurationRange of(Duration a, Duration b) {
         return new DurationRange(a, b);
     }

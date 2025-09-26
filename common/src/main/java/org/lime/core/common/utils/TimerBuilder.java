@@ -1,12 +1,12 @@
 package org.lime.core.common.utils;
 
 import org.lime.core.common.services.ScheduleTaskService;
-import org.lime.core.common.utils.system.execute.Action0;
-import org.lime.core.common.utils.system.execute.Action1;
-import org.lime.core.common.utils.system.execute.Execute;
-import org.lime.core.common.utils.system.execute.Func1;
-import org.lime.core.common.utils.system.tuple.Tuple;
-import org.lime.core.common.utils.system.tuple.Tuple1;
+import org.lime.core.common.utils.execute.Action0;
+import org.lime.core.common.utils.execute.Action1;
+import org.lime.core.common.utils.execute.Execute;
+import org.lime.core.common.utils.execute.Func1;
+import org.lime.core.common.utils.tuple.Tuple;
+import org.lime.core.common.utils.tuple.Tuple1;
 
 import java.time.Duration;
 

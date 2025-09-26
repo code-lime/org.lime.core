@@ -8,6 +8,8 @@ public interface Range<T extends Comparable<T>> {
     @NotNull T min();
     @NotNull T max();
 
+    @NotNull T percent(double percent);
+
     default boolean contains(final T element) {
         return element != null
                 && element.compareTo(min()) > -1
@@ -29,4 +31,3 @@ public interface Range<T extends Comparable<T>> {
         R create(T a, T b);
     }
 }
-

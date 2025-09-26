@@ -10,6 +10,11 @@ public final class IntegerRange
         super(a, b, FACTORY);
     }
 
+    @Override
+    public @NotNull Integer percent(double percent) {
+        return (int)Math.round(min + (max - min) * percent);
+    }
+
     public static IntegerRange of(int a, int b) {
         return new IntegerRange(a, b);
     }

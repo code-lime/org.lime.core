@@ -2,7 +2,7 @@ package org.lime.core.common.services;
 
 import org.lime.core.common.utils.ScheduleTask;
 import org.lime.core.common.utils.TimerBuilder;
-import org.lime.core.common.utils.system.execute.Action0;
+import org.lime.core.common.utils.execute.Action0;
 
 public interface ScheduleTaskService {
     ScheduleTask runNextTick(Action0 callback, boolean isSync);
