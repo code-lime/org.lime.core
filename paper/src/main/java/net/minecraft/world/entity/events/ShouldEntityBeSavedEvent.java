@@ -20,9 +20,9 @@ public class ShouldEntityBeSavedEvent
     }
 
     public static boolean execute(boolean saved, Entity entity) {
-        ShouldEntityBeSavedEvent event = new ShouldEntityBeSavedEvent(entity, !saved);
+        ShouldEntityBeSavedEvent event = new ShouldEntityBeSavedEvent(entity, saved);
         Bukkit.getPluginManager().callEvent(event);
-        return !event.saved;
+        return event.saved;
     }
     public static boolean execute(boolean saved, net.minecraft.world.entity.Entity entity) {
         return execute(saved, entity.getBukkitEntity());
