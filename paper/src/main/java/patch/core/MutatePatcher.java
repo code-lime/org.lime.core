@@ -7,6 +7,8 @@ import net.minecraft.paper.java.RawPluginMeta;
 import net.minecraft.paper.java.RepositoryLibraryLoader;
 import net.minecraft.server.Main;
 import net.minecraft.server.players.PlayerList;
+import net.minecraft.world.entity.Entity;
+import net.minecraft.world.entity.events.ShouldEntityBeSavedEvent;
 import org.bukkit.plugin.PluginDescriptionFile;
 import org.bukkit.plugin.java.LibraryLoader;
 import org.eclipse.aether.DefaultRepositorySystemSession;
@@ -165,6 +167,26 @@ public class MutatePatcher extends BasePluginPatcher {
                             }
                         }))
                 .patch();
+
+        archive
+                .patchMethod(MethodFilter.of(Execute.func(Entity::shouldBeSaved)),
+                        MethodPatcher.mutate(v -> new ProgressMethodVisitor(v, v) {
+                            @Override
+                            protected List<String> createProgressList() {
+                                return List.of("Event.ShouldEntityBeSavedEvent");
+                            }
+
+                            @Override
+                            public void visitInsn(int opcode) {
+                                if (opcode == Opcodes.IRETURN) {
+                                    super.visitVarInsn(Opcodes.ALOAD, 0);
+                                    Native.writeMethod(Execute.<Boolean, Entity, Boolean>func(ShouldEntityBeSavedEvent::execute), super::visitMethodInsn);
+                                    setProgress("Event.ShouldEntityBeSavedEvent");
+                                }
+
+                                super.visitInsn(opcode);
+                            }
+                        }));
 
         var libraryLoaderPatcher = archive
                 .of(LibraryLoader.class)
