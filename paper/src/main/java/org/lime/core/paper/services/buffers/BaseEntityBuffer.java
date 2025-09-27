@@ -2,14 +2,11 @@ package org.lime.core.paper.services.buffers;
 
 import org.bukkit.Bukkit;
 import org.bukkit.Location;
-import org.bukkit.World;
 import org.bukkit.entity.Entity;
 import org.jetbrains.annotations.Nullable;
 import org.lime.core.common.utils.Disposable;
 
-import java.util.HashSet;
-import java.util.Map;
-import java.util.Set;
+import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 
 public abstract class BaseEntityBuffer<Index, T extends Entity>
@@ -20,13 +17,13 @@ public abstract class BaseEntityBuffer<Index, T extends Entity>
     protected final EntityBufferStorage owner;
     protected final String tag;
     protected final Class<T> tClass;
-    protected final World defaultWorld;
+    protected final EntityBufferSetup setup;
 
-    protected BaseEntityBuffer(EntityBufferStorage owner, String tag, Class<T> tClass, World defaultWorld) {
+    protected BaseEntityBuffer(EntityBufferStorage owner, EntityBufferSetup setup, Class<T> tClass) {
         this.owner = owner;
-        this.tag = "generic-" + tag;
+        this.tag = "generic-" + setup.tag();
         this.tClass = tClass;
-        this.defaultWorld = defaultWorld;
+        this.setup = setup;
         owner.buffers.add(this);
         Bukkit.getWorlds()
                 .forEach(world -> world.getEntities()
@@ -34,14 +31,15 @@ public abstract class BaseEntityBuffer<Index, T extends Entity>
     }
 
     private Location orDefault(@Nullable Location location) {
-        return location == null ? new Location(defaultWorld, 0, 0, 0) : location;
+        return location == null ? new Location(setup.defaultWorld().orElse(owner.defaultWorld), 0, 0, 0) : location;
     }
 
-    private T spawnEntity(@Nullable Location location) {
+    private T spawnEntity(Index index, @Nullable Location location) {
         location = orDefault(location);
-        T entity = location.getWorld().spawn(location, tClass);
-        entity.addScoreboardTag(this.tag);
-        return entity;
+        return location.getWorld().spawn(location, tClass, v -> {
+            v.addScoreboardTag(this.tag);
+            displayBuffer.put(index, v);
+        });
     }
 
     protected @Nullable Set<Index> usedIndexes = null;
@@ -65,7 +63,7 @@ public abstract class BaseEntityBuffer<Index, T extends Entity>
 
         T entity = displayBuffer.get(index);
         if (entity == null) {
-            displayBuffer.put(index, entity = spawnEntity(location));
+            entity = spawnEntity(index, location);
         } else {
             entity = displayBuffer.get(index);
             if (entity.isValid()) {
@@ -73,7 +71,7 @@ public abstract class BaseEntityBuffer<Index, T extends Entity>
                     entity.teleport(location);
             } else {
                 entity.remove();
-                displayBuffer.put(index, entity = spawnEntity(location));
+                entity = spawnEntity(index, location);
             }
         }
 

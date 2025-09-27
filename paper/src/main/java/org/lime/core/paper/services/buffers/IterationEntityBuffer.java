@@ -1,14 +1,13 @@
 package org.lime.core.paper.services.buffers;
 
 import org.bukkit.Location;
-import org.bukkit.World;
 import org.bukkit.entity.Entity;
 import org.jetbrains.annotations.Nullable;
 
 public class IterationEntityBuffer<T extends Entity>
         extends BaseEntityBuffer<Integer, T> {
-    protected IterationEntityBuffer(EntityBufferStorage owner, String tag, Class<T> tClass, World defaultWorld) {
-        super(owner, tag, tClass, defaultWorld);
+    protected IterationEntityBuffer(EntityBufferStorage owner, EntityBufferSetup setup, Class<T> tClass) {
+        super(owner, setup, tClass);
     }
 
     public T nextBuffer() {
