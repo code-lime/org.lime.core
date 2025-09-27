@@ -7,7 +7,6 @@ import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.format.NamedTextColor;
 import net.kyori.adventure.text.format.TextColor;
 import net.kyori.adventure.util.TriState;
-import net.minecraft.server.commands.DebugCommand;
 import net.minecraft.world.phys.AABB;
 import net.minecraft.world.phys.Vec3;
 import org.bukkit.*;
@@ -29,6 +28,7 @@ import org.lime.core.common.api.commands.CommandConsumer;
 import org.lime.core.common.services.ScheduleTaskService;
 import org.lime.core.common.utils.Disposable;
 import org.lime.core.paper.commands.NativeCommandConsumerFactory;
+import org.lime.core.paper.services.buffers.EntityBufferSetup;
 import org.lime.core.paper.services.buffers.EntityBufferStorage;
 import org.lime.core.paper.services.buffers.IterationEntityBuffer;
 
@@ -43,12 +43,12 @@ public class DebugService
     private static final Duration DELAY = Duration.ofSeconds(1);
     private static final String SHOW_TAG = "debug.show";
     private static final Vector3fc SHAPE_OFFSET = new Vector3f(0.01f);
-    private static final int VIEW_RANGE = 10000;
+    private static final int ENTITY_SCALE = 10000;
+    private static final int VIEW_RANGE = 500;
 
     @Inject ScheduleTaskService taskService;
     @Inject NativeCommandConsumerFactory consumerFactory;
     @Inject EntityBufferStorage bufferStorage;
-    @Inject World world;
     @Inject Plugin plugin;
 
     private boolean enable = false;
@@ -94,8 +94,8 @@ public class DebugService
     public Disposable register() {
         Disposable.Composite composite = Disposable.composite();
 
-        composite.add(blockBuffer = bufferStorage.block("core-debug-block", world));
-        composite.add(textBuffer = bufferStorage.text("core-debug-text", world));
+        composite.add(blockBuffer = bufferStorage.block(EntityBufferSetup.of("core-debug-block").trackingDistance(VIEW_RANGE)));
+        composite.add(textBuffer = bufferStorage.text(EntityBufferSetup.of("core-debug-text").trackingDistance(VIEW_RANGE)));
         composite.add(taskService.builder()
                 .withCallback(this::update)
                 .withWait(DELAY)
@@ -183,8 +183,8 @@ public class DebugService
     private void configureDefault(Display display, TextColor color) {
         display.setVisibleByDefault(false);
         display.setViewRange(VIEW_RANGE);
-        display.setDisplayWidth(VIEW_RANGE);
-        display.setDisplayHeight(VIEW_RANGE);
+        display.setDisplayWidth(ENTITY_SCALE);
+        display.setDisplayHeight(ENTITY_SCALE);
         display.setBrightness(new Display.Brightness(15, 15));
         display.setGlowing(true);
         display.setGlowColorOverride(Color.fromRGB(color.value()));
