@@ -8,6 +8,7 @@ import net.minecraft.paper.java.RepositoryLibraryLoader;
 import net.minecraft.server.Main;
 import net.minecraft.server.players.PlayerList;
 import net.minecraft.world.entity.Entity;
+import net.minecraft.world.entity.events.EntityTrackingRangeEvent;
 import net.minecraft.world.entity.events.ShouldEntityBeSavedEvent;
 import org.bukkit.plugin.PluginDescriptionFile;
 import org.bukkit.plugin.java.LibraryLoader;
@@ -20,6 +21,7 @@ import org.lime.core.paper.CorePaperPlugin;
 import org.objectweb.asm.Label;
 import org.objectweb.asm.Opcodes;
 import org.objectweb.asm.Type;
+import org.spigotmc.TrackingRange;
 import patch.*;
 import patch.JarArchiveAuto;
 
@@ -184,6 +186,24 @@ public class MutatePatcher extends BasePluginPatcher {
                                     setProgress("Event.ShouldEntityBeSavedEvent");
                                 }
 
+                                super.visitInsn(opcode);
+                            }
+                        }));
+        archive
+                .patchMethod(MethodFilter.of(Execute.func(TrackingRange::getEntityTrackingRange)),
+                        MethodPatcher.mutate(v -> new ProgressMethodVisitor(v, v) {
+                            @Override
+                            protected List<String> createProgressList() {
+                                return List.of("Event.EntityTrackingRangeEvent");
+                            }
+
+                            @Override
+                            public void visitInsn(int opcode) {
+                                if (opcode == Opcodes.IRETURN) {
+                                    super.visitVarInsn(Opcodes.ALOAD, 0);
+                                    Native.writeMethod(Execute.<Integer, Entity, Integer>func(EntityTrackingRangeEvent::execute), super::visitMethodInsn);
+                                    setProgressDuplicate("Event.EntityTrackingRangeEvent");
+                                }
                                 super.visitInsn(opcode);
                             }
                         }));
