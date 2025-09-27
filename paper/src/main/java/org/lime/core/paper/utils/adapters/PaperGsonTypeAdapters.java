@@ -171,7 +171,7 @@ public class PaperGsonTypeAdapters
     }
     protected TypeAdapterFactory positions() {
         return combine(
-                TypeAdapters.newFactory(World.class, new StringTypeAdapter<World>() {
+                TypeAdapters.newTypeHierarchyFactory(World.class, new StringTypeAdapter<World>() {
                     @Override
                     public String write(World value) throws IOException {
                         return value.key().toString();
