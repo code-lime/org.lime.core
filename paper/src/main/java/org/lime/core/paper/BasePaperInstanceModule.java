@@ -1,5 +1,7 @@
 package org.lime.core.paper;
 
+import com.google.inject.Inject;
+import com.google.inject.Provider;
 import com.google.inject.TypeLiteral;
 import io.papermc.paper.datapack.DatapackManager;
 import io.papermc.paper.datapack.PaperDatapackManager;
@@ -40,6 +42,8 @@ import org.lime.core.common.services.ScheduleTaskService;
 import org.lime.core.common.BaseInstanceModule;
 import org.lime.core.common.utils.adapters.CommonGsonTypeAdapters;
 import org.lime.core.paper.commands.NativeCommandConsumerFactory;
+import org.lime.core.paper.services.buffers.EntityBufferStorage;
+import org.lime.core.paper.services.debug.DebugService;
 import org.lime.core.paper.tasks.BukkitScheduleTaskService;
 import org.lime.core.paper.utils.adapters.PaperGsonTypeAdapters;
 import patch.Patcher;
@@ -86,7 +90,7 @@ public class BasePaperInstanceModule<Instance extends BasePaperInstance<Instance
         super.configure();
 
         bind(BasePaperInstance.class).toInstance(instance);
-        bind(Plugin.class).toInstance(instance.plugin);;
+        bind(Plugin.class).toInstance(instance.plugin);
         bind(PluginBase.class).toInstance(instance.plugin);
         bind(JavaPlugin.class).toInstance(instance.plugin);
         bind(BasePaperPlugin.class).toInstance(instance.plugin);
@@ -120,5 +124,28 @@ public class BasePaperInstanceModule<Instance extends BasePaperInstance<Instance
         bind(BukkitScheduler.class).toInstance(Bukkit.getScheduler());
         bind(ScheduleTaskService.class).to(BukkitScheduleTaskService.class);
         bind(NativeCommandConsumerFactory.class).toInstance(nativeCommandFactory());
+
+        if (!instance.isCore()) {
+            bind(EntityBufferStorage.class)
+                    .toProvider(new Provider<>() {
+                        @Inject InstancesUtility instances;
+
+                        @Override
+                        public EntityBufferStorage get() {
+                            return instances.core().injector().getInstance(EntityBufferStorage.class);
+                        }
+                    })
+                    .asEagerSingleton();
+            bind(DebugService.class)
+                    .toProvider(new Provider<>() {
+                        @Inject InstancesUtility instances;
+
+                        @Override
+                        public DebugService get() {
+                            return instances.core().injector().getInstance(DebugService.class);
+                        }
+                    })
+                    .asEagerSingleton();
+        }
     }
 }
