@@ -8,10 +8,12 @@ import org.lime.core.common.reflection.ReflectionField;
 import org.lime.core.common.utils.execute.Action2;
 import org.lime.core.fabric.commands.brigadier.CustomArgumentType;
 import org.spongepowered.asm.mixin.Mixin;
+import org.spongepowered.asm.mixin.Pseudo;
 import org.spongepowered.asm.mixin.Unique;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Redirect;
 
+@Pseudo
 @Mixin(targets = "net.minecraftforge.server.command.CommandHelper", remap = false)
 public class ForgeCommandHelperMixin {
     @Unique
