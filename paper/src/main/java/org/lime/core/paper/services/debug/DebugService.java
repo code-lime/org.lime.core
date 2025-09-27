@@ -7,6 +7,7 @@ import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.format.NamedTextColor;
 import net.kyori.adventure.text.format.TextColor;
 import net.kyori.adventure.util.TriState;
+import net.minecraft.server.commands.DebugCommand;
 import net.minecraft.world.phys.AABB;
 import net.minecraft.world.phys.Vec3;
 import org.bukkit.*;
@@ -57,37 +58,36 @@ public class DebugService
 
     @RequireCommand
     CommandConsumer<?> command() {
-        return consumerFactory.of("record", j -> j
-                .then(consumerFactory.literal("debug")
-                        .requires(consumerFactory.operator())
-                        .then(consumerFactory.literal("enable")
-                                .executes(ctx -> {
-                                    debug(ctx.getSource().getSender(), TriState.TRUE);
-                                    return Command.SINGLE_SUCCESS;
-                                }))
-                        .then(consumerFactory.literal("disable")
-                                .executes(ctx -> {
-                                    debug(ctx.getSource().getSender(), TriState.TRUE);
-                                    return Command.SINGLE_SUCCESS;
-                                }))
-                        .then(consumerFactory.literal("show")
-                                .requires(ctx -> ctx.getSender() instanceof Player)
-                                .executes(ctx -> {
-                                    Player player = ((Player)ctx.getSource().getSender());
-                                    show(player, true);
-                                    return Command.SINGLE_SUCCESS;
-                                }))
-                        .then(consumerFactory.literal("hide")
-                                .requires(ctx -> ctx.getSender() instanceof Player)
-                                .executes(ctx -> {
-                                    Player player = ((Player)ctx.getSource().getSender());
-                                    show(player, false);
-                                    return Command.SINGLE_SUCCESS;
-                                }))
+        return consumerFactory.of("debug-render", j -> j
+                .requires(consumerFactory.operator())
+                .then(consumerFactory.literal("enable")
                         .executes(ctx -> {
-                            debug(ctx.getSource().getSender(), TriState.NOT_SET);
+                            debug(ctx.getSource().getSender(), TriState.TRUE);
                             return Command.SINGLE_SUCCESS;
-                        })));
+                        }))
+                .then(consumerFactory.literal("disable")
+                        .executes(ctx -> {
+                            debug(ctx.getSource().getSender(), TriState.TRUE);
+                            return Command.SINGLE_SUCCESS;
+                        }))
+                .then(consumerFactory.literal("show")
+                        .requires(ctx -> ctx.getSender() instanceof Player)
+                        .executes(ctx -> {
+                            Player player = ((Player)ctx.getSource().getSender());
+                            show(player, true);
+                            return Command.SINGLE_SUCCESS;
+                        }))
+                .then(consumerFactory.literal("hide")
+                        .requires(ctx -> ctx.getSender() instanceof Player)
+                        .executes(ctx -> {
+                            Player player = ((Player)ctx.getSource().getSender());
+                            show(player, false);
+                            return Command.SINGLE_SUCCESS;
+                        }))
+                .executes(ctx -> {
+                    debug(ctx.getSource().getSender(), TriState.NOT_SET);
+                    return Command.SINGLE_SUCCESS;
+                }));
     }
 
     @Override
