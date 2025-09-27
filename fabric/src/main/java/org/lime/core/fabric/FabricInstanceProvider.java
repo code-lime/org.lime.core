@@ -13,7 +13,7 @@ public abstract class FabricInstanceProvider<Instance extends BaseFabricMod>
         extends BaseInstanceProvider<Instance> {
     private static final Storage<BaseFabricMod> storage;
     static {
-        BaseInstanceProvider.setStorage(storage = Storage.of(BaseFabricMod.class, () -> FabricLoader.getInstance()
+        BaseInstanceProvider.setStorage(storage = Storage.of(BaseFabricMod.class, CoreFabricMod.class, () -> FabricLoader.getInstance()
                 .getEntrypointContainers("main", ModInitializer.class)
                 .stream()
                 .map(EntrypointContainer::getEntrypoint)
@@ -21,6 +21,9 @@ public abstract class FabricInstanceProvider<Instance extends BaseFabricMod>
                 .map(BaseFabricMod.class::cast)));
     }
 
+    public static BaseFabricMod getCore() {
+        return storage.getCore();
+    }
     public static Stream<? extends BaseFabricMod> getOwners() {
         return storage.getOwners();
     }

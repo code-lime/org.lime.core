@@ -7,6 +7,10 @@ import java.util.stream.Stream;
 class FabricInstancesUtility
         implements InstancesUtility {
     @Override
+    public BaseFabricMod core() {
+        return FabricInstanceProvider.getCore();
+    }
+    @Override
     public Stream<? extends BaseFabricMod> instances() {
         return FabricInstanceProvider.getOwners();
     }

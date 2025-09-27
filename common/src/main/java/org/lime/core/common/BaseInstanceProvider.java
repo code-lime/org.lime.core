@@ -33,8 +33,12 @@ public abstract class BaseInstanceProvider<Owner> {
 
     protected static abstract class Storage<T> {
         protected abstract Class<T> ownerBaseClass();
+        protected abstract Class<? extends T> coreClass();
         public abstract Stream<? extends T> getOwners();
         public abstract <Owner extends T>Owner getOwner(Class<Owner> instanceClass);
+        public T getCore() {
+            return getOwner(coreClass());
+        }
         public <Owner>Owner getCastOwner(Class<Owner> ownerClass) {
             if (!ownerBaseClass().isAssignableFrom(ownerClass))
                 throw new RuntimeException("Owner "+ownerClass+" not "+ ownerBaseClass());
@@ -43,11 +47,16 @@ public abstract class BaseInstanceProvider<Owner> {
 
         public static <T>Storage<T> of(
                 Class<T> ownerBaseClass,
+                Class<? extends T> coreClass,
                 Func0<Stream<T>> owners) {
             return new Storage<>() {
                 @Override
                 protected Class<T> ownerBaseClass() {
                     return ownerBaseClass;
+                }
+                @Override
+                protected Class<? extends T> coreClass() {
+                    return coreClass;
                 }
                 @Override
                 public Stream<? extends T> getOwners() {

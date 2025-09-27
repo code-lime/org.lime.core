@@ -12,11 +12,14 @@ public abstract class PaperInstanceProvider<Owner extends BasePaperPlugin>
         extends BaseInstanceProvider<Owner> {
     private static final Storage<BasePaperPlugin> storage;
     static {
-        BaseInstanceProvider.setStorage(storage = Storage.of(BasePaperPlugin.class, () -> Arrays.stream(Bukkit.getPluginManager().getPlugins())
+        BaseInstanceProvider.setStorage(storage = Storage.of(BasePaperPlugin.class, CorePaperPlugin.class, () -> Arrays.stream(Bukkit.getPluginManager().getPlugins())
                 .filter(BasePaperPlugin.class::isInstance)
                 .map(BasePaperPlugin.class::cast)));
     }
 
+    public static BasePaperPlugin getCore() {
+        return storage.getCore();
+    }
     public static Stream<? extends BasePaperPlugin> getOwners() {
         return storage.getOwners();
     }

@@ -14,7 +14,7 @@ public abstract class VelocityInstanceProvider<Owner extends BaseVelocityPlugin>
     static ProxyServer proxyServer;
     private static final Storage<BaseVelocityPlugin> storage;
     static {
-        BaseInstanceProvider.setStorage(storage = Storage.of(BaseVelocityPlugin.class, () -> proxyServer.getPluginManager()
+        BaseInstanceProvider.setStorage(storage = Storage.of(BaseVelocityPlugin.class, CoreVelocityPlugin.class, () -> proxyServer.getPluginManager()
                 .getPlugins()
                 .stream()
                 .map(PluginContainer::getInstance)
@@ -23,10 +23,12 @@ public abstract class VelocityInstanceProvider<Owner extends BaseVelocityPlugin>
                 .map(BaseVelocityPlugin.class::cast)));
     }
 
+    public static BaseVelocityPlugin getCore() {
+        return storage.getCore();
+    }
     public static Stream<? extends BaseVelocityPlugin> getOwners() {
         return storage.getOwners();
     }
-
     public static <Owner extends BaseVelocityPlugin>VelocityInstanceProvider<Owner> getProvider(Class<Owner> instanceClass) {
         return new VelocityInstanceProvider<>() {
             @Override
