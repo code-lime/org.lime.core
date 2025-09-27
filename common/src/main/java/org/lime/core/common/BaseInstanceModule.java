@@ -24,7 +24,6 @@ import org.lime.core.common.services.UnsafeMappingsUtility;
 import org.lime.core.common.api.*;
 import org.lime.core.common.api.commands.NativeCommandConsumer;
 import org.lime.core.common.api.impl.ConfigAccessImpl;
-import org.lime.core.common.services.UpdateConfigService;
 import org.lime.core.common.utils.*;
 import org.lime.core.common.utils.adapters.CommonGsonTypeAdapters;
 import org.lime.core.common.utils.adapters.GsonTypeAdapters;
@@ -408,8 +407,6 @@ public abstract class BaseInstanceModule<Instance extends BaseInstance<Instance>
 
         bind(new TypeLiteral<BaseInstance<?>>() {}).toInstance(instance);
         bind(new TypeLiteral<NativeCommandConsumer.Factory<?,?>>() {}).toInstance(nativeCommandFactory());
-
-        bindCustom(UpdateConfigService.class, true);
 
         instance
                 .findAnnotatedClasses(BindService.class)
