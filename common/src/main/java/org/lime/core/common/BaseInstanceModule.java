@@ -18,6 +18,7 @@ import org.lime.core.common.api.minimessage.TagContextReader;
 import org.lime.core.common.api.scope.BaseKeyedScope;
 import org.lime.core.common.api.scope.ScopeKey;
 import org.lime.core.common.reflection.ReflectionConstructor;
+import org.lime.core.common.services.InstancesUtility;
 import org.lime.core.common.utils.Unsafe;
 import org.lime.core.common.services.UnsafeMappingsUtility;
 import org.lime.core.common.api.*;
@@ -357,6 +358,8 @@ public abstract class BaseInstanceModule<Instance extends BaseInstance<Instance>
                         .resolver(TagContextReader.tag("u", ctx -> Tag.inserting(Component.text(ctx.popHexChar("unicode", 1))))));
     }
 
+    protected abstract Class<? extends InstancesUtility> instancesUtility();
+
     protected abstract Class<? extends CommonGsonTypeAdapters> gsonTypeAdapters();
     protected GsonBuilder configureGson(GsonBuilder builder) {
         return builder;
@@ -372,6 +375,7 @@ public abstract class BaseInstanceModule<Instance extends BaseInstance<Instance>
         bind(UnsafeMappingsUtility.class).toInstance(Unsafe.MAPPINGS);
 
         bind(Artifact.class).toInstance(instance.artifact());
+        bind(InstancesUtility.class).to(instancesUtility()).asEagerSingleton();
 
         bind(MiniMessage.class).toProvider(() -> miniMessage().build()).asEagerSingleton();
         bind(ANSIComponentSerializer.class).toProvider(ANSIComponentSerializer::ansi).asEagerSingleton();

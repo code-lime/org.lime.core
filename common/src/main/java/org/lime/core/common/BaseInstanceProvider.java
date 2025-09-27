@@ -33,6 +33,7 @@ public abstract class BaseInstanceProvider<Owner> {
 
     protected static abstract class Storage<T> {
         protected abstract Class<T> ownerBaseClass();
+        public abstract Stream<? extends T> getOwners();
         public abstract <Owner extends T>Owner getOwner(Class<Owner> instanceClass);
         public <Owner>Owner getCastOwner(Class<Owner> ownerClass) {
             if (!ownerBaseClass().isAssignableFrom(ownerClass))
@@ -42,32 +43,19 @@ public abstract class BaseInstanceProvider<Owner> {
 
         public static <T>Storage<T> of(
                 Class<T> ownerBaseClass,
-                Func1<Class<? extends T>, Optional<T>> finder) {
+                Func0<Stream<T>> owners) {
             return new Storage<>() {
                 @Override
                 protected Class<T> ownerBaseClass() {
                     return ownerBaseClass;
                 }
                 @Override
-                public <J extends T> J getOwner(Class<J> ownerClass) {
-                    return finder.invoke(ownerClass)
-                            .filter(ownerClass::isInstance)
-                            .map(ownerClass::cast)
-                            .orElseThrow(() -> new IllegalArgumentException("Owner of "+ownerClass+" not found"));
-                }
-            };
-        }
-        public static <T>Storage<T> of(
-                Class<T> ownerBaseClass,
-                Func0<Stream<T>> finder) {
-            return new Storage<>() {
-                @Override
-                protected Class<T> ownerBaseClass() {
-                    return ownerBaseClass;
+                public Stream<? extends T> getOwners() {
+                    return owners.invoke();
                 }
                 @Override
                 public <J extends T> J getOwner(Class<J> ownerClass) {
-                    return finder.invoke()
+                    return owners.invoke()
                             .filter(ownerClass::isInstance)
                             .map(ownerClass::cast)
                             .filter(v -> v.getClass() == ownerClass)

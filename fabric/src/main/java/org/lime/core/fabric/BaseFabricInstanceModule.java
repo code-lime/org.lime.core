@@ -15,6 +15,7 @@ import net.minecraft.world.level.Level;
 import net.minecraft.world.level.levelgen.structure.templatesystem.StructureTemplateManager;
 import net.minecraft.world.scores.Scoreboard;
 import org.lime.core.common.BaseInstanceModule;
+import org.lime.core.common.services.InstancesUtility;
 import org.lime.core.common.services.ScheduleTaskService;
 import org.lime.core.common.services.UnsafeMappingsUtility;
 import org.lime.core.common.utils.Lazy;
@@ -39,6 +40,10 @@ public class BaseFabricInstanceModule
         return nativeLazy.value();
     }
 
+    @Override
+    protected Class<? extends InstancesUtility> instancesUtility() {
+        return FabricInstancesUtility.class;
+    }
     @Override
     protected Class<? extends FabricGsonTypeAdapters> gsonTypeAdapters() {
         return FabricGsonTypeAdapters.class;

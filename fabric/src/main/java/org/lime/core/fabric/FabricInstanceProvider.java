@@ -7,10 +7,13 @@ import net.fabricmc.loader.api.entrypoint.EntrypointContainer;
 import org.lime.core.common.BaseInstance;
 import org.lime.core.common.BaseInstanceProvider;
 
+import java.util.stream.Stream;
+
 public abstract class FabricInstanceProvider<Instance extends BaseFabricMod>
         extends BaseInstanceProvider<Instance> {
+    private static final Storage<BaseFabricMod> storage;
     static {
-        BaseInstanceProvider.setStorage(Storage.of(BaseFabricMod.class, () -> FabricLoader.getInstance()
+        BaseInstanceProvider.setStorage(storage = Storage.of(BaseFabricMod.class, () -> FabricLoader.getInstance()
                 .getEntrypointContainers("main", ModInitializer.class)
                 .stream()
                 .map(EntrypointContainer::getEntrypoint)
@@ -18,6 +21,9 @@ public abstract class FabricInstanceProvider<Instance extends BaseFabricMod>
                 .map(BaseFabricMod.class::cast)));
     }
 
+    public static Stream<? extends BaseFabricMod> getOwners() {
+        return storage.getOwners();
+    }
     public static <Owner extends BaseFabricMod>FabricInstanceProvider<Owner> getProvider(Class<Owner> ownerClass) {
         return new FabricInstanceProvider<>() {
             @Override

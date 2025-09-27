@@ -34,6 +34,7 @@ import org.bukkit.plugin.java.JavaPlugin;
 import org.bukkit.scheduler.BukkitScheduler;
 import org.bukkit.scoreboard.ScoreboardManager;
 import org.bukkit.structure.StructureManager;
+import org.lime.core.common.services.InstancesUtility;
 import org.lime.core.common.services.UnsafeMappingsUtility;
 import org.lime.core.common.services.ScheduleTaskService;
 import org.lime.core.common.BaseInstanceModule;
@@ -62,6 +63,11 @@ public class BasePaperInstanceModule<Instance extends BasePaperInstance<Instance
     protected MiniMessage.Builder miniMessage() {
         return super.miniMessage()
                 .emitVirtuals(false);
+    }
+
+    @Override
+    protected Class<? extends InstancesUtility> instancesUtility() {
+        return PaperInstancesUtility.class;
     }
 
     @Override
