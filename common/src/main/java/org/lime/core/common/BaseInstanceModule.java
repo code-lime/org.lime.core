@@ -371,6 +371,8 @@ public abstract class BaseInstanceModule<Instance extends BaseInstance<Instance>
     protected void configure() {
         bind(UnsafeMappingsUtility.class).toInstance(Unsafe.MAPPINGS);
 
+        bind(Artifact.class).toInstance(instance.artifact());
+
         bind(MiniMessage.class).toProvider(() -> miniMessage().build()).asEagerSingleton();
         bind(ANSIComponentSerializer.class).toProvider(ANSIComponentSerializer::ansi).asEagerSingleton();
         bind(GsonComponentSerializer.class).toProvider(GsonComponentSerializer::gson).asEagerSingleton();
