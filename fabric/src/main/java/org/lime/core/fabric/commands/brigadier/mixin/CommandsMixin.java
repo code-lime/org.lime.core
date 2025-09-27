@@ -17,7 +17,8 @@ public abstract class CommandsMixin {
             method = "fillUsableCommands(Lcom/mojang/brigadier/tree/CommandNode;Lcom/mojang/brigadier/tree/CommandNode;Lnet/minecraft/commands/CommandSourceStack;Ljava/util/Map;)V",
             at = @At(
                     value = "INVOKE",
-                    target = "Lcom/mojang/brigadier/builder/ArgumentBuilder;build()Lcom/mojang/brigadier/tree/CommandNode;")
+                    target = "Lcom/mojang/brigadier/builder/ArgumentBuilder;build()Lcom/mojang/brigadier/tree/CommandNode;",
+                    remap = false)
     )
     private CommandNode<SharedSuggestionProvider> argumentBuilder(
             ArgumentBuilder<SharedSuggestionProvider, ?> argumentBuilder) {
