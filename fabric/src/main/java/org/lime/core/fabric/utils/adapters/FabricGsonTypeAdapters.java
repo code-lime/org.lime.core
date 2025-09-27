@@ -70,7 +70,7 @@ public class FabricGsonTypeAdapters
                     }
                     @Override
                     public ResourceKey<T> read(String value) {
-                        ResourceLocation location = new ResourceLocation(value);
+                        ResourceLocation location = Objects.requireNonNull(ResourceLocation.tryParse(value), "Invalid resource key: " + value);
                         for (ResourceKey<T> key : resourceKeys) {
                             if (key.location().equals(location))
                                 return key;
@@ -97,7 +97,7 @@ public class FabricGsonTypeAdapters
                     }
                     @Override
                     public ResourceKey<T> read(String value) {
-                        ResourceLocation location = new ResourceLocation(value);
+                        ResourceLocation location = Objects.requireNonNull(ResourceLocation.tryParse(value), "Invalid resource key: " + value);
                         return registry.listElementIds()
                                 .filter(v -> v.location().equals(location))
                                 .findFirst()
@@ -148,7 +148,7 @@ public class FabricGsonTypeAdapters
                             @SuppressWarnings("unchecked")
                             @Override
                             public T read(String value) throws IOException {
-                                ResourceLocation location = new ResourceLocation(value);
+                                ResourceLocation location = Objects.requireNonNull(ResourceLocation.tryParse(value), "Invalid resource key: " + value);
                                 return registry.listElementIds()
                                         .filter(v -> v.location().equals(location))
                                         .map(v -> (T)v)
