@@ -71,7 +71,7 @@ jobs:
       - name: Upload Artifact
         uses: actions/upload-artifact@v4
         with:
-          name: ${{ matrix.module }}-artifacts
+          name: ${{ matrix.module }}-${{ matrix.variable }}-artifacts
           path: ${{ matrix.module }}/build/libs/*.jar
 
   publish:
