@@ -104,7 +104,7 @@ publishing {
     publications {
         mavenJava(MavenPublication) {
             from components.java
-            artifactId = 'org.lime.core.velocity'
+            artifactId = "${pathName}"
         }
     }
     repositories {

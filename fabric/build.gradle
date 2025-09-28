@@ -130,7 +130,7 @@ publishing {
     publications {
         mavenJava(MavenPublication) {
             from components.java
-            artifactId = "org.lime.core.fabric-${nameSuffix}"
+            artifactId = "${pathName}"
         }
     }
     repositories {
