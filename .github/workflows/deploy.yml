@@ -35,11 +35,10 @@ jobs:
           - module: fabric
             variable: 1.21.4
     steps:
-      - name: Download Repository
-        uses: actions/download-artifact@v4
+      - name: Checkout repository
+        uses: actions/checkout@v4
         with:
-          name: repository
-          path: .
+          fetch-depth: 0
 
       - name: Set up JDK 23
         uses: actions/setup-java@v4
