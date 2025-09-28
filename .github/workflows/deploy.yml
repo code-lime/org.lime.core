@@ -80,7 +80,7 @@ jobs:
 
       - name: Build ${{ matrix.module }}
         run: |
-          ./gradlew :${{ matrix.module }}:build -Pvariable=${{ matrix.variable }} -Pinclude=${{ matrix.module }} --build-cache --configuration-cache --parallel
+          ./gradlew :${{ matrix.module }}:build -Pvariable=${{ matrix.variable }} -DincludeModules=${{ matrix.module }} --build-cache --configuration-cache --parallel
 
       - name: Upload Artifact
         uses: actions/upload-artifact@v4
@@ -131,7 +131,7 @@ jobs:
 
       - name: Publish ${{ matrix.module }}
         run: |
-          ./gradlew :${{ matrix.module }}:publish -Pvariable=${{ matrix.variable }} -Pinclude=${{ matrix.module }} --build-cache --configuration-cache --parallel
+          ./gradlew :${{ matrix.module }}:publish -Pvariable=${{ matrix.variable }} -DincludeModules=${{ matrix.module }} --build-cache --configuration-cache --parallel
 
   release:
     needs: [build, publish]

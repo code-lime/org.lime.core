@@ -23,12 +23,10 @@ include('common')
 String[] existIncludes = ['fabric', 'paper', 'velocity']
 
 String[] includeList = null
-if (hasProperty('includeList')) {
-    includeList = "${property('includeList')}".split(',')
-    if (includeList.length == 1 && includeList[0] == '') {
-        includeList = []
-    }
-}
+
+String INCLUDE_MODULES = System.getProperty('includeModules') ?: ''
+if (!INCLUDE_MODULES.isBlank())
+    includeList = INCLUDE_MODULES.split(',')
 
 if (includeList != null)
     existIncludes = existIncludes.findAll { includeList.contains(it) }
