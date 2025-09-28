@@ -52,6 +52,9 @@ allprojects {
 apply from: 'global.gradle'
 apply from: 'remote.gradle'
 
+def deleteResultTask = tasks.register("deleteResult") {
+    it.project.delete layout.buildDirectory.dir("libs")
+}
 tasks.register("build") {
-    dependsOn(resultJarTask, resultSourcesJarTask)
+    dependsOn(deleteResultTask, resultJarTask, resultSourcesJarTask)
 }
