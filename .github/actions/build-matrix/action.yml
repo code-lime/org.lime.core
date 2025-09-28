@@ -118,7 +118,7 @@ runs:
             fi
         
             for jar in "${jars[@]}"; do
-              dest="$OUTPUT_DIR/${name}-$(basename "$jar")"
+              dest="$OUTPUT_DIR/$(basename "$jar")"
               if ! cp "$jar" "$dest"; then
                 echo "❌ Failed to copy $jar -> $dest" >&2
                 failures=$((failures+1))
