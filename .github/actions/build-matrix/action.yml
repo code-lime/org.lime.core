@@ -1,0 +1,142 @@
+name: 'Build Matrix'
+description: 'Build multiple Gradle modules with different configurations'
+inputs:
+  items:
+    description: 'Comma or newline separated entries in format NAME=TYPE or NAME=TYPE:TASK or NAME=TYPE:TASK:COPY'
+    required: true
+  continue-on-error:
+    description: 'Continue building other modules if one fails'
+    required: false
+    default: 'false'
+  gradle-args:
+    description: 'Additional Gradle arguments'
+    required: false
+    default: '--build-cache --parallel'
+  output-dir:
+    description: 'Output directory for collected JAR files'
+    required: false
+    default: './libs'
+  default-task:
+    description: 'Default task to run if not specified in items'
+    required: false
+    default: 'build'
+  default-copy:
+    description: 'Default copy behavior if not specified in items'
+    required: false
+    default: 'true'
+
+runs:
+  using: 'composite'
+  steps:
+    - name: Build Matrix
+      shell: bash
+      run: |
+        set -euo pipefail
+        
+        ITEMS_CONTENT="${{ inputs.items }}"
+        CONT="${{ inputs.continue-on-error }}"
+        GRADLE_ARGS="${{ inputs.gradle-args }}"
+        OUTPUT_DIR="${{ inputs.output-dir }}"
+        DEFAULT_TASK="${{ inputs.default-task }}"
+        DEFAULT_COPY="${{ inputs.default-copy }}"
+        
+        trim() {
+          local var="$*"
+          var="${var#"${var%%[![:space:]]*}"}"
+          var="${var%"${var##*[![:space:]]}"}"
+          printf '%s' "$var"
+        }
+        
+        mkdir -p "$OUTPUT_DIR"
+        
+        # parse comma or newline separated entries
+        mapfile -t lines < <(printf '%s\n' "$ITEMS_CONTENT" | tr ',' '\n')
+        
+        idx=0
+        failures=0
+        
+        for raw in "${lines[@]}"; do
+          entry="$(trim "$raw")"
+          [ -z "$entry" ] && continue
+          [[ "$entry" == \#* ]] && continue
+        
+          # Parse entry: NAME=TYPE or NAME=TYPE:TASK or NAME=TYPE:TASK:COPY
+          name="${entry%%=*}"
+          rest="${entry#*=}"
+          
+          # Split by colon to get type, task, copy
+          IFS=':' read -r type task copy <<< "$rest"
+          
+          name="$(trim "$name")"
+          type="$(trim "$type")"
+          task="$(trim "$task")"
+          copy="$(trim "$copy")"
+          
+          # Set defaults if not specified
+          [ -z "$task" ] && task="$DEFAULT_TASK"
+          [ -z "$copy" ] && copy="$DEFAULT_COPY"
+        
+          if [ -z "$name" ] || [ -z "$type" ] || [[ "$entry" == "$name" ]]; then
+            echo "Bad entry (expected NAME=TYPE or NAME=TYPE:TASK or NAME=TYPE:TASK:COPY): '$entry'" >&2
+            failures=$((failures+1))
+            if [ "$CONT" != "true" ]; then
+              exit 1
+            else
+              continue
+            fi
+          fi
+        
+          idx=$((idx+1))
+          echo "::group::Gradle $task [$idx] $name = $type (copy: $copy)"
+          if ! ./gradlew ":${name}:${task}" -Pvariable="${type}" -DincludeModules="${name}" $GRADLE_ARGS; then
+            rc=$?
+            echo "❌ $task failed for $name (rc=$rc)" >&2
+            failures=$((failures+1))
+            echo "::endgroup::"
+            if [ "$CONT" != "true" ]; then
+              exit $rc
+            else
+              continue
+            fi
+          fi
+          echo "::endgroup::"
+        
+          # collect jars only if copy is enabled
+          if [ "$copy" = "true" ]; then
+            echo "Collecting jars for $name..."
+            shopt -s nullglob
+            jars=( "./${name}/build/libs/"*.jar )
+            if [ ${#jars[@]} -eq 0 ]; then
+              echo "⚠️ No jars found in ./${name}/build/libs for $name"
+              failures=$((failures+1))
+              if [ "$CONT" != "true" ]; then
+                exit 1
+              else
+                shopt -u nullglob
+                continue
+              fi
+            fi
+        
+            for jar in "${jars[@]}"; do
+              dest="$OUTPUT_DIR/${name}-$(basename "$jar")"
+              if ! cp "$jar" "$dest"; then
+                echo "❌ Failed to copy $jar -> $dest" >&2
+                failures=$((failures+1))
+                if [ "$CONT" != "true" ]; then
+                  shopt -u nullglob
+                  exit 1
+                fi
+              else
+                echo " -> copied $(basename "$jar") -> $dest"
+              fi
+            done
+            shopt -u nullglob
+          else
+            echo "Skipping jar collection for $name (copy disabled)"
+          fi
+        done
+        
+        if [ "$failures" -ne 0 ]; then
+          echo "$failures entry(ies) had errors"
+          exit 1
+        fi
