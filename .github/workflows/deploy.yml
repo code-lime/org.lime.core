@@ -50,49 +50,116 @@ jobs:
           key: ${{ runner.os }}-gradle-${{ hashFiles('**/*.gradle*', '**/gradle-wrapper.properties') }}
           restore-keys: |
             ${{ runner.os }}-gradle-
-  
-      - name: Build Common
-        run: |
-          ./gradlew :common:build -DincludeModules=common --build-cache --parallel
 
-      - name: Build Paper
+      - name: Build
+        env:
+          ITEMS: |
+            common=global
+            paper=global
+            velocity=global
+            fabric=1.20.1
+            fabric=1.21.4
+          CONTINUE_ON_ERROR: "false"
         run: |
-          ./gradlew :paper:build -DincludeModules=paper --build-cache --parallel
+          set -euo pipefail
+          chmod +x ./gradlew
 
-      - name: Build Velocity
-        run: |
-          ./gradlew :velocity:build -DincludeModules=velocity --build-cache --parallel
+          ITEMS_CONTENT="${ITEMS:-}"
+          CONT="${CONTINUE_ON_ERROR:-false}"
 
-      - name: Upload Single Artifacts
+          trim() {
+            local var="$*"
+            var="${var#"${var%%[![:space:]]*}"}"
+            var="${var%"${var##*[![:space:]]}"}"
+            printf '%s' "$var"
+          }
+
+          mkdir -p ./libs
+
+          # parse comma or newline separated entries
+          mapfile -t lines < <(printf '%s\n' "$ITEMS_CONTENT" | tr ',' '\n')
+
+          idx=0
+          failures=0
+
+          for raw in "${lines[@]}"; do
+            entry="$(trim "$raw")"
+            [ -z "$entry" ] && continue
+            [[ "$entry" == \#* ]] && continue
+
+            name="${entry%%=*}"
+            type="${entry#*=}"
+
+            name="$(trim "$name")"
+            type="$(trim "$type")"
+
+            if [ -z "$name" ] || [ -z "$type" ] || [[ "$entry" == "$name" ]]; then
+              echo "Bad entry (expected NAME=TYPE): '$entry'" >&2
+              failures=$((failures+1))
+              if [ "$CONT" != "true" ]; then
+                exit 1
+              else
+                continue
+              fi
+            fi
+
+            idx=$((idx+1))
+            echo "::group::Gradle build [$idx] $name = $type"
+            if ! ./gradlew ":${name}:build" -Pvariable="${type}" -DincludeModules="${name}" --build-cache --parallel; then
+              rc=$?
+              echo "❌ Build failed for $name (rc=$rc)" >&2
+              failures=$((failures+1))
+              echo "::endgroup::"
+              if [ "$CONT" != "true" ]; then
+                exit $rc
+              else
+                continue
+              fi
+            fi
+            echo "::endgroup::"
+
+            # collect jars (prefix with module name)
+            echo "Collecting jars for $name..."
+            shopt -s nullglob
+            jars=( "./${name}/build/libs/"*.jar )
+            if [ ${#jars[@]} -eq 0 ]; then
+              echo "⚠️ No jars found in ./${name}/build/libs for $name"
+              failures=$((failures+1))
+              if [ "$CONT" != "true" ]; then
+                exit 1
+              else
+                shopt -u nullglob
+                continue
+              fi
+            fi
+
+            for jar in "${jars[@]}"; do
+              dest="./libs/${name}-$(basename "$jar")"
+              if ! cp "$jar" "$dest"; then
+                echo "❌ Failed to copy $jar -> $dest" >&2
+                failures=$((failures+1))
+                if [ "$CONT" != "true" ]; then
+                  shopt -u nullglob
+                  exit 1
+                fi
+              else
+                echo " -> copied $(basename "$jar") -> $dest"
+              fi
+            done
+            shopt -u nullglob
+          done
+
+          if [ "$failures" -ne 0 ]; then
+            echo "$failures entry(ies) had errors"
+            exit 1
+          fi
+
+      - name: Upload Artifacts
         uses: actions/upload-artifact@v4
         with:
           name: all-artifacts
           path: |
-            common/build/libs/*.jar
-            paper/build/libs/*.jar
-            velocity/build/libs/*.jar
-
-      - name: Build Fabric 1.20.1
-        run: |
-          ./gradlew :fabric:build -Pvariable=1.20.1 -DincludeModules=fabric --build-cache --parallel
-
-      - name: Upload Fabric 1.20.1 Artifacts
-        uses: actions/upload-artifact@v4
-        with:
-          name: all-artifacts
-          path: |
-            fabric/build/libs/*.jar
-
-      - name: Build Fabric 1.21.4
-        run: |
-          ./gradlew :fabric:build -Pvariable=1.21.4 -DincludeModules=fabric --build-cache --parallel
-
-      - name: Upload Fabric 1.21.4 Artifacts
-        uses: actions/upload-artifact@v4
-        with:
-          name: all-artifacts
-          path: |
-            fabric/build/libs/*.jar
+            libs/*.jar
 
   publish:
     needs: build
