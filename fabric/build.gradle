@@ -1,6 +1,18 @@
 plugins {
     id 'java'
     id 'fabric-loom' version "$versionLoom"
+    id 'maven-publish'
+}
+
+def variable = project.hasProperty('variable') ? project.property('variable') : '1.20.1'
+
+def configFile = file("gradle.${variable}.properties")
+if (configFile.exists()) {
+    def props = new Properties()
+    configFile.withInputStream { props.load(it) }
+    props.each { key, value ->
+        project.setProperty(key, value)
+    }
 }
 
 overrideJavaVersion = 17
@@ -108,6 +120,27 @@ afterEvaluate {
             added.add(notation)
         } else {
             logger.debug("Already added: ${notation}")
+        }
+    }
+}
+//</editor-fold>
+
+//<editor-fold desc="Settings: Maven">
+publishing {
+    publications {
+        mavenJava(MavenPublication) {
+            from components.java
+            artifactId = "org.lime.core.fabric-${nameSuffix}"
+        }
+    }
+    repositories {
+        maven {
+            name = "GitHubPackages"
+            url = uri("https://maven.pkg.github.com/${System.getenv("GITHUB_REPOSITORY")}")
+            credentials {
+                username = System.getenv("GITHUB_OWNER")
+                password = System.getenv("GITHUB_TOKEN")
+            }
         }
     }
 }

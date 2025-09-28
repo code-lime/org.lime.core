@@ -1,5 +1,6 @@
 plugins {
     id 'java'
+    id 'maven-publish'
 }
 
 overrideJavaVersion = 17
@@ -97,5 +98,26 @@ jar {
         }
     }
 }
+
+//<editor-fold desc="Settings: Maven">
+publishing {
+    publications {
+        mavenJava(MavenPublication) {
+            from components.java
+            artifactId = 'org.lime.core.velocity'
+        }
+    }
+    repositories {
+        maven {
+            name = "GitHubPackages"
+            url = uri("https://maven.pkg.github.com/${System.getenv("GITHUB_REPOSITORY")}")
+            credentials {
+                username = System.getenv("GITHUB_OWNER")
+                password = System.getenv("GITHUB_TOKEN")
+            }
+        }
+    }
+}
+//</editor-fold>
 
 println("VELOCITY: ${group}/${pathName}#${version}")

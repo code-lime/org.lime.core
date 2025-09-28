@@ -57,10 +57,26 @@ tasks.register("upload") {
 
         def buildDir = project.layout.buildDirectory.dir("libs").get().asFile
 
+        def jarFilters = remotePath.split(':')
+        if (jarFilters.length > 1) {
+            remotePath = jarFilters[-1]
+            jarFilters = jarFilters[0..-2]
+        } else {
+            jarFilters = []
+        }
+
         def jars = buildDir.listFiles(new FilenameFilter() {
             @Override
             boolean accept(File dir, String name) {
-                return name.endsWith(".jar") && !name.endsWith("-sources.jar")
+                if (!name.endsWith(".jar") || name.endsWith("-sources.jar")) {
+                    return false
+                }
+                for (String jarFilter : jarFilters) {
+                    if (!name.contains(jarFilter)) {
+                        return false
+                    }
+                }
+                return true
             }
         })
 

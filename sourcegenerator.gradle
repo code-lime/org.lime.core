@@ -1,3 +1,16 @@
+buildscript {
+    repositories {
+        mavenCentral()
+    }
+    dependencies {
+        def versionGraalVm = "24.1.1"
+        classpath "org.graalvm.js:js:${versionGraalVm}"
+        classpath "org.graalvm.js:js-scriptengine:${versionGraalVm}"
+        classpath "org.graalvm.truffle:truffle-api:${versionGraalVm}"
+        classpath "org.graalvm.polyglot:polyglot:${versionGraalVm}"
+    }
+}
+
 import com.oracle.truffle.js.scriptengine.*
 import org.graalvm.polyglot.*
 
@@ -206,18 +219,6 @@ class SourceGenerator {
 }
 final SourceGenerator instance = new SourceGenerator(project);
 
-buildscript {
-    repositories {
-        mavenCentral()
-    }
-    dependencies {
-        def versionGraalVm = "24.1.1"
-        classpath "org.graalvm.js:js:${versionGraalVm}"
-        classpath "org.graalvm.js:js-scriptengine:${versionGraalVm}"
-        classpath "org.graalvm.truffle:truffle-api:${versionGraalVm}"
-    }
-}
-
 def generator = tasks.register('generator') {
     doLast {
         sourceSets.forEach {
@@ -235,6 +236,9 @@ def generator = tasks.register('generator') {
         }
     }
 }
-compileJava {
-    dependsOn generator
+
+if (tasks.findByName('compileJava') != null) {
+    compileJava {
+        dependsOn generator
+    }
 }

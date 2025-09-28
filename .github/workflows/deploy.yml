@@ -19,7 +19,7 @@ env:
   GITHUB_PACKAGE_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
 jobs:
-  build_and_pub:
+  prepare:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout repository
@@ -35,21 +35,101 @@ jobs:
 
       - name: Make Gradle Wrapper Executable
         run: chmod +x gradlew
-  
+
       - name: Setup Gradle
         uses: gradle/actions/setup-gradle@v4
         with:
           gradle-version: wrapper
 
-      - name: Build
-        run: ./gradlew build
+      - name: Cache Gradle Dependencies
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.gradle/caches
+            ~/.gradle/wrapper
+          key: ${{ runner.os }}-gradle-${{ hashFiles('**/*.gradle*', '**/gradle-wrapper.properties') }}
+          restore-keys: |
+            ${{ runner.os }}-gradle-
 
-      - name: Publish
-        run: ./gradlew publish
+      - name: Upload Repository
+        uses: actions/upload-artifact@v4
+        with:
+          name: repository
+          path: .
+
+  build:
+    needs: prepare
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        variable: [global]
+        include:
+          - module: common
+          - module: paper
+          - module: velocity
+          - module: fabric
+            variable: 1.20.1
+          - module: fabric
+            variable: 1.21.4
+    steps:
+      - name: Download Repository
+        uses: actions/download-artifact@v4
+        with:
+          name: repository
+          path: .
+
+      - name: Build ${{ matrix.module }}
+        run: ./gradlew :${{ matrix.module }}:build -Pvariable=${{ matrix.variable }}
+
+      - name: Upload Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: artifacts
+          path: ${{ matrix.module }}/build/libs/*.jar
+
+      - name: Upload Repository
+        uses: actions/upload-artifact@v4
+        with:
+          name: repository-${{ matrix.module }}-${{ matrix.variable }}
+          path: .
+
+  publish:
+    needs: build
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        variable: [global]
+        include:
+          - module: common
+          - module: paper
+          - module: velocity
+          - module: fabric
+            variable: 1.20.1
+          - module: fabric
+            variable: 1.21.4
+    steps:
+      - name: Download Repository
+        uses: actions/download-artifact@v4
+        with:
+          name: repository-${{ matrix.module }}-${{ matrix.variable }}
+          path: .
+
+      - name: Publish ${{ matrix.module }}
+        run: ./gradlew :${{ matrix.module }}:publish -Pvariable=${{ matrix.variable }}
+
+  release:
+    needs: [build, publish]
+    runs-on: ubuntu-latest
+    if: github.ref_type == 'tag'
+    steps:
+      - name: Download Artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: artifacts
+          path: .
 
       - name: Release
         uses: softprops/action-gh-release@v2
-        if: github.ref_type == 'tag'
         with:
           files: |
-            build/libs/*.jar
+            *.jar

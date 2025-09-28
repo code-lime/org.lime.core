@@ -1,9 +1,15 @@
+static String getNameWithSuffix(Project project) {
+    if (project.hasProperty('nameSuffix'))
+        return "${project.name}${project.property('nameSuffix')}"
+    else
+        return project.name
+}
 static String getPathName(Project current) {
     Project parent = current.parent
-    return parent == null ? current.name : "${parent.name}.${current.name}"
+    return parent == null ? getNameWithSuffix(current) : "${getNameWithSuffix(parent)}.${getNameWithSuffix(current)}"
 }
 
-def resultPathName = project.name
+def resultPathName = getNameWithSuffix(project)
 
 if (project.hasProperty('pathName'))
     pathName = resultPathName = "${getPathName(project)}"
@@ -19,14 +25,17 @@ if (project.hasProperty('overrideJavaVersion')) {
     if (!overrideJavaVersion.isBlank())
         targetJavaVersion = Integer.parseInt(overrideJavaVersion)
 }
-java {
-    def javaVersion = JavaVersion.toVersion(targetJavaVersion)
-    sourceCompatibility = javaVersion
-    targetCompatibility = javaVersion
-    if (JavaVersion.current() < javaVersion) {
-        toolchain.languageVersion = JavaLanguageVersion.of(targetJavaVersion)
+
+if (project.plugins.hasPlugin('java') || project.plugins.hasPlugin('java-library')) {
+    java {
+        def javaVersion = JavaVersion.toVersion(targetJavaVersion)
+        sourceCompatibility = javaVersion
+        targetCompatibility = javaVersion
+        if (JavaVersion.current() < javaVersion) {
+            toolchain.languageVersion = JavaLanguageVersion.of(targetJavaVersion)
+        }
+        withSourcesJar()
     }
-    withSourcesJar()
 }
 
 tasks.withType(JavaCompile).configureEach {
@@ -43,8 +52,13 @@ tasks.withType(org.gradle.jvm.tasks.Jar).configureEach {
 //</editor-fold>
 
 //<editor-fold desc="Settings: Clean output folder">
+def deleteOutputTask = tasks.register("deleteOutput") {
+    it.project.tasks
+            .withType(org.gradle.jvm.tasks.Jar)
+            .each { it.project.delete it.destinationDirectory }
+}
 tasks.withType(org.gradle.jvm.tasks.Jar).configureEach {
-    delete destinationDirectory
+    dependsOn deleteOutputTask
 }
 //</editor-fold>
 

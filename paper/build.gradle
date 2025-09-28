@@ -1,6 +1,7 @@
 plugins {
     id 'java'
     id 'io.papermc.paperweight.userdev' version '+'
+    id 'maven-publish'
 }
 
 apply from: '../global.gradle'
@@ -42,6 +43,27 @@ dependencies {
     implementation "com.google.inject:guice:${versionGuice}"
 }
 //</editor-fold>
+//</editor-fold>
+
+//<editor-fold desc="Settings: Maven">
+publishing {
+    publications {
+        mavenJava(MavenPublication) {
+            from components.java
+            artifactId = 'org.lime.core.paper'
+        }
+    }
+    repositories {
+        maven {
+            name = "GitHubPackages"
+            url = uri("https://maven.pkg.github.com/${System.getenv("GITHUB_REPOSITORY")}")
+            credentials {
+                username = System.getenv("GITHUB_OWNER")
+                password = System.getenv("GITHUB_TOKEN")
+            }
+        }
+    }
+}
 //</editor-fold>
 
 println("PAPER: ${group}/${pathName}#${version}")
