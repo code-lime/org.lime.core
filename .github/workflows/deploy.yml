@@ -38,11 +38,13 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        variable: [global]
         include:
           - module: common
+            variable: global
           - module: paper
+            variable: global
           - module: velocity
+            variable: global
           - module: fabric
             variable: 1.20.1
           - module: fabric
@@ -75,13 +77,13 @@ jobs:
       - name: Upload Artifact
         uses: actions/upload-artifact@v4
         with:
-          name: artifacts
+          name: ${{ matrix.module }}-artifacts
           path: ${{ matrix.module }}/build/libs/*.jar
 
       - name: Upload Repository
         uses: actions/upload-artifact@v4
         with:
-          name: repository-${{ matrix.module }}-${{ matrix.variable }}
+          name: ${{ matrix.module }}-${{ matrix.variable }}-repository
           path: .
 
   publish:
@@ -89,11 +91,13 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        variable: [global]
         include:
           - module: common
+            variable: global
           - module: paper
+            variable: global
           - module: velocity
+            variable: global
           - module: fabric
             variable: 1.20.1
           - module: fabric
@@ -102,7 +106,7 @@ jobs:
       - name: Download Repository
         uses: actions/download-artifact@v4
         with:
-          name: repository-${{ matrix.module }}-${{ matrix.variable }}
+          name: ${{ matrix.module }}-${{ matrix.variable }}-repository
           path: .
 
       - name: Set up JDK 23
@@ -128,14 +132,13 @@ jobs:
     runs-on: ubuntu-latest
     if: github.ref_type == 'tag'
     steps:
-      - name: Download Artifacts
+      - name: Download All Artifacts
         uses: actions/download-artifact@v4
         with:
-          name: artifacts
-          path: .
+          pattern: '*-artifacts'
+          path: artifacts
 
       - name: Release
         uses: softprops/action-gh-release@v2
         with:
-          files: |
-            *.jar
+          files: artifacts/**/*.jar
