@@ -185,7 +185,7 @@ public abstract class BaseInstanceModule<Instance extends BaseInstance<Instance>
             String rawValue;
             int partLength = part.length;
             if (partLength == 0) {
-                rawValue = gson.toJson(value, configClass);
+                rawValue = Json.format(gson.toJsonTree(value, configClass));
             } else {
                 JsonObject rootJson = JsonParser.parseString(Files.readString(file)).getAsJsonObject();
                 addPart(rootJson, part, gson.toJsonTree(value, configClass));
