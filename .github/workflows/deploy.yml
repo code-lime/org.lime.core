@@ -68,19 +68,9 @@ jobs:
         with:
           gradle-version: wrapper
 
-      - name: Cache Gradle Dependencies
-        uses: actions/cache@v4
-        with:
-          path: |
-            ~/.gradle/caches
-            ~/.gradle/wrapper
-          key: ${{ runner.os }}-gradle-${{ hashFiles('**/*.gradle*', '**/gradle-wrapper.properties') }}
-          restore-keys: |
-            ${{ runner.os }}-gradle-
-
       - name: Build ${{ matrix.module }}
         run: |
-          ./gradlew :${{ matrix.module }}:build -Pvariable=${{ matrix.variable }} -DincludeModules=${{ matrix.module }} --build-cache --configuration-cache --parallel
+          ./gradlew :${{ matrix.module }}:build -Pvariable=${{ matrix.variable }} -DincludeModules=${{ matrix.module }}
 
       - name: Upload Artifact
         uses: actions/upload-artifact@v4
@@ -131,7 +121,7 @@ jobs:
 
       - name: Publish ${{ matrix.module }}
         run: |
-          ./gradlew :${{ matrix.module }}:publish -Pvariable=${{ matrix.variable }} -DincludeModules=${{ matrix.module }} --build-cache --configuration-cache --parallel
+          ./gradlew :${{ matrix.module }}:publish -Pvariable=${{ matrix.variable }} -DincludeModules=${{ matrix.module }}
 
   release:
     needs: [build, publish]
