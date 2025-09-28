@@ -7,7 +7,7 @@ plugins {
 apply from: '../global.gradle'
 
 dependencies {
-    implementation project(':common')
+    compileOnly project(':common')
 }
 
 versionByteBuddy = project(":common").versionByteBuddy
