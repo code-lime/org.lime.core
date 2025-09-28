@@ -21,19 +21,6 @@ env:
 jobs:
   build:
     runs-on: ubuntu-latest
-    strategy:
-      matrix:
-        include:
-          - module: common
-            variable: global
-          - module: paper
-            variable: global
-          - module: velocity
-            variable: global
-          - module: fabric
-            variable: 1.20.1
-          - module: fabric
-            variable: 1.21.4
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -63,16 +50,49 @@ jobs:
           key: ${{ runner.os }}-gradle-${{ hashFiles('**/*.gradle*', '**/gradle-wrapper.properties') }}
           restore-keys: |
             ${{ runner.os }}-gradle-
-
-      - name: Clean and Build ${{ matrix.module }}
+  
+      - name: Build Common
         run: |
-          ./gradlew :${{ matrix.module }}:clean :${{ matrix.module }}:build -Pvariable=${{ matrix.variable }} -DincludeModules=${{ matrix.module }} --build-cache --parallel
+          ./gradlew :common:build -DincludeModules=common --build-cache --parallel
 
-      - name: Upload Artifact
+      - name: Build Paper
+        run: |
+          ./gradlew :paper:build -DincludeModules=paper --build-cache --parallel
+
+      - name: Build Velocity
+        run: |
+          ./gradlew :velocity:build -DincludeModules=velocity --build-cache --parallel
+
+      - name: Upload Single Artifacts
         uses: actions/upload-artifact@v4
         with:
-          name: ${{ matrix.module }}-${{ matrix.variable }}-artifacts
-          path: ${{ matrix.module }}/build/libs/*.jar
+          name: all-artifacts
+          path: |
+            common/build/libs/*.jar
+            paper/build/libs/*.jar
+            velocity/build/libs/*.jar
+
+      - name: Build Fabric 1.20.1
+        run: |
+          ./gradlew :fabric:build -Pvariable=1.20.1 -DincludeModules=fabric --build-cache --parallel
+
+      - name: Upload Fabric 1.20.1 Artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: all-artifacts
+          path: |
+            fabric/build/libs/*.jar
+
+      - name: Build Fabric 1.21.4
+        run: |
+          ./gradlew :fabric:build -Pvariable=1.21.4 -DincludeModules=fabric --build-cache --parallel
+
+      - name: Upload Fabric 1.21.4 Artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: all-artifacts
+          path: |
+            fabric/build/libs/*.jar
 
   publish:
     needs: build
