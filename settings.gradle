@@ -19,6 +19,18 @@ dependencyResolutionManagement {
 rootProject.name = 'core'
 
 include('common')
-include('fabric')
-include('paper')
-include('velocity')
+
+String[] existIncludes = ['fabric', 'paper', 'velocity']
+
+String[] includeList = null
+if (hasProperty('includeList')) {
+    includeList = "${property('includeList')}".split(',')
+    if (includeList.length == 1 && includeList[0] == '') {
+        includeList = []
+    }
+}
+
+if (includeList != null)
+    existIncludes = existIncludes.findAll { includeList.contains(it) }
+
+existIncludes.each { include(it) }
