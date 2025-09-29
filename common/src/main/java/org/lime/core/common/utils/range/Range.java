@@ -29,5 +29,8 @@ public interface Range<T extends Comparable<T>> {
         Class<R> rangeClass();
 
         R create(T a, T b);
+        default R create(T value) {
+            return create(value, value);
+        }
     }
 }

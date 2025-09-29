@@ -18,4 +18,7 @@ public final class IntegerRange
     public static IntegerRange of(int a, int b) {
         return new IntegerRange(a, b);
     }
+    public static IntegerRange of(int value) {
+        return of(value, value);
+    }
 }

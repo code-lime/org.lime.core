@@ -18,4 +18,7 @@ public final class ShortRange
     public static ShortRange of(short a, short b) {
         return new ShortRange(a, b);
     }
+    public static ShortRange of(short value) {
+        return of(value, value);
+    }
 }

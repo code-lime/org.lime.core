@@ -18,4 +18,7 @@ public final class LongRange
     public static LongRange of(long a, long b) {
         return new LongRange(a, b);
     }
+    public static LongRange of(long value) {
+        return of(value, value);
+    }
 }

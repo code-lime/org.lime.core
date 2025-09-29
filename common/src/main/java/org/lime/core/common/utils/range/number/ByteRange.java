@@ -18,4 +18,7 @@ public final class ByteRange
     public static ByteRange of(byte a, byte b) {
         return new ByteRange(a, b);
     }
+    public static ByteRange of(byte value) {
+        return of(value, value);
+    }
 }

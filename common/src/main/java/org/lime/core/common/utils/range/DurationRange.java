@@ -23,4 +23,7 @@ public final class DurationRange
     public static DurationRange of(Duration a, Duration b) {
         return new DurationRange(a, b);
     }
+    public static DurationRange of(Duration value) {
+        return of(value, value);
+    }
 }

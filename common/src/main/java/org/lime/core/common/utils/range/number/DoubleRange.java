@@ -18,4 +18,7 @@ public final class DoubleRange
     public static DoubleRange of(double a, double b) {
         return new DoubleRange(a, b);
     }
+    public static DoubleRange of(double value) {
+        return of(value, value);
+    }
 }

@@ -18,4 +18,7 @@ public final class FloatRange
     public static FloatRange of(float a, float b) {
         return new FloatRange(a, b);
     }
+    public static FloatRange of(float value) {
+        return of(value, value);
+    }
 }
