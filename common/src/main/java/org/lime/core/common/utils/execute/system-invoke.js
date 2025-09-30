@@ -504,7 +504,7 @@ function createObj() {
         'files': {},
         'functions': []
     };
-    for (var i = 2; i < 10; i++)
+    for (var i = 2; i < 20; i++)
         out = combineAf(out, createAF(i));
     return out;
 }
@@ -531,7 +531,7 @@ function getAllFiles() {
 }
 function findClassSwitch() {
     var out = [];
-    for (var i = 0; i < 10; i++) {
+    for (var i = 0; i < 20; i++) {
         out.push('            case ' + i + ' -> withExceptions');
         out.push('                    ? (withReturn ? FuncEx' + i + '.class : ActionEx' + i + '.class)');
         out.push('                    : (withReturn ? Func' + i + '.class : Action' + i + '.class);');

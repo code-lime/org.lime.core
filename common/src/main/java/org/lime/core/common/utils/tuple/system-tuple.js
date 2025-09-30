@@ -82,7 +82,7 @@ function createObj() {
         'files': {},
         'functions': []
     };
-    for (var i = 1; i < 10; i++)
+    for (var i = 1; i < 20; i++)
         out = combineItem(out, createTuple(i));
     return out;
 }
