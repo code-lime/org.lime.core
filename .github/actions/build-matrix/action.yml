@@ -2,7 +2,7 @@ name: 'Build Matrix'
 description: 'Build multiple Gradle modules with different configurations'
 inputs:
   items:
-    description: 'Comma or newline separated entries in format NAME=TYPE or NAME=TYPE:TASK or NAME=TYPE:TASK:COPY'
+    description: 'Comma or newline separated entries in format NAME=TYPE or NAME=TYPE:TASK or NAME=TYPE:TASK:COPY. Multiple values can be separated by semicolon (;) in TYPE field: NAME=TYPE1;TYPE2;TYPE3'
     required: true
   continue-on-error:
     description: 'Continue building other modules if one fails'
@@ -85,55 +85,62 @@ runs:
               continue
             fi
           fi
+          
+          # Handle multiple values separated by semicolon in type field
+          IFS=';' read -ra types <<< "$type"
+          for current_type in "${types[@]}"; do
+            current_type="$(trim "$current_type")"
+            [ -z "$current_type" ] && continue
         
-          idx=$((idx+1))
-          echo "::group::Gradle $task [$idx] $name = $type (copy: $copy)"
-          if ! ./gradlew ":${name}:${task}" -Pvariable="${type}" -DincludeModules="${name}" $GRADLE_ARGS; then
-            rc=$?
-            echo "❌ $task failed for $name (rc=$rc)" >&2
-            failures=$((failures+1))
-            echo "::endgroup::"
-            if [ "$CONT" != "true" ]; then
-              exit $rc
-            else
-              continue
-            fi
-          fi
-          echo "::endgroup::"
-        
-          # collect jars only if copy is enabled
-          if [ "$copy" = "true" ]; then
-            echo "Collecting jars for $name..."
-            shopt -s nullglob
-            jars=( "./${name}/build/libs/"*.jar )
-            if [ ${#jars[@]} -eq 0 ]; then
-              echo "⚠️ No jars found in ./${name}/build/libs for $name"
+            idx=$((idx+1))
+            echo "::group::Gradle $task [$idx] $name = $current_type (copy: $copy)"
+            if ! ./gradlew ":${name}:${task}" -Pvariable="${current_type}" -DincludeModules="${name}" $GRADLE_ARGS; then
+              rc=$?
+              echo "❌ $task failed for $name (rc=$rc)" >&2
               failures=$((failures+1))
+              echo "::endgroup::"
               if [ "$CONT" != "true" ]; then
-                exit 1
+                exit $rc
               else
-                shopt -u nullglob
                 continue
               fi
             fi
-        
-            for jar in "${jars[@]}"; do
-              dest="$OUTPUT_DIR/$(basename "$jar")"
-              if ! cp "$jar" "$dest"; then
-                echo "❌ Failed to copy $jar -> $dest" >&2
+            echo "::endgroup::"
+          
+            # collect jars only if copy is enabled
+            if [ "$copy" = "true" ]; then
+              echo "Collecting jars for $name..."
+              shopt -s nullglob
+              jars=( "./${name}/build/libs/"*.jar )
+              if [ ${#jars[@]} -eq 0 ]; then
+                echo "⚠️ No jars found in ./${name}/build/libs for $name"
                 failures=$((failures+1))
                 if [ "$CONT" != "true" ]; then
-                  shopt -u nullglob
                   exit 1
+                else
+                  shopt -u nullglob
+                  continue
                 fi
-              else
-                echo " -> copied $(basename "$jar") -> $dest"
               fi
-            done
-            shopt -u nullglob
-          else
-            echo "Skipping jar collection for $name (copy disabled)"
-          fi
+          
+              for jar in "${jars[@]}"; do
+                dest="$OUTPUT_DIR/$(basename "$jar")"
+                if ! cp "$jar" "$dest"; then
+                  echo "❌ Failed to copy $jar -> $dest" >&2
+                  failures=$((failures+1))
+                  if [ "$CONT" != "true" ]; then
+                    shopt -u nullglob
+                    exit 1
+                  fi
+                else
+                  echo " -> copied $(basename "$jar") -> $dest"
+                fi
+              done
+              shopt -u nullglob
+            else
+              echo "Skipping jar collection for $name (copy disabled)"
+            fi
+          done
         done
         
         if [ "$failures" -ne 0 ]; then

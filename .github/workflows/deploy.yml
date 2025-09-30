@@ -17,6 +17,10 @@ env:
   GITHUB_REPOSITORY: ${{ github.repository }}
   GITHUB_PACKAGE_USERNAME: ${{ github.repository_owner }}
   GITHUB_PACKAGE_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+  VARIABLE_COMMON: global
+  VARIABLE_PAPER: global
+  VARIABLE_VELOCITY: global
+  VARIABLE_FABRIC: 1.20.1;1.21.4;1.21.8
 
 jobs:
   build:
@@ -55,11 +59,10 @@ jobs:
         uses: ./.github/actions/build-matrix
         with:
           items: |
-            common=global
-            paper=global
-            velocity=global
-            fabric=1.20.1
-            fabric=1.21.4
+            common=$VARIABLE_COMMON
+            paper=$VARIABLE_PAPER
+            velocity=$VARIABLE_VELOCITY
+            fabric=$VARIABLE_FABRIC
           continue-on-error: false
           gradle-args: '--build-cache --parallel'
           output-dir: ./libs
@@ -77,11 +80,10 @@ jobs:
         uses: ./.github/actions/build-matrix
         with:
           items: |
-            common=global
-            paper=global
-            velocity=global
-            fabric=1.20.1
-            fabric=1.21.4
+            common=$VARIABLE_COMMON
+            paper=$VARIABLE_PAPER
+            velocity=$VARIABLE_VELOCITY
+            fabric=$VARIABLE_FABRIC
           continue-on-error: false
           gradle-args: '--build-cache --parallel'
           default-task: publish
