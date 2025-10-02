@@ -8,6 +8,7 @@ import net.kyori.adventure.text.JoinConfiguration;
 import net.kyori.adventure.text.event.ClickEvent;
 import net.kyori.adventure.text.event.HoverEvent;
 import net.kyori.adventure.text.format.TextColor;
+import org.lime.core.common.reflection.ReflectionField;
 import org.lime.core.common.utils.execute.Func1;
 import org.lime.core.common.utils.execute.Func3;
 import org.lime.core.common.utils.IterableUtils;
@@ -19,6 +20,10 @@ import java.io.StringWriter;
 import java.util.*;
 
 public class Json {
+    private static final Func1<JsonPrimitive, Object> value_JsonPrimitive = ReflectionField.of(JsonPrimitive.class, "value")
+            .access()
+            .getter(Func1.class);
+
     public static JsonElement parse(String json) { return JsonParser.parseString(json); }
     public static JsonElement parse(Reader json) { return JsonParser.parseReader(json); }
     public static JsonElement parse(JsonReader json) { return JsonParser.parseReader(json); }
@@ -27,6 +32,35 @@ public class Json {
     public static ArrayBuilder array() { return new ArrayBuilder(); }
 
     public static BaseBuilder<?> by(Object obj) { return BaseBuilder.byObject(obj); }
+
+    public static Object toObject(JsonElement json) {
+        if (json.isJsonObject())
+            return toObject(json.getAsJsonObject());
+        else if (json.isJsonArray())
+            return toObject(json.getAsJsonArray());
+        else if (json.isJsonNull())
+            return toObject(json.getAsJsonNull());
+        else if (json.isJsonPrimitive())
+            return toObject(json.getAsJsonPrimitive());
+        else
+            throw new IllegalArgumentException("Json type " + json.getClass() + " with " + json + " not supported");
+    }
+    public static Object toObject(JsonNull json) {
+        return null;
+    }
+    public static Object toObject(JsonPrimitive json) {
+        return value_JsonPrimitive.invoke(json);
+    }
+    public static Map<String, ?> toObject(JsonObject json) {
+        Map<String, Object> result = new LinkedHashMap<>();
+        json.asMap().forEach((key, value) -> result.put(key, toObject(value)));
+        return result;
+    }
+    public static List<?> toObject(JsonArray json) {
+        List<Object> result = new ArrayList<>();
+        json.asList().forEach(value -> result.add(toObject(value)));
+        return result;
+    }
 
     public static ObjectBuilder of(JsonObject json) { return new ObjectBuilder(json); }
     public static ArrayBuilder of(JsonArray json) { return new ArrayBuilder(json); }
