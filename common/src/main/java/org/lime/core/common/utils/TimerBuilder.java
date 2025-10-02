@@ -18,7 +18,7 @@ public record TimerBuilder(
         long loopTicks,
         boolean async) {
     public static TimerBuilder create(ScheduleTaskService instance) {
-        return new TimerBuilder(instance, Execute.actionEmpty(), Execute.actionEmpty(), 0, 0, false);
+        return new TimerBuilder(instance, Execute.actionEmpty(), Execute.actionEmpty(), -1, -1, false);
     }
 
     public TimerBuilder withCallback(Action0 callback) {
@@ -64,10 +64,10 @@ public record TimerBuilder(
     }
 
     private enum Type {
-        SYNC_ONCE(v -> !v.async && v.loopTicks == -1, v -> v.instance.runWait(v.callback, true, v.waitTicks)),
-        ASYNC_ONCE(v -> v.async && v.loopTicks == -1, v -> v.instance.runWait(v.callback, false, v.waitTicks)),
-        SYNC_REPEAT(v -> !v.async && v.loopTicks != -1, v -> v.instance.runLoop(v.callback, true, v.waitTicks, v.loopTicks)),
-        ASYNC_REPEAT(v -> v.async && v.loopTicks != -1, v -> v.instance.runLoop(v.callback, false, v.waitTicks, v.loopTicks));
+        SYNC_ONCE(v -> !v.async && v.loopTicks < 0, v -> v.instance.runWait(v.callback, true, v.waitTicks)),
+        ASYNC_ONCE(v -> v.async && v.loopTicks < 0, v -> v.instance.runWait(v.callback, false, v.waitTicks)),
+        SYNC_REPEAT(v -> !v.async && v.loopTicks >= 0, v -> v.instance.runLoop(v.callback, true, v.waitTicks, v.loopTicks)),
+        ASYNC_REPEAT(v -> v.async && v.loopTicks >= 0, v -> v.instance.runLoop(v.callback, false, v.waitTicks, v.loopTicks));
 
         private final Func1<TimerBuilder, Boolean> predicate;
         private final Func1<TimerBuilder, ScheduleTask> executor;
