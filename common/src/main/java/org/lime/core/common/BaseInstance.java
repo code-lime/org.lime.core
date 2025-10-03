@@ -36,7 +36,7 @@ public abstract class BaseInstance<Instance extends BaseInstance<Instance>> {
     public abstract ClassLoader loader();
     public abstract File dataFolder();
 
-    public BaseInstanceModule<?> module() {
+    public BaseInstanceModule<Instance> getModule() {
         return module;
     }
 

@@ -29,10 +29,10 @@ public class UpdateConfigService
             instances.instances()
                     .forEach(instance -> root
                             .then(commandsFactory.literal(instance.id())
-                                    .then(commandsFactory.repeatable("config", arguments.builderString(commandsFactory.senderClass(), instance.module().configKeys()).build())
+                                    .then(commandsFactory.repeatable("config", arguments.builderString(commandsFactory.senderClass(), instance.getModule().configKeys()).build())
                                             .executes(ctx -> {
                                                 List<String> configs = RepeatableArgumentBuilder.readRepeatable(ctx, "config", String.class).toList();
-                                                int updateCount = instance.module().updateConfigs(configs);
+                                                int updateCount = instance.getModule().updateConfigs(configs);
                                                 commandsFactory.audience(ctx.getSource())
                                                         .sendMessage(Component.text("Configs '" + String.join("', '", configs) + "' update " + updateCount + " access"));
                                                 return Command.SINGLE_SUCCESS;
