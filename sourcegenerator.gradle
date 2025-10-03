@@ -15,7 +15,231 @@ import com.oracle.truffle.js.scriptengine.*
 import org.graalvm.polyglot.*
 
 import javax.script.ScriptEngine
+import java.nio.charset.Charset
 import java.nio.file.Paths
+import java.util.regex.Matcher
+import java.util.regex.Pattern
+import javax.script.ScriptEngine
+import java.nio.file.Path
+import java.nio.file.Files
+import java.nio.charset.StandardCharsets
+import java.util.stream.Collectors
+
+interface ScriptEngineProvider {
+    ScriptEngine engine();
+}
+interface PreProcessor {
+    boolean test(String text)
+    List<String> modify(Path file, List<String> lines, ScriptEngineProvider engine)
+}
+
+abstract class BasePreProcessor implements PreProcessor {
+    protected String loadJsText(Path dir, String fileSpec) {
+        if (fileSpec == null || fileSpec.isEmpty()) return ""
+        String[] parts = fileSpec.split(':', 2)
+        if (parts.length > 1) {
+            Path p = dir.resolve(parts[0])
+            return readAllText(p) + "\n" + parts[1]
+        } else {
+            Path p = dir.resolve(fileSpec)
+            return readAllText(p)
+        }
+    }
+
+    protected String evalJs(ScriptEngineProvider engine, String js) {
+        def res = engine.engine().eval(js)
+        return "${res}"
+    }
+    protected boolean evalCondition(ScriptEngineProvider engine, String js) {
+        switch (evalJs(engine, js).toLowerCase()) {
+            case "true": return true
+            case "yes": return true
+            case "1": return true
+            default: return false
+        }
+    }
+    protected String extractNameAttribute(String header) {
+        if (header == null) return null
+        String t = header.trim()
+        int idx = t.indexOf('name="')
+        if (idx < 0) return null
+        int start = idx + 6
+        int end = t.indexOf("\">", start)
+        if (end < 0) return null
+        return t.substring(start, end)
+    }
+
+    protected String readAllText(Path p) {
+        return p.text
+    }
+    protected List<String> toLines(String text) {
+        if (text == null) return Collections.emptyList()
+        return Arrays.asList(text.replace("\r","").split("\n", -1))
+    }
+    protected void assertState(boolean cond, Path file, String message) {
+        if (!cond) throw new IllegalArgumentException("${file}: ${message}")
+    }
+    protected int countLeadingSpacesOrTabsRegex(String s) {
+        if (s == null || s.isEmpty()) return 0;
+        Matcher m = Pattern.compile("^[ \\t]+").matcher(s)
+        return m.find() ? m.group().length() : 0
+    }
+
+
+    public static class TrimResult {
+        public final String trimmed
+        public final String removedLeading;
+
+        public TrimResult(String trimmed, String removedLeading) {
+            this.trimmed = trimmed;
+            this.removedLeading = removedLeading
+        }
+    }
+
+    protected TrimResult trimWithRemovedLeadingOnly(String s) {
+        if (s == null) {
+            return new TrimResult(null, "");
+        }
+        int len = s.length();
+        int start = 0;
+
+        while (start < len && Character.isWhitespace(s.charAt(start))) {
+            start++;
+        }
+
+        String trimmed = s.substring(start, len);
+        String removedLeading = s.substring(0, start);
+
+        return new TrimResult(trimmed, removedLeading);
+    }
+}
+class InlineGeneratorPreProcessor extends BasePreProcessor {
+    private static final String START = "/*<g"
+    private static final String END_CODE = "*/"
+    private static final String END_GENERATOR = "/*</g>*/"
+
+    @Override
+    boolean test(String text) {
+        return text != null && text.contains(START)
+    }
+
+    @Override
+    List<String> modify(Path file, List<String> lines, ScriptEngineProvider engine) {
+        boolean edited = false
+        List<String> out = new ArrayList<>(lines.size())
+
+        for (int i = 0; i < lines.size(); i++) {
+            String rawLine = lines.get(i)
+            String line = rawLine
+            int startIdx = line.indexOf(START)
+            if (startIdx >= 0) {
+                int endCodeIdx = line.indexOf(END_CODE, startIdx)
+                int endGenIdx = (endCodeIdx >= 0) ? line.indexOf(END_GENERATOR, endCodeIdx) : -1
+                if (endCodeIdx >= 0 && endGenIdx >= 0) {
+                    String header = line.substring(startIdx + START.length(), endCodeIdx)
+                    String pre = line.substring(0, startIdx)
+                    String post = line.substring(endGenIdx + END_GENERATOR.length())
+
+                    String nameAttr = extractNameAttribute(header)
+                    if (nameAttr != null) {
+                        String jsText = loadJsText(file.parent, nameAttr)
+                        String result = evalJs(engine, jsText)
+                        out.add(pre + "*/" + result + post)
+                        edited = true
+                        continue
+                    }
+
+                    String code = line.substring(startIdx + START.length(), endCodeIdx)
+                    if (code.startsWith(">")) code = code.substring(1)
+                    String result = evalJs(engine, code)
+                    out.add(pre + "*/" + result + post)
+                    edited = true
+                    continue
+                }
+            }
+            out.add(rawLine)
+        }
+
+        return edited ? out : null
+    }
+}
+class LineGeneratorPreProcessor extends BasePreProcessor {
+    private static final String BEGIN = "//<generator>"
+    private static final String END = "//</generator>"
+    private static final String SINGLE_PREFIX = "//<generator name=\""
+
+    @Override
+    boolean test(String text) {
+        return text != null && text.contains("//<generator")
+    }
+
+    @Override
+    List<String> modify(Path file, List<String> lines, ScriptEngineProvider engine) {
+        boolean edited = false
+        List<String> out = new ArrayList<>(lines.size())
+        List<String> buffer = null
+
+        for (int i = 0; i < lines.size(); i++) {
+            String line = lines.get(i)
+            String trim = line.trim()
+
+            if (!trim.startsWith("//")) {
+                if (buffer != null) continue
+                out.add(line)
+                continue
+            }
+
+            if (trim.equals(BEGIN) || trim.equals("<generator>")) {
+                assertState(buffer == null, file, "<generator> in line " + (i + 1))
+                buffer = new ArrayList<>()
+                out.add(line)
+                continue
+            }
+
+            if (trim.equals(END) || trim.equals("</generator>")) {
+                assertState(buffer != null, file, "</generator> in line " + (i + 1))
+                String js = String.join("\n", buffer)
+                String result = evalJs(engine, js)
+                toLines(result).forEach { out.add(it) }
+                out.add(line)
+                buffer = null
+                edited = true
+                continue
+            }
+
+            if (trim.startsWith(SINGLE_PREFIX)) {
+                assertState(buffer == null, file, "Single-line generator inside open block at line " + (i + 1))
+                int idxEnd = trim.indexOf("\">", SINGLE_PREFIX.length())
+                assertState(idxEnd >= 0, file, "Bad generator name syntax at line " + (i + 1))
+                String fileSpec = trim.substring(SINGLE_PREFIX.length(), idxEnd)
+                buffer = new ArrayList<String>()
+
+                String[] args = fileSpec.split(':')
+                if (args.length > 1) {
+                    System.out.println('Load file function: ' + args[0] + " : " + args[1])
+                    buffer.add(file.parent.resolve(args[0]).text + "\n" + args[1])
+                } else {
+                    System.out.println('Load single file: ' + args[0])
+                    buffer.add(file.parent.resolve(args[0]).text)
+                }
+
+                out.add(line)
+                edited = true
+                continue
+            }
+
+            if (buffer != null) {
+                if (trim.startsWith("//")) buffer.add(trim.substring(2))
+                else buffer.add(line)
+            } else {
+                out.add(line)
+            }
+        }
+
+        assertState(buffer == null, file, "Unclosed <generator> block at EOF")
+        return edited ? out : null
+    }
+}
 
 class SourceGenerator {
     class PackageName {
@@ -39,12 +263,16 @@ class SourceGenerator {
     }
 
     final Project project;
+    final List<PreProcessor> preprocessors = new ArrayList<>()
 
     SourceGenerator(Project project) {
-        this.project = project;
+        this.project = project
+
+        preprocessors.add(new InlineGeneratorPreProcessor())
+        preprocessors.add(new LineGeneratorPreProcessor())
     }
 
-    private String executeJs(String packageName, String js) {
+    private ScriptEngine createEngine(String packageName) {
         ScriptEngine engine = GraalJSScriptEngine.create(
                 Engine.newBuilder()
                         .option("engine.WarnInterpreterOnly", "false")
@@ -54,110 +282,15 @@ class SourceGenerator {
                         .allowHostClassLookup(v -> true))
         engine.put("PACKAGE", new PackageName(packageName.split("\\.")))
         engine.put("PROPERTIES", project.getProperties())
-        return engine.eval(js)
+        return engine;
+    }
+    private String executeJs(String packageName, String js) {
+        return "${createEngine(packageName).eval(js) ?: "null"}"
     }
     private static String getFileExtension(File file) {
         String name = file.getName()
         int lastIndexOf = name.lastIndexOf(".")
         return lastIndexOf == -1 ? "" : name.substring(lastIndexOf)
-    }
-    private String generateFile(String packageName, File dir, String text) {
-        List<String> lines = text.replace("\r", "").split("\n")
-        List<String> output = new ArrayList<>()
-        List<String> code = null
-        boolean edited = false
-        int size = lines.size()
-        for (int i = 0; i < size; i++) {
-            String line = lines.get(i)
-            int start = line.indexOf("/*<g")
-            if (start >= 0) {
-                int endCode = line.indexOf("*/", start)
-                if (endCode >= 0) {
-                    int endGen = line.indexOf("/*</g>*/", endCode);
-
-                    if (endGen >= 0) {
-                        if (code != null) throw new IllegalArgumentException("<g> in line '" + (i + 1) + "'")
-
-                        int startCode = start + "/*<g".length();
-
-                        String singleCode = line.substring(startCode, endCode);
-
-                        if (singleCode.startsWith(">") || singleCode.startsWith(" name=\"")) {
-                            if (singleCode.startsWith(">")) {
-                                startCode++
-                                singleCode = singleCode.substring(1)
-                                startCode += singleCode.length()
-                            } else if (singleCode.startsWith(" name=\"")) {
-                                String fileName = singleCode.substring(7)
-                                int fileEnd = fileName.indexOf("\">")
-                                startCode += 7 + fileEnd + 2
-                                fileName = fileName.substring(0, fileEnd)
-                                String[] args = fileName.split(':')
-                                if (args.length > 1) {
-                                    System.out.println('Execute file function: ' + args[0] + " : " + args[1])
-                                    singleCode = Paths.get(dir.absolutePath, args[0]).toFile().text + "\n" + args[1]
-                                } else {
-                                    System.out.println('Execute single file: ' + fileName)
-                                    singleCode = Paths.get(dir.absolutePath, fileName).toFile().text
-                                }
-                            }
-
-                            String preGen = line.substring(0, startCode)
-                            String postGen = line.substring(endGen)
-
-                            output.add("$preGen*/${executeJs(packageName, String.join("\n", singleCode))}$postGen")
-                            edited = true
-                            continue
-                        }
-                    }
-                }
-            }
-            String trim_line = line.trim()
-            start = trim_line.indexOf("//")
-            if (start != 0) {
-                if (code != null) continue
-                output.add(line)
-                continue
-            }
-            switch (trim_line) {
-                case "//<generator>":
-                    if (code != null) throw new IllegalArgumentException("<generator> in line '"+(i+1)+"'")
-                    code = new ArrayList<>()
-                    output.add(line)
-                    break
-                case "//</generator>":
-                    if (code == null) throw new IllegalArgumentException("</generator> in line '"+(i+1)+"'")
-                    var executeCode = executeJs(packageName, String.join("\n", code))
-                    output.add(executeCode)
-                    output.add(line)
-
-                    edited = true
-                    code = null
-                    break
-                default:
-                    if (trim_line.startsWith("//<generator name=\"")) {
-                        if (code != null) throw new IllegalArgumentException("<generator> in line '"+(i+1)+"'")
-
-                        String file_name = trim_line.substring(19)
-                        file_name = file_name.substring(0, file_name.indexOf("\">"))
-                        String[] args = file_name.split(':')
-                        code = new ArrayList<>()
-                        if (args.length > 1) {
-                            System.out.println('Execute file function: ' + args[0] + " : " + args[1])
-                            code.add(Paths.get(dir.absolutePath, args[0]).toFile().text + "\n" + args[1])
-                        } else {
-                            System.out.println('Execute single file: ' + file_name)
-                            code.add(Paths.get(dir.absolutePath, file_name).toFile().text)
-                        }
-                        output.add(line)
-                    } else {
-                        output.add(line)
-                        if (code != null) code.add(trim_line.substring(2))
-                    }
-                    break
-            }
-        }
-        return edited ? String.join("\n", output).replace('\r','').replace('\n','\r\n') : null
     }
     private HashMap<String, String> generateJavas(String packageName, File dir, String text) {
         HashMap<String, String> outputFiles = new HashMap<>()
@@ -181,6 +314,15 @@ class SourceGenerator {
         return outputFiles
     }
 
+    private void writeIfChanged(File file, List<String> lines) {
+        List<String> oldLines = Collections.emptyList()
+        if (file.exists())
+            oldLines = List.of(file.text.replace("\r", "").split('\n'))
+        if (oldLines != lines) {
+            println "EDITED: ${file.absolutePath}"
+            Files.write(file.toPath(), lines);
+        }
+    }
     void executeGenerator(String packageName, File file) {
         String filePath = file.getAbsolutePath()
         switch (getFileExtension(file)) {
@@ -202,26 +344,39 @@ class SourceGenerator {
                 break
             }
             case ".java": {
-                String text = file.text
-                String _file = generateFile(packageName, file.parentFile, text)
-                if (_file != null) {
-                    if (_file == text) {
-                        //System.out.println("EQUALS EDITED: " + filePath);
-                    } else {
-                        System.out.println("EDITED: " + filePath)
-                        file.text = text = _file
+                def text = file.text
+                List<String> lines = null
+                boolean edited = false
+
+                for (PreProcessor p : preprocessors) {
+                    if (p.test(text)) {
+                        if (lines == null) {
+                            lines = List.of(text.replace("\r", "").split('\n'))
+                        }
+                        List<String> newLines = p.modify(file.toPath(), lines, () -> createEngine(packageName))
+                        if (newLines != null) {
+                            lines = newLines
+                            edited = true
+                        }
                     }
                 }
+
+                if (edited)
+                    writeIfChanged(file, lines)
                 break
             }
         }
     }
 }
-final SourceGenerator instance = new SourceGenerator(project);
 
 def generator = tasks.register('generator') {
     doLast {
-        sourceSets.forEach {
+        if (!project.plugins.hasPlugin('java')) {
+            logger.lifecycle("Java plugin is not applied — skipping 'generator' task.")
+            return
+        }
+        final SourceGenerator instance = new SourceGenerator(project)
+        project.sourceSets.forEach {
             it.allSource.sourceDirectories.files.forEach { root ->
                 fileTree(root).files.forEach {
                     String packageName = root.relativePath(it).replaceAll("\\.(\\w+)+\$", "").replaceAll("/(\\w|\\.)+\$", "").replaceAll("[/\\\\]", ".")
