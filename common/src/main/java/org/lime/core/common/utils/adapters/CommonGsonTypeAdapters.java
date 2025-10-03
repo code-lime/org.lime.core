@@ -6,6 +6,7 @@ import com.google.gson.reflect.TypeToken;
 import com.google.gson.stream.JsonReader;
 import com.google.gson.stream.JsonWriter;
 import com.google.inject.Inject;
+import com.google.inject.Provider;
 import net.kyori.adventure.key.Key;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.format.TextColor;
@@ -25,6 +26,7 @@ import java.util.stream.Stream;
 public abstract class CommonGsonTypeAdapters
         implements GsonTypeAdapters {
     @Inject protected MiniMessage miniMessage;
+    @Inject protected Provider<Gson> gson;
 
     @SuppressWarnings({"unchecked", "SameParameterValue"})
     protected <T, J extends T>TypeToken<J> getParameterized(Class<T> rawClass, Type... typeArguments) {
