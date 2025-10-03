@@ -56,5 +56,6 @@ def deleteResultTask = tasks.register("deleteResult") {
     it.project.delete layout.buildDirectory.dir("libs")
 }
 tasks.register("build") {
+    it.group = "build"
     dependsOn(deleteResultTask, resultJarTask, resultSourcesJarTask)
 }
