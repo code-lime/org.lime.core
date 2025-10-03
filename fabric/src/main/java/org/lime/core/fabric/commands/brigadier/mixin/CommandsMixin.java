@@ -14,13 +14,17 @@ import org.spongepowered.asm.mixin.injection.Redirect;
 @Mixin(Commands.class)
 public abstract class CommandsMixin {
     @Redirect(
-            method = "fillUsableCommands(Lcom/mojang/brigadier/tree/CommandNode;Lcom/mojang/brigadier/tree/CommandNode;Lnet/minecraft/commands/CommandSourceStack;Ljava/util/Map;)V",
+            method = "fillUsableCommands",
             at = @At(
                     value = "INVOKE",
                     target = "Lcom/mojang/brigadier/builder/ArgumentBuilder;build()Lcom/mojang/brigadier/tree/CommandNode;",
                     remap = false)
     )
-    private CommandNode<SharedSuggestionProvider> argumentBuilder(
+    private
+    //#if PROPERTIES.versionMinecraft == '1.21.8'
+    //IF//    static
+    //#endif
+    CommandNode<SharedSuggestionProvider> argumentBuilder(
             ArgumentBuilder<SharedSuggestionProvider, ?> argumentBuilder) {
         if (argumentBuilder instanceof RequiredArgumentBuilder<?,?> builder) {
             if (builder.getType() instanceof CustomArgumentType<?,?> customArgumentType) {
