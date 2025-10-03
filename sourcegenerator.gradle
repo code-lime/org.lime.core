@@ -240,6 +240,244 @@ class LineGeneratorPreProcessor extends BasePreProcessor {
         return edited ? out : null
     }
 }
+class IfPreProcessor extends BasePreProcessor {
+    class IfState {
+        boolean parentEnabled
+        boolean branchTaken
+        boolean currentEnabled
+        String prefix
+
+        IfState(boolean parentEnabled, boolean branchTaken, boolean currentEnabled, String prefix) {
+            this.parentEnabled = parentEnabled
+            this.branchTaken = branchTaken
+            this.currentEnabled = currentEnabled
+            this.prefix = prefix
+        }
+    }
+
+    private static final String START = "//#if "
+    private static final String DISABLED = "//IF//"
+
+    @Override
+    boolean test(String text) {
+        return text.contains(START)
+    }
+    @Override
+    List<String> modify(Path file, List<String> lines, ScriptEngineProvider engine) {
+        Deque<IfState> stack = new ArrayDeque<>()
+        stack.push(new IfState(true, false, true, ""))
+
+        List<String> out = new ArrayList<>(lines.size())
+
+        for (int i = 0; i < lines.size(); i++) {
+            String line = lines.get(i)
+            TrimResult trimResult = trimWithRemovedLeadingOnly(line)
+            String trimmed = trimResult.trimmed
+
+            if (trimmed.startsWith("//#if ")) {
+                out.add(line)
+                String expr = trimmed.substring(6).trim()
+                boolean parentEnabled = stack.peek().currentEnabled
+                boolean cond
+                if (parentEnabled) {
+                    cond = evalCondition(engine, expr)
+                } else {
+                    cond = false
+                }
+                IfState newState = new IfState(parentEnabled, cond, cond && parentEnabled, trimResult.removedLeading)
+                stack.push(newState)
+                continue
+            }
+            if (trimmed.startsWith("//#elif ")) {
+                out.add(line)
+                assertState(stack.size() > 1, file, "Unexpected //#elif at line ${i+1}")
+                IfState top = stack.pop()
+                if (!top.parentEnabled) {
+                    stack.push(new IfState(top.parentEnabled, top.branchTaken, false, trimResult.removedLeading))
+                } else {
+                    if (top.branchTaken) {
+                        stack.push(new IfState(top.parentEnabled, true, false, trimResult.removedLeading))
+                    } else {
+                        String expr = trimmed.substring(8).trim()
+                        boolean cond = evalCondition(engine, expr)
+                        stack.push(new IfState(top.parentEnabled, cond, cond, trimResult.removedLeading))
+                    }
+                }
+                continue
+            }
+            if (trimmed == "//#else") {
+                out.add(line)
+                assertState(stack.size() > 1, file, "Unexpected //#else at line ${i+1}")
+                IfState top = stack.pop()
+                if (!top.parentEnabled) {
+                    stack.push(new IfState(top.parentEnabled, top.branchTaken, false, trimResult.removedLeading))
+                } else {
+                    boolean take = !top.branchTaken
+                    stack.push(new IfState(top.parentEnabled, top.branchTaken || take, take, trimResult.removedLeading))
+                }
+                continue
+            }
+            if (trimmed == "//#endif") {
+                out.add(line)
+                assertState(stack.size() > 1, file, "Unexpected //#endif at line ${i+1}")
+                stack.pop()
+                continue
+            }
+
+            if (stack.peek().currentEnabled) {
+                if (trimmed.startsWith(DISABLED)) {
+                    out.add(line.replaceFirst("^[\t ]+${Pattern.quote(DISABLED)}", ""))
+                } else {
+                    out.add(line)
+                }
+            } else {
+                if (trimmed.startsWith(DISABLED)) {
+                    out.add(line)
+                } else {
+                    line = "${stack.peek().prefix}${DISABLED}${line}"
+                    out.add(line)
+                }
+            }
+        }
+
+        assertState(stack.size() <= 1, file, "Unclosed //#if block(s) detected")
+
+        return out
+    }
+}
+class SwitchPreProcessor extends BasePreProcessor {
+    class SwitchState {
+        String value
+        boolean enable
+        boolean selected
+        String prefix
+
+        SwitchState(String value, boolean enable, boolean selected, String prefix) {
+            this.value = value
+            this.enable = enable
+            this.selected = selected
+            this.prefix = prefix
+        }
+    }
+
+    private static final String START = "//#switch "
+    private static final String DISABLED = "//OF//"
+
+    @Override
+    boolean test(String text) {
+        return text.contains(START)
+    }
+    @Override
+    List<String> modify(Path file, List<String> lines, ScriptEngineProvider engine) {
+        SwitchState state = null
+        List<String> out = new ArrayList<>(lines.size())
+
+        for (int i = 0; i < lines.size(); i++) {
+            String line = lines.get(i)
+            TrimResult trimResult = trimWithRemovedLeadingOnly(line)
+            String trimmed = trimResult.trimmed
+
+            if (trimmed.startsWith("//#switch ")) {
+                assertState(state == null, file, "Unexpected //#switch at line ${i+1}")
+
+                out.add(line)
+                String expr = trimmed.substring(10).trim()
+                String value = evalJs(engine, expr)
+                state = new SwitchState(value, false, false, trimResult.removedLeading)
+                continue
+            }
+            if (trimmed.startsWith("//#case ")) {
+                assertState(state != null, file, "Unexpected //#case at line ${i+1}")
+                out.add(line)
+                state.prefix = trimResult.removedLeading
+                if (state.selected) {
+                    state.enable = false
+                } else {
+                    String value = trimmed.substring(8).trim()
+                    if (state.value == value) {
+                        state.selected = true
+                        state.enable = true
+                    } else {
+                        state.enable = false
+                    }
+                }
+                continue
+            }
+            if (trimmed.startsWith("//#caseof ")) {
+                assertState(state != null, file, "Unexpected //#caseof at line ${i+1}")
+                out.add(line)
+                state.prefix = trimResult.removedLeading
+                if (state.selected) {
+                    state.enable = false
+                } else {
+                    String[] values = trimmed.substring(10).trim().split(';')
+                    if (values.contains(state.value)) {
+                        state.selected = true
+                        state.enable = true
+                    } else {
+                        state.enable = false
+                    }
+                }
+                continue
+            }
+            if (trimmed.startsWith("//#casejs ")) {
+                assertState(state != null, file, "Unexpected //#casejs at line ${i+1}")
+                out.add(line)
+                state.prefix = trimResult.removedLeading
+                if (state.selected) {
+                    state.enable = false
+                } else {
+                    String js = trimmed.substring(10).trim()
+                    String value = evalJs(engine, js)
+                    if (state.value == value) {
+                        state.selected = true
+                        state.enable = true
+                    } else {
+                        state.enable = false
+                    }
+                }
+                continue
+            }
+            if (trimmed == "//#default") {
+                assertState(state != null, file, "Unexpected //#default at line ${i+1}")
+                out.add(line)
+                state.prefix = trimResult.removedLeading
+                if (state.selected) {
+                    state.enable = false
+                } else {
+                    state.selected = true
+                    state.enable = true
+                }
+                continue
+            }
+            if (trimmed == "//#endswitch") {
+                assertState(state != null, file, "Unexpected //#endswitch at line ${i+1}")
+                out.add(line)
+                state = null;
+                continue
+            }
+
+            if (state == null || state.enable) {
+                if (trimmed.startsWith(DISABLED)) {
+                    out.add(line.replaceFirst("^[\t ]*${Pattern.quote(DISABLED)}", ""))
+                } else {
+                    out.add(line)
+                }
+            } else {
+                if (trimmed.startsWith(DISABLED)) {
+                    out.add(line)
+                } else {
+                    line = "${state.prefix}${DISABLED}${line}"
+                    out.add(line)
+                }
+            }
+        }
+
+        assertState(state == null, file, "Unclosed //#switch block(s) detected")
+
+        return out
+    }
+}
 
 class SourceGenerator {
     class PackageName {
@@ -270,6 +508,8 @@ class SourceGenerator {
 
         preprocessors.add(new InlineGeneratorPreProcessor())
         preprocessors.add(new LineGeneratorPreProcessor())
+        preprocessors.add(new IfPreProcessor())
+        preprocessors.add(new SwitchPreProcessor())
     }
 
     private ScriptEngine createEngine(String packageName) {
