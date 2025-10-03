@@ -10,10 +10,7 @@ dependencies {
     compileOnly project(':common')
 }
 
-versionByteBuddy = project(":common").versionByteBuddy
-versionGraalVm = project(":common").versionGraalVm
-versionGuice = project(":common").versionGuice
-
+projectSyncVariables(project(':common'))
 projectCombineJars(project(':common'))
 
 //<editor-fold desc="Settings: Plugin">

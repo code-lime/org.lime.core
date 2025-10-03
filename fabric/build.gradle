@@ -23,12 +23,7 @@ dependencies {
     compileOnly project(':common')
 }
 
-versionByteBuddy = project(":common").versionByteBuddy
-versionCommonsLang3 = project(":common").versionCommonsLang3
-versionGuice = project(":common").versionGuice
-versionAdventureApi = project(":common").versionAdventureApi
-versionAdventurePlatform = project(":common").versionAdventurePlatform
-
+projectSyncVariables(project(':common'))
 projectCombineJars(project(':common'))
 
 //<editor-fold desc="Settings: Mod">
