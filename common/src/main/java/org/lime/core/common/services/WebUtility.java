@@ -2,6 +2,7 @@ package org.lime.core.common.services;
 
 import com.google.gson.JsonElement;
 import com.google.inject.Inject;
+import com.google.inject.Singleton;
 import org.lime.core.common.api.Require;
 import org.lime.core.common.utils.json.builder.Json;
 import org.lime.core.common.utils.execute.Action2;
@@ -24,7 +25,7 @@ import java.util.Map;
 import java.util.concurrent.CompletableFuture;
 import java.util.stream.Stream;
 
-@Require(TimerUtility.class)
+@Singleton
 public class WebUtility {
     @Inject TimerUtility timerUtility;
 

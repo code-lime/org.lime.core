@@ -2,12 +2,12 @@ package org.lime.core.common.services;
 
 import com.google.gson.JsonObject;
 import com.google.inject.Inject;
-import org.lime.core.common.api.Require;
+import com.google.inject.Singleton;
 import org.lime.core.common.utils.skin.SkinData;
 import org.lime.core.common.utils.skin.SkinVariant;
 import org.slf4j.Logger;
 
-@Require(WebUtility.class)
+@Singleton
 public class SkinUtility {
     private static final String API_BASE = "https://api.mineskin.org/generate/url";
 

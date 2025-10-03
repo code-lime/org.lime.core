@@ -2,12 +2,14 @@ package org.lime.core.common.services;
 
 import com.google.errorprone.annotations.CanIgnoreReturnValue;
 import com.google.inject.Inject;
+import com.google.inject.Singleton;
 import org.lime.core.common.utils.ScheduleTask;
 import org.lime.core.common.utils.execute.Action0;
 import org.lime.core.common.utils.execute.Action1;
 import org.lime.core.common.utils.execute.Func0;
 import org.lime.core.common.api.Service;
 
+@Singleton
 public class TimerUtility
         implements Service {
     @Inject ScheduleTaskService taskService;

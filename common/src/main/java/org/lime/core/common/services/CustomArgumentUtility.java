@@ -1,6 +1,7 @@
 package org.lime.core.common.services;
 
 import com.google.inject.Inject;
+import com.google.inject.Singleton;
 import com.mojang.brigadier.LiteralMessage;
 import com.mojang.brigadier.exceptions.SimpleCommandExceptionType;
 import net.kyori.adventure.text.Component;
@@ -16,6 +17,7 @@ import org.lime.core.common.utils.execute.Func2;
 import java.util.*;
 import java.util.stream.Stream;
 
+@Singleton
 public class CustomArgumentUtility {
     @Inject NativeCommandConsumer.Factory<?, ?> factory;
 

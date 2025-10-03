@@ -6,6 +6,7 @@ import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonPrimitive;
 import com.google.inject.Inject;
+import com.google.inject.Singleton;
 import org.lime.core.common.utils.json.builder.Json;
 import org.lime.core.common.utils.tuple.Tuple;
 import org.lime.core.common.utils.tuple.Tuple2;
@@ -18,6 +19,7 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
+@Singleton
 public class JsonCombineUtility {
     @Inject Logger logger;
 
