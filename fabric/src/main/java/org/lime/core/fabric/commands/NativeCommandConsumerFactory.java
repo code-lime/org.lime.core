@@ -6,11 +6,17 @@ import com.mojang.brigadier.arguments.ArgumentType;
 import com.mojang.brigadier.builder.LiteralArgumentBuilder;
 import com.mojang.brigadier.builder.RequiredArgumentBuilder;
 import net.kyori.adventure.audience.Audience;
+import net.minecraft.server.MinecraftServer;
+//#switch PROPERTIES.versionAdventurePlatform
+//#caseof 6.3.0;6.6.0
+//OF//import net.kyori.adventure.platform.modcommon.MinecraftAudiences;
+//OF//import net.kyori.adventure.platform.modcommon.MinecraftServerAudiences;
+//#default
 import net.kyori.adventure.platform.fabric.FabricServerAudiences;
+//#endswitch
 import net.kyori.adventure.text.Component;
 import net.minecraft.commands.CommandSourceStack;
 import net.minecraft.commands.Commands;
-import net.minecraft.server.MinecraftServer;
 import org.jetbrains.annotations.Range;
 import org.lime.core.common.api.commands.NativeCommandConsumer;
 import org.lime.core.common.api.commands.brigadier.arguments.BaseMappedArgument;
@@ -25,10 +31,18 @@ import java.util.function.Predicate;
 
 public class NativeCommandConsumerFactory
         implements NativeCommandConsumer.Factory<CommandSourceStack, NativeCommandConsumerFactory.NativeRegister> {
+    //#switch PROPERTIES.versionAdventurePlatform
+    //#caseof 6.3.0;6.6.0
+    //OF//    private final MinecraftAudiences audiences;
+    //OF//    public NativeCommandConsumerFactory(MinecraftServer server) {
+    //OF//        audiences = MinecraftServerAudiences.of(server);
+    //OF//    }
+    //#default
     private final FabricServerAudiences audiences;
     public NativeCommandConsumerFactory(MinecraftServer server) {
         audiences = FabricServerAudiences.of(server);
     }
+    //#endswitch
 
     public record NativeRegister(
             ScheduleTaskService taskService,
@@ -61,7 +75,12 @@ public class NativeCommandConsumerFactory
 
     @Override
     public Message tooltip(Component component) {
+        //#switch PROPERTIES.versionAdventurePlatform
+        //#caseof 6.3.0;6.6.0
+        //OF//        return audiences.asNative(component);
+        //#default
         return audiences.toNative(component);
+        //#endswitch
     }
     @Override
     public <T, N> ArgumentType<T> argument(BaseMappedArgument<T, N> mappedArgument) {

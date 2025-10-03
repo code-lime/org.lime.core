@@ -1,7 +1,14 @@
 package org.lime.core.fabric;
 
-import net.kyori.adventure.platform.AudienceProvider;
+//#switch PROPERTIES.versionAdventurePlatform
+//#caseof 6.3.0;6.6.0
+//OF//import net.kyori.adventure.platform.modcommon.MinecraftAudiences;
+//OF//import net.kyori.adventure.platform.modcommon.MinecraftServerAudiences;
+//#default
+import net.kyori.adventure.platform.fabric.FabricAudiences;
 import net.kyori.adventure.platform.fabric.FabricServerAudiences;
+//#endswitch
+import net.kyori.adventure.platform.AudienceProvider;
 import net.minecraft.commands.Commands;
 import net.minecraft.core.RegistryAccess;
 import net.minecraft.server.MinecraftServer;
@@ -56,7 +63,15 @@ public class BaseFabricInstanceModule
         bind(BaseFabricMod.class).toInstance(instance);
 
         bind(MinecraftServer.class).toInstance(instance.server);
-        bindMappedCast(FabricServerAudiences.class, AudienceProvider.class, MinecraftServer.class, FabricServerAudiences::of);
+
+        //#switch PROPERTIES.versionAdventurePlatform
+        //#caseof 6.3.0;6.6.0
+        //OF//        bindMappedCast(MinecraftServerAudiences.class, MinecraftAudiences.class, MinecraftServer.class, MinecraftServerAudiences::of);
+        //OF//        bindCast(AudienceProvider.class, MinecraftServerAudiences.class);
+        //#default
+        bindMappedCast(FabricServerAudiences.class, FabricAudiences.class, MinecraftServer.class, FabricServerAudiences::of);
+        bindCast(AudienceProvider.class, FabricServerAudiences.class);
+        //#endswitch
         bindMapped(PlayerList.class, MinecraftServer.class, MinecraftServer::getPlayerList);
         bindMappedCast(ServerLevel.class, Level.class, MinecraftServer.class, MinecraftServer::overworld);
         bindMappedCast(ServerScoreboard.class, Scoreboard.class, MinecraftServer.class, MinecraftServer::getScoreboard);
