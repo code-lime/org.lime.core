@@ -10,7 +10,7 @@ import java.util.List;
 
 public abstract class BasePaperPlugin
         extends JavaPlugin {
-    protected final BasePaperInstance<?> instance;
+    protected final Instance instance;
     protected BasePaperPlugin() {
         this.instance = createInstance();
     }
@@ -51,6 +51,9 @@ public abstract class BasePaperPlugin
     }
 
     protected abstract BasePaperInstanceModule<Instance> createModule(Instance instance);
+    protected Instance getInstance() {
+        return instance;
+    }
     protected Instance createInstance() {
         return new Instance(this);
     }
