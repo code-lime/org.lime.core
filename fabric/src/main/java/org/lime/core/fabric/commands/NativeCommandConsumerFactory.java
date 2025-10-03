@@ -15,6 +15,7 @@ import org.jetbrains.annotations.Range;
 import org.lime.core.common.api.commands.NativeCommandConsumer;
 import org.lime.core.common.api.commands.brigadier.arguments.BaseMappedArgument;
 import org.lime.core.common.api.commands.brigadier.arguments.RepeatableArgumentBuilder;
+import org.lime.core.common.services.ScheduleTaskService;
 import org.lime.core.common.utils.Disposable;
 import org.lime.core.common.utils.execute.Action1;
 import org.lime.core.fabric.commands.brigadier.CustomArgumentType;
@@ -30,14 +31,17 @@ public class NativeCommandConsumerFactory
     }
 
     public record NativeRegister(
+            ScheduleTaskService taskService,
             CommandDispatcher<CommandSourceStack> dispatcher,
             List<Command<CommandSourceStack>> commands)
             implements NativeCommandConsumer.NativeRegister<CommandSourceStack> {
         @Override
         public Disposable registerSingle(String alias, Action1<LiteralArgumentBuilder<CommandSourceStack>> configure) {
-            var root = Commands.literal(alias);
-            configure.invoke(root);
-            dispatcher.register(root);
+            taskService.runNextTick(() -> {
+                var root = Commands.literal(alias);
+                configure.invoke(root);
+                dispatcher.register(root);
+            }, true);
             return Disposable.empty();
         }
     }

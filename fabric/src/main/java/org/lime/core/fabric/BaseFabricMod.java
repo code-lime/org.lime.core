@@ -63,7 +63,7 @@ public abstract class BaseFabricMod
     @Override
     public void enable() {
         commandRegisters = List.of(
-                new NativeCommandConsumerFactory.NativeRegister(server.getCommands().getDispatcher(), new ArrayList<>()));
+                new NativeCommandConsumerFactory.NativeRegister(scheduleTaskService, server.getCommands().getDispatcher(), new ArrayList<>()));
         super.enable();
         commandRegisters.forEach(register -> compositeDisposable.add(register.apply()));
         server.getPlayerList()
