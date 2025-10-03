@@ -51,12 +51,12 @@ public class Json {
     public static Object toObject(JsonPrimitive json) {
         return value_JsonPrimitive.invoke(json);
     }
-    public static Map<String, ?> toObject(JsonObject json) {
+    public static Map<String, Object> toObject(JsonObject json) {
         Map<String, Object> result = new LinkedHashMap<>();
         json.asMap().forEach((key, value) -> result.put(key, toObject(value)));
         return result;
     }
-    public static List<?> toObject(JsonArray json) {
+    public static List<Object> toObject(JsonArray json) {
         List<Object> result = new ArrayList<>();
         json.asList().forEach(value -> result.add(toObject(value)));
         return result;
