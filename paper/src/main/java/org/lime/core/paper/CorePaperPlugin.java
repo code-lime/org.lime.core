@@ -23,7 +23,7 @@ public final class CorePaperPlugin
     }
 
     @Override
-    protected BasePaperInstanceModule<Instance> module(Instance instance) {
+    protected BasePaperInstanceModule<Instance> createModule(Instance instance) {
         return new BasePaperInstanceModule<>(instance);
     }
 }

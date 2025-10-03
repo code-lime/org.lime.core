@@ -12,7 +12,7 @@ public abstract class BasePaperPlugin
         extends JavaPlugin {
     protected final BasePaperInstance<?> instance;
     protected BasePaperPlugin() {
-        this.instance = instance();
+        this.instance = createInstance();
     }
 
     protected static class Instance
@@ -33,11 +33,11 @@ public abstract class BasePaperPlugin
 
         @Override
         protected BasePaperInstanceModule<Instance> createModule() {
-            return plugin.module(this);
+            return plugin.createModule(this);
         }
 
         @Override
-        protected ClassLoader loader() {
+        public ClassLoader loader() {
             return plugin.getClassLoader();
         }
         @Override
@@ -50,8 +50,8 @@ public abstract class BasePaperPlugin
         }
     }
 
-    protected abstract BasePaperInstanceModule<Instance> module(Instance instance);
-    protected Instance instance() {
+    protected abstract BasePaperInstanceModule<Instance> createModule(Instance instance);
+    protected Instance createInstance() {
         return new Instance(this);
     }
 

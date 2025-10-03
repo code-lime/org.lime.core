@@ -42,11 +42,11 @@ public abstract class BasePaperInstance<Instance extends BasePaperInstance<Insta
     protected abstract File pluginFile();
 
     @Override
-    protected Logger logger() {
+    public Logger logger() {
         return logger;
     }
     @Override
-    protected File dataFolder() {
+    public File dataFolder() {
         return plugin.getDataFolder();
     }
     @Override
@@ -66,7 +66,7 @@ public abstract class BasePaperInstance<Instance extends BasePaperInstance<Insta
         return isCore;
     }
     @Override
-    protected Stream<Path> jars() {
+    public Stream<Path> jars() {
         return Stream.of(pluginFile().toPath());
     }
 }

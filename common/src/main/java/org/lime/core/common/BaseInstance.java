@@ -24,17 +24,21 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.stream.Stream;
 
 public abstract class BaseInstance<Instance extends BaseInstance<Instance>> {
-    public BaseInstanceModule<?> module;
+    private BaseInstanceModule<Instance> module;
 
     protected abstract boolean isCore();
 
     public abstract String id();
     public abstract String name();
     public abstract Artifact artifact();
-    protected abstract Logger logger();
-    protected abstract Stream<Path> jars();
-    protected abstract ClassLoader loader();
-    protected abstract File dataFolder();
+    public abstract Logger logger();
+    public abstract Stream<Path> jars();
+    public abstract ClassLoader loader();
+    public abstract File dataFolder();
+
+    public BaseInstanceModule<?> module() {
+        return module;
+    }
 
     protected abstract BaseInstanceModule<Instance> createModule();
 

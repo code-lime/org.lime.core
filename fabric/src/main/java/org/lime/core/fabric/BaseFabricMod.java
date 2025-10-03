@@ -80,15 +80,15 @@ public abstract class BaseFabricMod
     protected abstract BaseFabricInstanceModule createModule();
 
     @Override
-    protected Logger logger() {
+    public Logger logger() {
         return logger;
     }
     @Override
-    protected ClassLoader loader() {
+    public ClassLoader loader() {
         return getClass().getClassLoader();
     }
     @Override
-    protected File dataFolder() {
+    public File dataFolder() {
         return dataFolder;
     }
     @Override
@@ -108,7 +108,7 @@ public abstract class BaseFabricMod
         return isCore;
     }
     @Override
-    protected Stream<Path> jars() {
+    public Stream<Path> jars() {
         return FabricLoader.getInstance()
                 .getModContainer(metadata.getId())
                 .orElseThrow()

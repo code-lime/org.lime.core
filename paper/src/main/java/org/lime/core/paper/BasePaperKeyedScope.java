@@ -10,7 +10,7 @@ public abstract class BasePaperKeyedScope<TKey>
     protected final BasePaperPlugin plugin;
 
     protected BasePaperKeyedScope(BasePaperPlugin plugin) {
-        super(plugin.instance());
+        super(plugin.createInstance());
         this.plugin = plugin;
     }
 
