@@ -79,11 +79,8 @@ static def configureProcessResources(AbstractCopyTask task, String fileName, Map
         expand props
     }
 }
-ext {
-    configureProcessResources = this.&configureProcessResources
-}
+ext.configureProcessResources = this.&configureProcessResources
 //</editor-fold>
-
 //<editor-fold desc="Configure: Templates">
 def configureTemplates(Map<String, ?> baseProps) {
     def props = new LinkedHashMap(baseProps)
@@ -102,11 +99,8 @@ def configureTemplates(Map<String, ?> baseProps) {
     }
     sourceSets.main.java.srcDir(generateTemplates.map { it.outputs })
 }
-ext {
-    configureTemplates = this.&configureTemplates
-}
+ext.configureTemplates = this.&configureTemplates
 //</editor-fold>
-
 //<editor-fold desc="Configure: Jars project combine">
 def projectCombineJars(Project target) {
     tasks.withType(org.gradle.jvm.tasks.Jar).configureEach { it ->
@@ -119,7 +113,17 @@ def projectCombineJars(Project target) {
         }
     }
 }
-ext {
-    projectCombineJars = this.&projectCombineJars
+ext.projectCombineJars = this.&projectCombineJars
+//</editor-fold>
+//<editor-fold desc="Configure: Variables project sync">
+def projectSyncVariables(Project target) {
+    String testValue = "FROM_${target.name.toUpperCase()}"
+    project.properties.each { key, value ->
+        if (value instanceof CharSequence && testValue == "${value}") {
+            def name = key.toString()
+            project.setProperty(name, target.property(name))
+        }
+    }
 }
+ext.projectSyncVariables = this.&projectSyncVariables
 //</editor-fold>
