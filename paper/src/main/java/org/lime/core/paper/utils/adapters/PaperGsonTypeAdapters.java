@@ -24,6 +24,8 @@ import net.minecraft.server.MinecraftServer;
 import net.minecraft.world.phys.Vec3;
 import org.apache.commons.lang3.reflect.TypeUtils;
 import org.bukkit.*;
+import org.bukkit.configuration.serialization.ConfigurationSerializable;
+import org.bukkit.inventory.ItemStack;
 import org.jetbrains.annotations.NotNull;
 import org.lime.core.common.reflection.ReflectionField;
 import org.lime.core.common.utils.adapters.CommonGsonTypeAdapters;
@@ -262,7 +264,9 @@ public class PaperGsonTypeAdapters
                 resourceKeyAuto(registryAccess),
                 registryKeyAuto(registryAccessPaper),
                 positions(),
-                new CodecTypeAdapterFactory(server)
+                new CodecTypeAdapterFactory(server),
+                TypeAdapters.newTypeHierarchyFactory(ConfigurationSerializable.class, new ConfigurationSerializableTypeAdapter(gson)
+                        .addByJson(ItemStack.class, Bukkit.getUnsafe()::serializeItemAsJson, Bukkit.getUnsafe()::deserializeItemFromJson))
         ));
     }
 }
