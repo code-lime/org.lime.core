@@ -15,6 +15,7 @@ import net.minecraft.core.RegistryAccess;
 import net.minecraft.core.registries.Registries;
 import net.minecraft.resources.ResourceKey;
 import net.minecraft.resources.ResourceLocation;
+import net.minecraft.server.MinecraftServer;
 import net.minecraft.world.phys.Vec3;
 import org.lime.core.common.reflection.ReflectionField;
 import org.lime.core.common.utils.adapters.CommonGsonTypeAdapters;
@@ -29,6 +30,7 @@ import java.util.stream.Stream;
 public class FabricGsonTypeAdapters
         extends CommonGsonTypeAdapters {
     @Inject protected RegistryAccess registryAccess;
+    @Inject protected MinecraftServer server;
 
     protected TypeAdapterFactory blockPos() {
         final TypeAdapter<BlockPos> keyTypeAdapter = new StringTypeAdapter<>() {
@@ -166,7 +168,8 @@ public class FabricGsonTypeAdapters
         return Streams.concat(super.factories(), Stream.of(
                 blockPos(),
                 vec3(),
-                resourceKeyAuto(registryAccess)
+                resourceKeyAuto(registryAccess),
+                new CodecTypeAdapterFactory(server)
         ));
     }
 }

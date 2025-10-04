@@ -20,6 +20,7 @@ import net.minecraft.core.RegistryAccess;
 import net.minecraft.core.registries.Registries;
 import net.minecraft.resources.ResourceKey;
 import net.minecraft.resources.ResourceLocation;
+import net.minecraft.server.MinecraftServer;
 import net.minecraft.world.phys.Vec3;
 import org.apache.commons.lang3.reflect.TypeUtils;
 import org.bukkit.*;
@@ -38,6 +39,7 @@ public class PaperGsonTypeAdapters
         extends CommonGsonTypeAdapters {
     @Inject protected RegistryAccess registryAccess;
     @Inject protected io.papermc.paper.registry.RegistryAccess registryAccessPaper;
+    @Inject protected MinecraftServer server;
 
     protected TypeAdapterFactory blockPos() {
         final TypeAdapter<BlockPos> keyTypeAdapter = new StringTypeAdapter<>() {
@@ -259,7 +261,8 @@ public class PaperGsonTypeAdapters
                 vec3(),
                 resourceKeyAuto(registryAccess),
                 registryKeyAuto(registryAccessPaper),
-                positions()
+                positions(),
+                new CodecTypeAdapterFactory(server)
         ));
     }
 }
