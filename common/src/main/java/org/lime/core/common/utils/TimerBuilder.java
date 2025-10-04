@@ -18,7 +18,7 @@ public record TimerBuilder(
         long loopTicks,
         boolean async) {
     public static TimerBuilder create(ScheduleTaskService instance) {
-        return new TimerBuilder(instance, Execute.actionEmpty(), Execute.actionEmpty(), -1, -1, false);
+        return new TimerBuilder(instance, Execute.actionEmpty(), Execute.actionEmpty(), 0, -1, false);
     }
 
     public TimerBuilder withCallback(Action0 callback) {
