@@ -4,6 +4,8 @@ plugins {
     id 'maven-publish'
 }
 
+overrideJavaVersion = 21
+
 apply from: '../global.gradle'
 
 dependencies {

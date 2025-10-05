@@ -130,7 +130,7 @@ public class PacketManager {
 
                     PacketType type = PacketType.fromCurrent(protocol, sender, index, packetClass);
                     if (types == null)
-                        types = classToPacketTypes.compute(packetClass, (_,v) -> v == null ? new ConcurrentLinkedQueue<>() : v);
+                        types = classToPacketTypes.compute(packetClass, (ignored,v) -> v == null ? new ConcurrentLinkedQueue<>() : v);
                     types.add(type);
                 }
                 Builder builder = this;
@@ -155,7 +155,7 @@ public class PacketManager {
                 return this;
             }
             public Builder add(List<PacketType> types, Action1<PacketEvent> func) {
-                return add(types, (_,b) -> func.invoke(b));
+                return add(types, (ignored,b) -> func.invoke(b));
             }
 
             public Adapter build() {

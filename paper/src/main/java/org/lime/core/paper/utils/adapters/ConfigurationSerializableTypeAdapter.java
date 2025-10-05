@@ -75,7 +75,7 @@ public class ConfigurationSerializableTypeAdapter
 
     @SuppressWarnings("unchecked")
     private <T extends ConfigurationSerializable>Converter<T> accessConverter(Class<T> tClass) {
-        return (Converter<T>)converters.computeIfAbsent(tClass, _ -> converters.values()
+        return (Converter<T>)converters.computeIfAbsent(tClass, ignored -> converters.values()
                 .stream()
                 .flatMap(j -> j.tryShadowOf(tClass).stream())
                 .findFirst()

@@ -162,7 +162,7 @@ public class CacheLibraryLoader extends LibraryLoader {
             String url = dat.get("url").toString();
             repo = new RemoteRepository.Builder(id, "default", url);
             dat.forEach((kk,vv) -> {
-                var _ = switch (kk.toString()) {
+                var ignored = switch (kk.toString()) {
                     case "snapshot" -> repo.setSnapshotPolicy(readPolicy(vv));
                     case "release" -> repo.setReleasePolicy(readPolicy(vv));
                     case "auth" -> repo.setAuthentication(readAuthentication(vv));
