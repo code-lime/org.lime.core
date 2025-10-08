@@ -67,21 +67,21 @@ public class DebugService
                         }))
                 .then(consumerFactory.literal("disable")
                         .executes(ctx -> {
-                            debug(ctx.getSource().getSender(), TriState.TRUE);
+                            debug(ctx.getSource().getSender(), TriState.FALSE);
                             return Command.SINGLE_SUCCESS;
                         }))
                 .then(consumerFactory.literal("show")
                         .requires(ctx -> ctx.getSender() instanceof Player)
                         .executes(ctx -> {
                             Player player = ((Player)ctx.getSource().getSender());
-                            show(player, true);
+                            show(player, TriState.TRUE);
                             return Command.SINGLE_SUCCESS;
                         }))
                 .then(consumerFactory.literal("hide")
                         .requires(ctx -> ctx.getSender() instanceof Player)
                         .executes(ctx -> {
                             Player player = ((Player)ctx.getSource().getSender());
-                            show(player, false);
+                            show(player, TriState.FALSE);
                             return Command.SINGLE_SUCCESS;
                         }))
                 .executes(ctx -> {
@@ -110,7 +110,14 @@ public class DebugService
         return () -> debugs.remove(debugReader);
     }
 
-    private void debug(Audience audience, TriState enable) {
+    public boolean isDebugEnabled() {
+        return enable;
+    }
+    public boolean isDebugShow(Player player) {
+        return player.getScoreboardTags().contains(SHOW_TAG);
+    }
+
+    public void debug(Audience audience, TriState enable) {
         this.enable = switch (enable) {
             case TRUE -> true;
             case FALSE -> false;
@@ -124,13 +131,18 @@ public class DebugService
         blockBuffer.use().close();
         textBuffer.use().close();
     }
-    private void show(Player player, boolean show) {
+    public void show(Player player, TriState show) {
         Set<String> tags = player.getScoreboardTags();
-        if (show) tags.add(SHOW_TAG);
+        boolean result = switch (show) {
+            case TRUE -> true;
+            case FALSE -> false;
+            case NOT_SET -> !tags.contains(SHOW_TAG);
+        };
+        if (result) tags.add(SHOW_TAG);
         else tags.remove(SHOW_TAG);
         player.sendMessage(Component.empty()
                 .append(Component.text("Debug self: "))
-                .append(show
+                .append(result
                         ? Component.text("SHOW").color(NamedTextColor.GREEN)
                         : Component.text("HIDE").color(NamedTextColor.RED)));
         blockBuffer.use().close();
