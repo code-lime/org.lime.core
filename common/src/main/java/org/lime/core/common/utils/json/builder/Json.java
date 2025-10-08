@@ -9,6 +9,7 @@ import net.kyori.adventure.text.event.ClickEvent;
 import net.kyori.adventure.text.event.HoverEvent;
 import net.kyori.adventure.text.format.TextColor;
 import org.lime.core.common.reflection.ReflectionField;
+import org.lime.core.common.utils.Lazy;
 import org.lime.core.common.utils.execute.Func1;
 import org.lime.core.common.utils.execute.Func3;
 import org.lime.core.common.utils.IterableUtils;
@@ -20,9 +21,9 @@ import java.io.StringWriter;
 import java.util.*;
 
 public class Json {
-    private static final Func1<JsonPrimitive, Object> value_JsonPrimitive = ReflectionField.of(JsonPrimitive.class, "value")
+    private static final Lazy<Func1<JsonPrimitive, Object>> value_JsonPrimitive = Lazy.of(() -> ReflectionField.of(JsonPrimitive.class, "value")
             .access()
-            .getter(Func1.class);
+            .getter(Func1.class));
 
     public static JsonElement parse(String json) { return JsonParser.parseString(json); }
     public static JsonElement parse(Reader json) { return JsonParser.parseReader(json); }
@@ -49,7 +50,7 @@ public class Json {
         return null;
     }
     public static Object toObject(JsonPrimitive json) {
-        return value_JsonPrimitive.invoke(json);
+        return value_JsonPrimitive.value().invoke(json);
     }
     public static Map<String, Object> toObject(JsonObject json) {
         Map<String, Object> result = new LinkedHashMap<>();
