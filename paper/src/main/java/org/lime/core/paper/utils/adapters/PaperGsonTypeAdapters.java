@@ -258,15 +258,16 @@ public class PaperGsonTypeAdapters
 
     @Override
     public Stream<TypeAdapterFactory> factories() {
-        return Streams.concat(super.factories(), Stream.of(
-                blockPos(),
-                vec3(),
-                resourceKeyAuto(registryAccess),
-                registryKeyAuto(registryAccessPaper),
-                positions(),
-                new CodecTypeAdapterFactory(server),
-                TypeAdapters.newTypeHierarchyFactory(ConfigurationSerializable.class, new ConfigurationSerializableTypeAdapter(gson)
-                        .addByJson(ItemStack.class, Bukkit.getUnsafe()::serializeItemAsJson, Bukkit.getUnsafe()::deserializeItemFromJson))
-        ));
+        return Streams.concat(
+                Stream.of(
+                        resourceKeyAuto(registryAccess),
+                        registryKeyAuto(registryAccessPaper),
+                        new CodecTypeAdapterFactory(server),
+                        TypeAdapters.newTypeHierarchyFactory(ConfigurationSerializable.class, new ConfigurationSerializableTypeAdapter(gson)
+                                .addByJson(ItemStack.class, Bukkit.getUnsafe()::serializeItemAsJson, Bukkit.getUnsafe()::deserializeItemFromJson)),
+                        blockPos(),
+                        vec3(),
+                        positions()),
+                super.factories());
     }
 }

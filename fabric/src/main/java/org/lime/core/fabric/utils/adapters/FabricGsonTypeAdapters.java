@@ -165,11 +165,12 @@ public class FabricGsonTypeAdapters
 
     @Override
     public Stream<TypeAdapterFactory> factories() {
-        return Streams.concat(super.factories(), Stream.of(
-                blockPos(),
-                vec3(),
-                resourceKeyAuto(registryAccess),
-                new CodecTypeAdapterFactory(server)
-        ));
+        return Streams.concat(
+                Stream.of(
+                        resourceKeyAuto(registryAccess),
+                        new CodecTypeAdapterFactory(server),
+                        blockPos(),
+                        vec3()),
+                super.factories());
     }
 }
