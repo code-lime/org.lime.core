@@ -6,9 +6,9 @@ import org.lime.core.common.BaseInstanceModule;
 import org.lime.core.common.services.InstancesUtility;
 import org.lime.core.common.services.ScheduleTaskService;
 import org.lime.core.common.services.UnsafeMappingsUtility;
-import org.lime.core.common.utils.adapters.CommonGsonTypeAdapters;
 import org.lime.core.velocity.commands.NativeCommandConsumerFactory;
 import org.lime.core.velocity.tasks.VelocityScheduleTaskService;
+import org.lime.core.velocity.utils.adapters.VelocityGsonTypeAdapters;
 
 public class BaseVelocityInstanceModule
         extends BaseInstanceModule<BaseVelocityPlugin> {
@@ -38,8 +38,8 @@ public class BaseVelocityInstanceModule
     }
 
     @Override
-    protected Class<? extends CommonGsonTypeAdapters> gsonTypeAdapters() {
-        return CommonGsonTypeAdapters.class;
+    protected Class<? extends VelocityGsonTypeAdapters> gsonTypeAdapters() {
+        return VelocityGsonTypeAdapters.class;
     }
 
     @Override
