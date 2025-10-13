@@ -121,7 +121,7 @@ public abstract class BaseVelocityPlugin
             loadDependencies(velocityDependency.val0);
 
         commandRegisters = List.of(
-                new NativeCommandConsumerFactory.NativeRegister(this, server.getCommandManager(), new ArrayList<>()));
+                new NativeCommandConsumerFactory.NativeRegister(taskService, this, server.getCommandManager(), new ArrayList<>()));
         super.enable();
         commandRegisters.forEach(v -> compositeDisposable.add(v.apply()));
     }

@@ -14,6 +14,7 @@ import org.jetbrains.annotations.Range;
 import org.lime.core.common.api.commands.NativeCommandConsumer;
 import org.lime.core.common.api.commands.brigadier.arguments.BaseMappedArgument;
 import org.lime.core.common.api.commands.brigadier.arguments.RepeatableArgumentBuilder;
+import org.lime.core.common.services.ScheduleTaskService;
 import org.lime.core.common.utils.Disposable;
 import org.lime.core.common.utils.execute.Action1;
 import org.lime.core.velocity.BaseVelocityPlugin;
@@ -28,19 +29,24 @@ public class NativeCommandConsumerFactory
     public static final NativeCommandConsumerFactory INSTANCE = new NativeCommandConsumerFactory();
 
     public record NativeRegister(
+            ScheduleTaskService taskService,
             BaseVelocityPlugin plugin,
             CommandManager manager,
             List<Command<CommandSource>> commands)
             implements NativeCommandConsumer.NativeRegister<CommandSource> {
         @Override
         public Disposable registerSingle(String alias, Action1<LiteralArgumentBuilder<CommandSource>> configure) {
-            var root = Commands.literal(alias);
-            configure.invoke(root);
-            var meta = manager.metaBuilder(alias)
-                    .plugin(plugin)
-                    .build();
-            manager.register(meta, new BrigadierCommand(root));
-            return () -> manager.unregister(meta);
+            Disposable.Composite composite = Disposable.composite();
+            taskService.runNextTick(() -> {
+                var root = Commands.literal(alias);
+                configure.invoke(root);
+                var meta = manager.metaBuilder(alias)
+                        .plugin(plugin)
+                        .build();
+                manager.register(meta, new BrigadierCommand(root));
+                composite.add(() -> manager.unregister(meta));
+            }, true);
+            return composite;
         }
     }
 
