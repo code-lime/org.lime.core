@@ -76,7 +76,7 @@ public class NativeCommandConsumerFactory
     }
     @Override
     public <T> RequiredArgumentBuilder<CommandSource, T> argument(String key, ArgumentType<T> argumentType) {
-        return RequiredArgumentBuilder.argument(key, argumentType);
+        return Commands.argument(key, argumentType);
     }
     @Override
     public <T> RepeatableArgumentBuilder<CommandSource, T> repeatable(String key, ArgumentType<T> argumentType) {

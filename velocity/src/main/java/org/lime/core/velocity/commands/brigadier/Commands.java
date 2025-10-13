@@ -97,13 +97,13 @@ public class Commands {
         Preconditions.checkArgument(name.indexOf(' ') == -1, "the argument name cannot contain spaces");
         return LiteralArgumentBuilder.literal(name);
     }
-    public static <T> RequiredArgumentBuilder<CommandSource, ?> argument(
+    public static <T> RequiredArgumentBuilder<CommandSource, T> argument(
             @NotNull String name,
             @NotNull ArgumentType<T> argumentType) {
         Preconditions.checkNotNull(name, "name");
         Preconditions.checkNotNull(argumentType, "argument type");
         if (argumentType instanceof CustomArgumentType<T, ?> customArgumentType)
-            return customArgument(name, customArgumentType);
+            return (RequiredArgumentBuilder)customArgument(name, customArgumentType);
         return RequiredArgumentBuilder.argument(name, argumentType);
     }
     public static <S, T, N, J extends RequiredArgumentBuilder<S, J>>RequiredArgumentBuilder<S, J> customArgument(
