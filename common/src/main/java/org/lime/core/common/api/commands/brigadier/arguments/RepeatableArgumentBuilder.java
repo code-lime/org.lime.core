@@ -9,6 +9,7 @@ import com.mojang.brigadier.suggestion.SuggestionProvider;
 import com.mojang.brigadier.tree.CommandNode;
 import org.jetbrains.annotations.Nullable;
 import org.jetbrains.annotations.Range;
+import org.lime.core.common.api.commands.NativeCommandConsumer;
 import org.lime.core.common.reflection.ReflectionField;
 import org.lime.core.common.utils.execute.Func1;
 import org.lime.core.common.utils.execute.Func2;
@@ -24,29 +25,34 @@ public class RepeatableArgumentBuilder<S, T>
     public static final int LIMIT_MAX_COUNT = 10;
     private static final Func1<CommandContext<?>, Map<String, ParsedArgument<?, ?>>> ARGUMENTS_GETTER = ReflectionField.of(CommandContext.class, "arguments").access().getter(Func1.class);
 
+    private final NativeCommandConsumer.Factory<S, ?> factory;
     private final String name;
     private final @Range(from = 1, to = LIMIT_MAX_COUNT) int maxCount;
     private final ArgumentType<T> type;
     private @Nullable SuggestionProvider<S> suggestionsProvider = null;
 
     private RepeatableArgumentBuilder(
+            final NativeCommandConsumer.Factory<S, ?> factory,
             final String name,
             final @Range(from = 1, to = LIMIT_MAX_COUNT) int maxCount,
             final ArgumentType<T> type) {
+        this.factory = factory;
         this.name = name;
         this.maxCount = maxCount;
         this.type = type;
     }
     public static <S, T> RepeatableArgumentBuilder<S, T> repeatable(
+            final NativeCommandConsumer.Factory<S, ?> factory,
             final String name,
             final @Range(from = 1, to = LIMIT_MAX_COUNT) int maxCount,
             final ArgumentType<T> type) {
-        return new RepeatableArgumentBuilder<>(name, maxCount, type);
+        return new RepeatableArgumentBuilder<>(factory, name, maxCount, type);
     }
     public static <S, T> RepeatableArgumentBuilder<S, T> repeatable(
+            final NativeCommandConsumer.Factory<S, ?> factory,
             final String name,
             final ArgumentType<T> type) {
-        return new RepeatableArgumentBuilder<>(name, LIMIT_MAX_COUNT, type);
+        return new RepeatableArgumentBuilder<>(factory, name, LIMIT_MAX_COUNT, type);
     }
 
     private String getIndexedName(int index) {
@@ -104,7 +110,7 @@ public class RepeatableArgumentBuilder<S, T>
         List<RequiredArgumentBuilder<S, T>> items = new ArrayList<>(maxCount);
         for (int index = 0; index < maxCount; index++) {
             String indexedName = getIndexedName(index);
-            RequiredArgumentBuilder<S, T> current = RequiredArgumentBuilder.argument(indexedName, type);
+            RequiredArgumentBuilder<S, T> current = factory.argument(indexedName, type);
             if (suggestionProvider != null)
                 current.suggests(suggestionProvider);
             current.executes(getCommand());

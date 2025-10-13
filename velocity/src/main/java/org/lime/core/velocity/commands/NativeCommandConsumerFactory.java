@@ -80,10 +80,10 @@ public class NativeCommandConsumerFactory
     }
     @Override
     public <T> RepeatableArgumentBuilder<CommandSource, T> repeatable(String key, ArgumentType<T> argumentType) {
-        return RepeatableArgumentBuilder.repeatable(key, argumentType);
+        return RepeatableArgumentBuilder.repeatable(this, key, argumentType);
     }
     @Override
     public <T> RepeatableArgumentBuilder<CommandSource, T> repeatable(String key, @Range(from = 1, to = RepeatableArgumentBuilder.LIMIT_MAX_COUNT) int maxCount, ArgumentType<T> argumentType) {
-        return RepeatableArgumentBuilder.repeatable(key, maxCount, argumentType);
+        return RepeatableArgumentBuilder.repeatable(this, key, maxCount, argumentType);
     }
 }
