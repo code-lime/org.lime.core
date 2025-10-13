@@ -3,6 +3,7 @@ package org.lime.core.velocity;
 import com.google.inject.Inject;
 import com.velocitypowered.api.plugin.Plugin;
 import com.velocitypowered.api.plugin.PluginManager;
+import com.velocitypowered.api.plugin.annotation.DataDirectory;
 import com.velocitypowered.api.proxy.ProxyServer;
 import org.lime.core.common.agent.Agents;
 import org.lime.core.velocity.libby.LibbyVelocityDependencyLoader;
@@ -23,7 +24,7 @@ import java.util.List;
 public final class CoreVelocityPlugin
         extends BaseVelocityPlugin {
     @Inject
-    public CoreVelocityPlugin(ProxyServer server, Logger logger, Path dataDirectory) {
+    public CoreVelocityPlugin(ProxyServer server, Logger logger, @DataDirectory Path dataDirectory) {
         super(server, logger, dataDirectory);
         VelocityInstanceProvider.proxyServer = server;
     }
