@@ -59,12 +59,15 @@ public abstract class BaseVelocityPlugin
         this.taskService = new VelocityScheduleTaskService(this);
     }
 
-    @Subscribe
+    @Subscribe(priority = Short.MAX_VALUE)
     public void onProxyInitialization(ProxyInitializeEvent event) {
         description = server.getPluginManager()
                 .fromInstance(this)
                 .map(PluginContainer::getDescription)
                 .orElseThrow(() -> new IllegalArgumentException("Description of plugin '"+this.getClass()+"' not found"));
+    }
+    @Subscribe(priority = Short.MIN_VALUE)
+    public void onPostProxyInitialization(ProxyInitializeEvent event) {
         enable();
     }
     @Subscribe
