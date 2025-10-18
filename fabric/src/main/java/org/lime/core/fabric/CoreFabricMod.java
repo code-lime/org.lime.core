@@ -4,16 +4,15 @@ import org.lime.core.common.agent.Agents;
 
 public final class CoreFabricMod
         extends BaseFabricMod {
+    static {
+        Agents.load();
+    }
+
     @Override
     protected BaseFabricInstanceModule createModule() {
         return new BaseFabricInstanceModule(this);
     }
 
-    @Override
-    public void enable() {
-        Agents.load();
-        super.enable();
-    }
     @Override
     public void disable() {
         super.disable();
