@@ -3,18 +3,29 @@ package org.lime.core.common.services;
 import com.google.inject.Inject;
 import com.google.inject.Singleton;
 import com.mojang.brigadier.LiteralMessage;
+import com.mojang.brigadier.arguments.ArgumentType;
+import com.mojang.brigadier.arguments.StringArgumentType;
+import com.mojang.brigadier.context.CommandContext;
+import com.mojang.brigadier.exceptions.CommandSyntaxException;
 import com.mojang.brigadier.exceptions.SimpleCommandExceptionType;
+import com.mojang.brigadier.suggestion.Suggestions;
+import com.mojang.brigadier.suggestion.SuggestionsBuilder;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.JoinConfiguration;
 import net.kyori.adventure.text.format.NamedTextColor;
+import org.jetbrains.annotations.NotNull;
 import org.lime.core.common.api.commands.NativeCommandConsumer;
+import org.lime.core.common.api.commands.brigadier.arguments.BaseMappedArgument;
 import org.lime.core.common.api.commands.brigadier.arguments.CustomArgumentBuilder;
 import org.lime.core.common.api.commands.brigadier.exceptions.CommandExceptions;
 import org.lime.core.common.api.commands.brigadier.exceptions.Generic2CommandExceptionType;
+import org.lime.core.common.utils.DurationUtils;
 import org.lime.core.common.utils.execute.Func1;
 import org.lime.core.common.utils.execute.Func2;
 
+import java.time.Duration;
 import java.util.*;
+import java.util.concurrent.CompletableFuture;
 import java.util.stream.Stream;
 
 @Singleton
@@ -83,5 +94,28 @@ public class CustomArgumentUtility {
             Class<Source> sourceClass,
             Iterable<String> values) {
         return builder(sourceClass, values, v -> v, v -> v);
+    }
+
+    public ArgumentType<Duration> duration() {
+        return factory.argument(new BaseMappedArgument<@NotNull Duration, String>() {
+            @Override
+            public ArgumentType<String> nativeType() {
+                return StringArgumentType.word();
+            }
+            @Override
+            public @NotNull Duration convert(String value) throws CommandSyntaxException {
+                try {
+                    return DurationUtils.read(value);
+                } catch (IllegalStateException state) {
+                    throw new SimpleCommandExceptionType(new LiteralMessage(state.getMessage())).create();
+                }
+            }
+            @Override
+            public <S> CompletableFuture<Suggestions> suggestions(CommandContext<S> context, SuggestionsBuilder builder) {
+                DurationUtils.readVariants(builder.getRemaining())
+                        .forEach(builder::suggest);
+                return builder.buildFuture();
+            }
+        });
     }
 }
