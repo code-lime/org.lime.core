@@ -6,15 +6,17 @@ import org.lime.core.common.BaseInstanceModule;
 import org.lime.core.common.services.InstancesUtility;
 import org.lime.core.common.services.ScheduleTaskService;
 import org.lime.core.common.services.UnsafeMappingsUtility;
+import org.lime.core.common.utils.Lazy;
 import org.lime.core.velocity.commands.NativeCommandConsumerFactory;
-import org.lime.core.velocity.tasks.VelocityScheduleTaskService;
 import org.lime.core.velocity.utils.adapters.VelocityGsonTypeAdapters;
 
 public class BaseVelocityInstanceModule
         extends BaseInstanceModule<BaseVelocityPlugin> {
-    private static VelocityScheduleTaskService velocityTaskService;
+    private final Lazy<NativeCommandConsumerFactory> nativeLazy;
+
     public BaseVelocityInstanceModule(BaseVelocityPlugin instance) {
         super(instance);
+        nativeLazy = Lazy.of(() -> new NativeCommandConsumerFactory(instance.server));
     }
 
     @Override
@@ -23,7 +25,7 @@ public class BaseVelocityInstanceModule
     }
     @Override
     protected NativeCommandConsumerFactory nativeCommandFactory() {
-        return NativeCommandConsumerFactory.INSTANCE;
+        return nativeLazy.value();
     }
 
     @Override
