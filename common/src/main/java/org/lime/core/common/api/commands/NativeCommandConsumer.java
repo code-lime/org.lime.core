@@ -2,8 +2,12 @@ package org.lime.core.common.api.commands;
 
 import com.mojang.brigadier.Message;
 import com.mojang.brigadier.arguments.ArgumentType;
+import com.mojang.brigadier.builder.ArgumentBuilder;
 import com.mojang.brigadier.builder.LiteralArgumentBuilder;
 import com.mojang.brigadier.builder.RequiredArgumentBuilder;
+import com.mojang.brigadier.context.CommandContext;
+import com.mojang.brigadier.exceptions.CommandSyntaxException;
+import com.mojang.brigadier.exceptions.SimpleCommandExceptionType;
 import com.mojang.brigadier.tree.CommandNode;
 import net.kyori.adventure.audience.Audience;
 import net.kyori.adventure.text.Component;
@@ -12,6 +16,7 @@ import org.lime.core.common.api.commands.brigadier.arguments.BaseMappedArgument;
 import org.lime.core.common.api.commands.brigadier.arguments.RepeatableArgumentBuilder;
 import org.lime.core.common.utils.Disposable;
 import org.lime.core.common.utils.execute.Action1;
+import org.lime.core.common.utils.execute.Func1;
 
 import java.util.*;
 import java.util.function.Predicate;
@@ -76,6 +81,22 @@ public interface NativeCommandConsumer<Sender, Register extends NativeCommandCon
         }
         default <T, N> RepeatableArgumentBuilder<Sender, T> repeatable(String key, @Range(from = 1, to = RepeatableArgumentBuilder.LIMIT_MAX_COUNT) int maxCount, BaseMappedArgument<T, N> mappedArgument) {
             return repeatable(key, maxCount, argument(mappedArgument));
+        }
+
+        default <J extends ArgumentBuilder<Sender, J>>J condition(J builder, CommandNode<Sender> node, Func1<CommandContext<Sender>, Boolean> accept) {
+            return builder
+                    .fork(node, ctx -> accept.invoke(ctx) ? Collections.singleton(ctx.getSource()) : Collections.emptyList())
+                    .executes(ctx -> {
+                        if (accept.invoke(ctx)) {
+                            audience(ctx.getSource()).sendMessage(Component.translatable("commands.execute.conditional.pass"));
+                            return 1;
+                        } else {
+                            throw new SimpleCommandExceptionType(tooltip(Component.translatable("commands.execute.conditional.fail"))).create();
+                        }
+                    });
+        }
+        default <J extends ArgumentBuilder<Sender, J>>J conditionRoot(J builder, Func1<CommandContext<Sender>, Boolean> accept) {
+            return condition(builder, root(), accept);
         }
 
         default NativeCommandConsumer<Sender, Register> of(
