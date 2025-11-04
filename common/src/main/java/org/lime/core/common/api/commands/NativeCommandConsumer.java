@@ -6,7 +6,6 @@ import com.mojang.brigadier.builder.ArgumentBuilder;
 import com.mojang.brigadier.builder.LiteralArgumentBuilder;
 import com.mojang.brigadier.builder.RequiredArgumentBuilder;
 import com.mojang.brigadier.context.CommandContext;
-import com.mojang.brigadier.exceptions.CommandSyntaxException;
 import com.mojang.brigadier.exceptions.SimpleCommandExceptionType;
 import com.mojang.brigadier.tree.CommandNode;
 import net.kyori.adventure.audience.Audience;
@@ -17,7 +16,6 @@ import org.lime.core.common.api.commands.brigadier.arguments.RepeatableArgumentB
 import org.lime.core.common.api.commands.brigadier.exceptions.SyntaxPredicate;
 import org.lime.core.common.utils.Disposable;
 import org.lime.core.common.utils.execute.Action1;
-import org.lime.core.common.utils.execute.Func1;
 
 import java.util.*;
 import java.util.function.Predicate;
