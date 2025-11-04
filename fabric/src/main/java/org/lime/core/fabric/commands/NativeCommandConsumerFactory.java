@@ -4,7 +4,6 @@ import com.mojang.brigadier.CommandDispatcher;
 import com.mojang.brigadier.Message;
 import com.mojang.brigadier.arguments.ArgumentType;
 import com.mojang.brigadier.builder.LiteralArgumentBuilder;
-import com.mojang.brigadier.builder.RequiredArgumentBuilder;
 import net.kyori.adventure.audience.Audience;
 import net.minecraft.server.MinecraftServer;
 //#switch PROPERTIES.versionAdventurePlatform
@@ -17,10 +16,8 @@ import net.kyori.adventure.platform.fabric.FabricServerAudiences;
 import net.kyori.adventure.text.Component;
 import net.minecraft.commands.CommandSourceStack;
 import net.minecraft.commands.Commands;
-import org.jetbrains.annotations.Range;
 import org.lime.core.common.api.commands.NativeCommandConsumer;
 import org.lime.core.common.api.commands.brigadier.arguments.BaseMappedArgument;
-import org.lime.core.common.api.commands.brigadier.arguments.RepeatableArgumentBuilder;
 import org.lime.core.common.services.ScheduleTaskService;
 import org.lime.core.common.utils.Disposable;
 import org.lime.core.common.utils.execute.Action1;
@@ -90,21 +87,5 @@ public class NativeCommandConsumerFactory
     @Override
     public Predicate<CommandSourceStack> operator() {
         return v -> v.hasPermission(Commands.LEVEL_GAMEMASTERS);
-    }
-    @Override
-    public LiteralArgumentBuilder<CommandSourceStack> literal(String literal) {
-        return Commands.literal(literal);
-    }
-    @Override
-    public <T> RequiredArgumentBuilder<CommandSourceStack, T> argument(String key, ArgumentType<T> argumentType) {
-        return Commands.argument(key, argumentType);
-    }
-    @Override
-    public <T> RepeatableArgumentBuilder<CommandSourceStack, T> repeatable(String key, ArgumentType<T> argumentType) {
-        return RepeatableArgumentBuilder.repeatable(this, key, argumentType);
-    }
-    @Override
-    public <T> RepeatableArgumentBuilder<CommandSourceStack, T> repeatable(String key, @Range(from = 1, to = RepeatableArgumentBuilder.LIMIT_MAX_COUNT) int maxCount, ArgumentType<T> argumentType) {
-        return RepeatableArgumentBuilder.repeatable(this, key, maxCount, argumentType);
     }
 }

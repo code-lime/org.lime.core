@@ -12,10 +12,7 @@ import org.lime.core.common.api.commands.brigadier.arguments.RepeatableArgumentB
 import org.lime.core.common.utils.Disposable;
 import org.lime.core.common.utils.execute.Action1;
 
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 import java.util.function.Predicate;
 
 public interface NativeCommandConsumer<Sender, Register extends NativeCommandConsumer.NativeRegister<Sender>>
@@ -56,16 +53,24 @@ public interface NativeCommandConsumer<Sender, Register extends NativeCommandCon
         <T, N> ArgumentType<T> argument(BaseMappedArgument<T, N> mappedArgument);
 
         Predicate<Sender> operator();
-        LiteralArgumentBuilder<Sender> literal(String literal);
-        <T> RequiredArgumentBuilder<Sender, T> argument(String key, ArgumentType<T> argumentType);
+        default LiteralArgumentBuilder<Sender> literal(String literal) {
+            return LiteralArgumentBuilder.literal(literal);
+        }
+        default <T> RequiredArgumentBuilder<Sender, T> argument(String key, ArgumentType<T> argumentType) {
+            return RequiredArgumentBuilder.argument(key, argumentType);
+        }
         default <T, N> RequiredArgumentBuilder<Sender, T> argument(String key, BaseMappedArgument<T, N> mappedArgument) {
             return argument(key, argument(mappedArgument));
         }
-        <T> RepeatableArgumentBuilder<Sender, T> repeatable(String key, ArgumentType<T> argumentType);
+        default <T> RepeatableArgumentBuilder<Sender, T> repeatable(String key, ArgumentType<T> argumentType) {
+            return RepeatableArgumentBuilder.repeatable(this, key, argumentType);
+        }
         default <T, N> RepeatableArgumentBuilder<Sender, T> repeatable(String key, BaseMappedArgument<T, N> mappedArgument) {
             return repeatable(key, argument(mappedArgument));
         }
-        <T> RepeatableArgumentBuilder<Sender, T> repeatable(String key, @Range(from = 1, to = RepeatableArgumentBuilder.LIMIT_MAX_COUNT) int maxCount, ArgumentType<T> argumentType);
+        default <T> RepeatableArgumentBuilder<Sender, T> repeatable(String key, @Range(from = 1, to = RepeatableArgumentBuilder.LIMIT_MAX_COUNT) int maxCount, ArgumentType<T> argumentType) {
+            return RepeatableArgumentBuilder.repeatable(this, key, maxCount, argumentType);
+        }
         default <T, N> RepeatableArgumentBuilder<Sender, T> repeatable(String key, @Range(from = 1, to = RepeatableArgumentBuilder.LIMIT_MAX_COUNT) int maxCount, BaseMappedArgument<T, N> mappedArgument) {
             return repeatable(key, maxCount, argument(mappedArgument));
         }

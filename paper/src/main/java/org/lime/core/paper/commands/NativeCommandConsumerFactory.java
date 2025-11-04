@@ -18,10 +18,8 @@ import net.kyori.adventure.audience.Audience;
 import net.kyori.adventure.text.Component;
 import org.bukkit.plugin.Plugin;
 import org.jetbrains.annotations.NotNull;
-import org.jetbrains.annotations.Range;
 import org.lime.core.common.api.commands.brigadier.arguments.BaseMappedArgument;
 import org.lime.core.common.api.commands.NativeCommandConsumer;
-import org.lime.core.common.api.commands.brigadier.arguments.RepeatableArgumentBuilder;
 import org.lime.core.common.utils.Disposable;
 import org.lime.core.common.utils.execute.Action1;
 
@@ -90,21 +88,5 @@ public class NativeCommandConsumerFactory
     @Override
     public Predicate<CommandSourceStack> operator() {
         return v -> v.getSender().isOp();
-    }
-    @Override
-    public LiteralArgumentBuilder<CommandSourceStack> literal(String literal) {
-        return Commands.literal(literal);
-    }
-    @Override
-    public <T> RequiredArgumentBuilder<CommandSourceStack, T> argument(String key, ArgumentType<T> argumentType) {
-        return Commands.argument(key, argumentType);
-    }
-    @Override
-    public <T> RepeatableArgumentBuilder<CommandSourceStack, T> repeatable(String key, ArgumentType<T> argumentType) {
-        return RepeatableArgumentBuilder.repeatable(this, key, argumentType);
-    }
-    @Override
-    public <T> RepeatableArgumentBuilder<CommandSourceStack, T> repeatable(String key, @Range(from = 1, to = RepeatableArgumentBuilder.LIMIT_MAX_COUNT) int maxCount, ArgumentType<T> argumentType) {
-        return RepeatableArgumentBuilder.repeatable(this, key, maxCount, argumentType);
     }
 }
