@@ -8,9 +8,11 @@ import com.mojang.brigadier.context.CommandContext;
 import com.mojang.brigadier.exceptions.CommandSyntaxException;
 import com.mojang.brigadier.suggestion.Suggestions;
 import com.mojang.brigadier.suggestion.SuggestionsBuilder;
+import com.mojang.brigadier.tree.CommandNode;
 import io.papermc.paper.adventure.AdventureComponent;
 import io.papermc.paper.command.brigadier.CommandSourceStack;
 import io.papermc.paper.command.brigadier.Commands;
+import io.papermc.paper.command.brigadier.PaperCommands;
 import io.papermc.paper.command.brigadier.argument.CustomArgumentType;
 import io.papermc.paper.plugin.lifecycle.event.LifecycleEventManager;
 import io.papermc.paper.plugin.lifecycle.event.types.LifecycleEvents;
@@ -54,6 +56,12 @@ public class NativeCommandConsumerFactory
     public Class<CommandSourceStack> senderClass() {
         return CommandSourceStack.class;
     }
+
+    @Override
+    public CommandNode<CommandSourceStack> root() {
+        return PaperCommands.INSTANCE.getDispatcher().getRoot();
+    }
+
     @Override
     public Audience audience(CommandSourceStack commandSourceStack) {
         return commandSourceStack.getSender();

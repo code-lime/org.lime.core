@@ -1,17 +1,21 @@
 package org.lime.core.velocity.commands;
 
+import com.mojang.brigadier.CommandDispatcher;
 import com.mojang.brigadier.Message;
 import com.mojang.brigadier.arguments.ArgumentType;
 import com.mojang.brigadier.builder.LiteralArgumentBuilder;
 import com.mojang.brigadier.builder.RequiredArgumentBuilder;
+import com.mojang.brigadier.tree.CommandNode;
 import com.velocitypowered.api.command.BrigadierCommand;
 import com.velocitypowered.api.command.CommandManager;
 import com.velocitypowered.api.command.CommandSource;
 import com.velocitypowered.api.command.VelocityBrigadierMessage;
+import com.velocitypowered.api.proxy.ProxyServer;
 import net.kyori.adventure.audience.Audience;
 import net.kyori.adventure.text.Component;
 import org.lime.core.common.api.commands.NativeCommandConsumer;
 import org.lime.core.common.api.commands.brigadier.arguments.BaseMappedArgument;
+import org.lime.core.common.reflection.ReflectionField;
 import org.lime.core.common.services.ScheduleTaskService;
 import org.lime.core.common.utils.Disposable;
 import org.lime.core.common.utils.execute.Action1;
@@ -24,7 +28,11 @@ import java.util.function.Predicate;
 
 public class NativeCommandConsumerFactory
         implements NativeCommandConsumer.Factory<CommandSource, NativeCommandConsumerFactory.NativeRegister> {
-    public static final NativeCommandConsumerFactory INSTANCE = new NativeCommandConsumerFactory();
+    private final CommandDispatcher<CommandSource> unsafeDispatcher;
+    public NativeCommandConsumerFactory(ProxyServer server) {
+        CommandManager commands = server.getCommandManager();
+        unsafeDispatcher = ReflectionField.<CommandDispatcher<CommandSource>>of(commands.getClass(), "dispatcher").get(commands);
+    }
 
     public record NativeRegister(
             ScheduleTaskService taskService,
@@ -56,6 +64,12 @@ public class NativeCommandConsumerFactory
     public Class<CommandSource> senderClass() {
         return CommandSource.class;
     }
+
+    @Override
+    public CommandNode<CommandSource> root() {
+        return unsafeDispatcher.getRoot();
+    }
+
     @Override
     public Audience audience(CommandSource commandSource) {
         return commandSource;

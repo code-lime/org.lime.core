@@ -4,6 +4,7 @@ import com.mojang.brigadier.CommandDispatcher;
 import com.mojang.brigadier.Message;
 import com.mojang.brigadier.arguments.ArgumentType;
 import com.mojang.brigadier.builder.LiteralArgumentBuilder;
+import com.mojang.brigadier.tree.CommandNode;
 import net.kyori.adventure.audience.Audience;
 import net.minecraft.server.MinecraftServer;
 //#switch PROPERTIES.versionAdventurePlatform
@@ -28,15 +29,18 @@ import java.util.function.Predicate;
 
 public class NativeCommandConsumerFactory
         implements NativeCommandConsumer.Factory<CommandSourceStack, NativeCommandConsumerFactory.NativeRegister> {
+    private final MinecraftServer server;
     //#switch PROPERTIES.versionAdventurePlatform
     //#caseof 6.3.0;6.6.0
     //OF//    private final MinecraftAudiences audiences;
     //OF//    public NativeCommandConsumerFactory(MinecraftServer server) {
+    //OF//        this.server = server;
     //OF//        audiences = MinecraftServerAudiences.of(server);
     //OF//    }
     //#default
     private final FabricServerAudiences audiences;
     public NativeCommandConsumerFactory(MinecraftServer server) {
+        this.server = server;
         audiences = FabricServerAudiences.of(server);
     }
     //#endswitch
@@ -65,6 +69,12 @@ public class NativeCommandConsumerFactory
     public Class<CommandSourceStack> senderClass() {
         return CommandSourceStack.class;
     }
+
+    @Override
+    public CommandNode<CommandSourceStack> root() {
+        return server.getCommands().getDispatcher().getRoot();
+    }
+
     @Override
     public Audience audience(CommandSourceStack stack) {
         return stack;

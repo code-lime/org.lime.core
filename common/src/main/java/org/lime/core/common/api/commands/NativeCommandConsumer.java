@@ -4,6 +4,7 @@ import com.mojang.brigadier.Message;
 import com.mojang.brigadier.arguments.ArgumentType;
 import com.mojang.brigadier.builder.LiteralArgumentBuilder;
 import com.mojang.brigadier.builder.RequiredArgumentBuilder;
+import com.mojang.brigadier.tree.CommandNode;
 import net.kyori.adventure.audience.Audience;
 import net.kyori.adventure.text.Component;
 import org.jetbrains.annotations.Range;
@@ -47,6 +48,8 @@ public interface NativeCommandConsumer<Sender, Register extends NativeCommandCon
     interface Factory<Sender, Register extends NativeRegister<Sender>> {
         Class<Register> builderClass();
         Class<Sender> senderClass();
+        CommandNode<Sender> root();
+
         Audience audience(Sender sender);
 
         Message tooltip(Component component);
