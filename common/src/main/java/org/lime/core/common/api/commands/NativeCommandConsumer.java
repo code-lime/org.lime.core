@@ -14,6 +14,7 @@ import net.kyori.adventure.text.Component;
 import org.jetbrains.annotations.Range;
 import org.lime.core.common.api.commands.brigadier.arguments.BaseMappedArgument;
 import org.lime.core.common.api.commands.brigadier.arguments.RepeatableArgumentBuilder;
+import org.lime.core.common.api.commands.brigadier.exceptions.SyntaxPredicate;
 import org.lime.core.common.utils.Disposable;
 import org.lime.core.common.utils.execute.Action1;
 import org.lime.core.common.utils.execute.Func1;
@@ -83,11 +84,11 @@ public interface NativeCommandConsumer<Sender, Register extends NativeCommandCon
             return repeatable(key, maxCount, argument(mappedArgument));
         }
 
-        default <J extends ArgumentBuilder<Sender, J>>J condition(J builder, CommandNode<Sender> node, Func1<CommandContext<Sender>, Boolean> accept) {
+        default <J extends ArgumentBuilder<Sender, J>>J condition(J builder, CommandNode<Sender> node, SyntaxPredicate<CommandContext<Sender>> accept) {
             return builder
-                    .fork(node, ctx -> accept.invoke(ctx) ? Collections.singleton(ctx.getSource()) : Collections.emptyList())
+                    .fork(node, ctx -> accept.test(ctx) ? Collections.singleton(ctx.getSource()) : Collections.emptyList())
                     .executes(ctx -> {
-                        if (accept.invoke(ctx)) {
+                        if (accept.test(ctx)) {
                             audience(ctx.getSource()).sendMessage(Component.translatable("commands.execute.conditional.pass"));
                             return 1;
                         } else {
@@ -95,7 +96,7 @@ public interface NativeCommandConsumer<Sender, Register extends NativeCommandCon
                         }
                     });
         }
-        default <J extends ArgumentBuilder<Sender, J>>J conditionRoot(J builder, Func1<CommandContext<Sender>, Boolean> accept) {
+        default <J extends ArgumentBuilder<Sender, J>>J conditionRoot(J builder, SyntaxPredicate<CommandContext<Sender>> accept) {
             return condition(builder, root(), accept);
         }
 
