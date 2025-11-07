@@ -413,7 +413,11 @@ public abstract class BaseInstanceModule<Instance extends BaseInstance<Instance>
                 .filter(v -> Optional.ofNullable(v.getDeclaredAnnotation(BindService.class))
                         .map(BindService::enable)
                         .orElse(false))
-                .forEach(v -> bindCustom(v, true));
+                .forEach(custom -> {
+                    if (!Service.class.isAssignableFrom(custom))
+                        throw new IllegalArgumentException("Class '"+custom+"' annotated as @BindService but not implemented Service");
+                    bindCustom(custom, true);
+                });
     }
 
     public Collection<String> configKeys() {
