@@ -1,6 +1,7 @@
 package org.lime.core.common.utils;
 
-public interface ScheduleTask {
+public interface ScheduleTask
+        extends Disposable {
     ScheduleTask DISABLED = new ScheduleTask() {
         @Override
         public int getTaskId() {
@@ -24,6 +25,11 @@ public interface ScheduleTask {
     boolean isSync();
     boolean isCancelled();
     void cancel();
+
+    @Override
+    default void close() {
+        this.cancel();
+    }
 
     static ScheduleTask disabled() {
         return DISABLED;
