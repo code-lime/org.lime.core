@@ -27,6 +27,7 @@ import org.lime.core.common.services.ScheduleTaskService;
 import org.lime.core.common.services.UnsafeMappingsUtility;
 import org.lime.core.common.utils.Lazy;
 import org.lime.core.fabric.commands.NativeCommandConsumerFactory;
+import org.lime.core.fabric.services.buffers.EntityBufferStorage;
 import org.lime.core.fabric.utils.adapters.FabricGsonTypeAdapters;
 
 public class BaseFabricInstanceModule
@@ -84,5 +85,9 @@ public class BaseFabricInstanceModule
 
         bind(ScheduleTaskService.class).toInstance(instance.scheduleTaskService);
         bind(NativeCommandConsumerFactory.class).toInstance(nativeCommandFactory());
+
+        if (!instance.isCore()) {
+            bindFromCore(EntityBufferStorage.class);
+        }
     }
 }

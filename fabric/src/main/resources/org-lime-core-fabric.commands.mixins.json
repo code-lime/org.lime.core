@@ -1,11 +1,12 @@
 {
   "required": true,
   "minVersion": "0.8",
-  "package": "org.lime.core.fabric.mixin",
+  "package": "org.lime.core.fabric.commands.brigadier.mixin",
   "compatibilityLevel": "JAVA_17",
   "mixins": [
-    "ChunkMapTrackingRangeMixin",
-    "ShouldBeEntitySavedMixin"
+    "ArgumentTypeInfosMixin",
+    "ForgeCommandHelperMixin",
+    "CommandsMixin"
   ],
   "injectors": {
     "defaultRequire": 1
