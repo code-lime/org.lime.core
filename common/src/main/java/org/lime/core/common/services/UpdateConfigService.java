@@ -29,6 +29,7 @@ public class UpdateConfigService
             instances.instances()
                     .forEach(instance -> root
                             .then(commandsFactory.literal(instance.id())
+                                    .requires(ctx -> !instance.getModule().configKeys().isEmpty())
                                     .then(commandsFactory.repeatable("config", arguments.builderString(commandsFactory.senderClass(), instance.getModule().configKeys()).build())
                                             .executes(ctx -> {
                                                 List<String> configs = RepeatableArgumentBuilder.readRepeatable(ctx, "config", String.class).toList();
