@@ -1,43 +1,40 @@
-package org.lime.core.paper.services.buffers;
+package org.lime.core.common.services.buffers;
 
-import org.bukkit.Bukkit;
-import org.bukkit.Location;
-import org.bukkit.entity.Entity;
 import org.jetbrains.annotations.Nullable;
 import org.lime.core.common.utils.Disposable;
 
-import java.util.*;
+import java.util.HashSet;
+import java.util.Map;
+import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 
-public abstract class BaseEntityBuffer<Index, T extends Entity>
+public abstract class BaseEntityBuffer<Index, T extends Entity, Entity, Location>
         implements Disposable {
     private boolean closed = false;
 
     protected final Map<Index, T> displayBuffer = new ConcurrentHashMap<>();
-    protected final EntityBufferStorage owner;
+    protected final BaseEntityBufferStorage<Entity, Location> owner;
     protected final String tag;
     protected final Class<T> tClass;
-    protected final EntityBufferSetup setup;
+    protected final BaseEntityBufferSetup<Location> setup;
 
-    protected BaseEntityBuffer(EntityBufferStorage owner, EntityBufferSetup setup, Class<T> tClass) {
+    protected BaseEntityBuffer(BaseEntityBufferStorage<Entity, Location> owner, BaseEntityBufferSetup<Location> setup, Class<T> tClass) {
         this.owner = owner;
         this.tag = "generic-" + setup.tag();
         this.tClass = tClass;
         this.setup = setup;
         owner.buffers.add(this);
-        Bukkit.getWorlds()
-                .forEach(world -> world.getEntities()
-                        .forEach(this::entityLoad));
+        owner.forEntities(this::entityLoad);
     }
 
     private Location orDefault(@Nullable Location location) {
-        return location == null ? new Location(setup.defaultWorld().orElse(owner.defaultWorld), 0, 0, 0) : location;
+        return location == null ? setup.defaultLocation().orElseGet(owner::defaultLocation) : location;
     }
 
     private T spawnEntity(Index index, @Nullable Location location) {
         location = orDefault(location);
-        return location.getWorld().spawn(location, tClass, v -> {
-            v.addScoreboardTag(this.tag);
+        return owner.spawn(location, tClass, v -> {
+            owner.getTags(v).add(this.tag);
             displayBuffer.put(index, v);
         });
     }
@@ -50,10 +47,10 @@ public abstract class BaseEntityBuffer<Index, T extends Entity>
             throw new IllegalArgumentException("Buffer "+this.tag+" already begin");
         usedIndexes = new HashSet<>();
     }
-    protected T nextBuffer(Index index) {
-        return nextBuffer(index, null);
+    protected T indexedNextBuffer(Index index) {
+        return indexedNextBuffer(index, null);
     }
-    protected T nextBuffer(Index index, @Nullable Location location) {
+    protected T indexedNextBuffer(Index index, @Nullable Location location) {
         if (closed)
             throw new IllegalArgumentException("Buffer "+this.tag+" closed");
         if (usedIndexes == null)
@@ -66,11 +63,11 @@ public abstract class BaseEntityBuffer<Index, T extends Entity>
             entity = spawnEntity(index, location);
         } else {
             entity = displayBuffer.get(index);
-            if (entity.isValid()) {
-                if (location != null && !entity.getLocation().equals(location))
-                    entity.teleport(location);
+            if (owner.isValid(entity)) {
+                if (location != null && !owner.getLocation(entity).equals(location))
+                    owner.teleport(entity, location);
             } else {
-                entity.remove();
+                owner.remove(entity);
                 entity = spawnEntity(index, location);
             }
         }
@@ -85,7 +82,7 @@ public abstract class BaseEntityBuffer<Index, T extends Entity>
         displayBuffer.entrySet().removeIf(kv -> {
             if (usedIndexes.contains(kv.getKey()))
                 return false;
-            kv.getValue().remove();
+            owner.remove(kv.getValue());
             return true;
         });
         usedIndexes = null;
@@ -99,16 +96,16 @@ public abstract class BaseEntityBuffer<Index, T extends Entity>
     void entityLoad(Entity entity) {
         if (!tClass.isInstance(entity))
             return;
-        if (!entity.getScoreboardTags().contains(this.tag))
+        if (!owner.getTags(entity).contains(this.tag))
             return;
         if (displayBuffer.containsValue(tClass.cast(entity)))
             return;
-        entity.remove();
+        owner.remove(entity);
     }
     boolean hasEntity(Entity entity) {
         if (!tClass.isInstance(entity))
             return false;
-        if (!entity.getScoreboardTags().contains(this.tag))
+        if (!owner.getTags(entity).contains(this.tag))
             return false;
         return displayBuffer.containsValue(tClass.cast(entity));
     }
@@ -118,7 +115,7 @@ public abstract class BaseEntityBuffer<Index, T extends Entity>
         closed = true;
         owner.buffers.remove(this);
         displayBuffer.values().removeIf(v -> {
-            v.remove();
+            owner.remove(v);
             return true;
         });
     }
