@@ -350,6 +350,18 @@ public abstract class BaseInstanceModule<Instance extends BaseInstance<Instance>
         compositeDisposable.add(scope);
     }
 
+    protected <T>void bindFromCore(Class<T> serviceClass) {
+        bind(serviceClass)
+                .toProvider(new Provider<>() {
+                    @Inject InstancesUtility instances;
+                    @Override
+                    public T get() {
+                        return instances.core().injector().getInstance(serviceClass);
+                    }
+                })
+                .asEagerSingleton();
+    }
+
     protected MiniMessage.Builder miniMessage() {
         return MiniMessage.builder()
                 .editTags(v -> v

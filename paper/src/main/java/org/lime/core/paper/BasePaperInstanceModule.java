@@ -126,26 +126,8 @@ public class BasePaperInstanceModule<Instance extends BasePaperInstance<Instance
         bind(NativeCommandConsumerFactory.class).toInstance(nativeCommandFactory());
 
         if (!instance.isCore()) {
-            bind(EntityBufferStorage.class)
-                    .toProvider(new Provider<>() {
-                        @Inject InstancesUtility instances;
-
-                        @Override
-                        public EntityBufferStorage get() {
-                            return instances.core().injector().getInstance(EntityBufferStorage.class);
-                        }
-                    })
-                    .asEagerSingleton();
-            bind(DebugService.class)
-                    .toProvider(new Provider<>() {
-                        @Inject InstancesUtility instances;
-
-                        @Override
-                        public DebugService get() {
-                            return instances.core().injector().getInstance(DebugService.class);
-                        }
-                    })
-                    .asEagerSingleton();
+            bindFromCore(EntityBufferStorage.class);
+            bindFromCore(DebugService.class);
         }
     }
 }
