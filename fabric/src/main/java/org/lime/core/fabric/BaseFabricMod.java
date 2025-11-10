@@ -24,7 +24,7 @@ import java.util.stream.Stream;
 public abstract class BaseFabricMod
         extends BaseInstance<BaseFabricMod>
         implements ModInitializer {
-    private ModMetadata metadata;
+    protected ModMetadata metadata;
     private Logger logger;
     private File dataFolder;
 
@@ -51,10 +51,7 @@ public abstract class BaseFabricMod
         logger = LoggerFactory.getLogger(metadata.getId());
 
         scheduleTaskService = new FabricScheduleTaskService(logger());
-        ServerLifecycleEvents.SERVER_STARTED.register(server -> {
-            this.server = server;
-            enable();
-        });
+        ServerLifecycleEvents.SERVER_STARTING.register(server -> this.server = server);
         ServerLifecycleEvents.SERVER_STOPPING.register(v0 -> disable());
 
         ServerTickEvents.END_SERVER_TICK.register(v0 -> scheduleTaskService.serverTick());
