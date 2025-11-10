@@ -28,9 +28,11 @@ projectCombineJars(project(':common'))
 
 //<editor-fold desc="Settings: Mod">
 var modId = "${group}/${pathName}".toLowerCase().replaceAll("[.:/]", "-");
+var modIdWithoutSuffix = "${group}/${pathNameWithoutSuffix}".toLowerCase().replaceAll("[.:/]", "-");
 
 loom {
     splitEnvironmentSourceSets()
+    accessWidenerPath = file("src/main/resources/${modIdWithoutSuffix}.accesswidener")
     mods {
         "${modId}" {
             sourceSet sourceSets.main
@@ -50,8 +52,19 @@ dependencies {
 processResources {
     configureProcessResources(delegate, "fabric.mod.json", [
             modId: "${modId}",
+            modIdWithoutSuffix: "${modIdWithoutSuffix}",
             group: "${project.group}",
     ])
+}
+
+ext.mappingTree = null
+afterEvaluate {
+    try (var serviceFactory = new net.fabricmc.loom.util.service.ScopedServiceFactory()) {
+        ext.mappingTree = net.fabricmc.loom.LoomGradleExtension.get(project)
+                .mappingConfiguration
+                .getMappingsService(project, serviceFactory)
+                .mappingTree
+    }
 }
 //</editor-fold>
 

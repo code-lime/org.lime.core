@@ -8,6 +8,7 @@
   "contact": {},
   "license": "unlicense",
   "environment": "server",
+  "accessWidener" : "${modIdWithoutSuffix}.accesswidener",
   "entrypoints": {
     "main": [
       "org.lime.core.fabric.CoreFabricMod"
