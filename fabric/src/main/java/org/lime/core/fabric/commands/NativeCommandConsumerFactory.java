@@ -81,7 +81,7 @@ public class NativeCommandConsumerFactory
     }
 
     @Override
-    public Message tooltip(Component component) {
+    public Message message(Component component) {
         //#switch PROPERTIES.versionAdventurePlatform
         //#caseof 6.3.0;6.6.0
         //OF//        return audiences.asNative(component);

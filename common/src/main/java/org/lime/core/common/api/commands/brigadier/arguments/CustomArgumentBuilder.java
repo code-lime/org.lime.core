@@ -105,7 +105,7 @@ public class CustomArgumentBuilder<J, T, Source> {
             }
 
             private SuggestionsBuilder withError(SuggestionsBuilder builder, String error) {
-                return builder.suggest("§cERROR (hover for details)§r", factory.tooltip(Component.text(error)));
+                return builder.suggest("§cERROR (hover for details)§r", factory.message(Component.text(error)));
             }
 
             @Override
@@ -136,7 +136,7 @@ public class CustomArgumentBuilder<J, T, Source> {
                     if (checkValue.startsWith(input)) {
                         builder.suggest(rawValue, Optional.ofNullable(tooltip)
                                 .map(v -> v.invoke(value))
-                                .map(factory::tooltip)
+                                .map(factory::message)
                                 .orElse(null));
                     }
                 });

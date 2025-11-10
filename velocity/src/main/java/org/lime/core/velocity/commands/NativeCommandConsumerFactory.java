@@ -76,7 +76,7 @@ public class NativeCommandConsumerFactory
     }
 
     @Override
-    public Message tooltip(Component component) {
+    public Message message(Component component) {
         return VelocityBrigadierMessage.tooltip(component);
     }
     @Override

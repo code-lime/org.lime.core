@@ -32,7 +32,7 @@ import java.util.stream.Stream;
 public class CustomArgumentUtility {
     @Inject NativeCommandConsumer.Factory<?, ?> factory;
 
-    private final Generic2CommandExceptionType<String, Stream<Component>> INCORRECT = CommandExceptions.of((expected, data) -> factory.tooltip(Component.empty()
+    private final Generic2CommandExceptionType<String, Stream<Component>> INCORRECT = CommandExceptions.of((expected, data) -> factory.message(Component.empty()
             .append(Component.text("Expected "))
             .append(Component.text(String.valueOf(expected)).color(NamedTextColor.AQUA))
             .append(Component.text(". Supported: "))

@@ -56,7 +56,7 @@ public interface NativeCommandConsumer<Sender, Register extends NativeCommandCon
 
         Audience audience(Sender sender);
 
-        Message tooltip(Component component);
+        Message message(Component component);
         <T, N> ArgumentType<T> argument(BaseMappedArgument<T, N> mappedArgument);
 
         Predicate<Sender> operator();
@@ -90,7 +90,7 @@ public interface NativeCommandConsumer<Sender, Register extends NativeCommandCon
                             audience(ctx.getSource()).sendMessage(Component.translatable("commands.execute.conditional.pass"));
                             return 1;
                         } else {
-                            throw new SimpleCommandExceptionType(tooltip(Component.translatable("commands.execute.conditional.fail"))).create();
+                            throw new SimpleCommandExceptionType(message(Component.translatable("commands.execute.conditional.fail"))).create();
                         }
                     });
         }

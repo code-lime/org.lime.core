@@ -68,7 +68,7 @@ public class NativeCommandConsumerFactory
     }
 
     @Override
-    public Message tooltip(Component component) {
+    public Message message(Component component) {
         return new AdventureComponent(component);
     }
     @Override
