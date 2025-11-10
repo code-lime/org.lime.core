@@ -17,6 +17,8 @@ import org.graalvm.polyglot.*
 import javax.script.ScriptEngine
 import java.nio.charset.Charset
 import java.nio.file.Paths
+import java.util.function.Function
+import java.util.function.Supplier
 import java.util.regex.Matcher
 import java.util.regex.Pattern
 import javax.script.ScriptEngine
@@ -24,6 +26,7 @@ import java.nio.file.Path
 import java.nio.file.Files
 import java.nio.charset.StandardCharsets
 import java.util.stream.Collectors
+import java.util.stream.Stream
 
 interface ScriptEngineProvider {
     ScriptEngine engine();
@@ -164,13 +167,22 @@ class InlineGeneratorPreProcessor extends BasePreProcessor {
     }
 }
 class LineGeneratorPreProcessor extends BasePreProcessor {
-    private static final String BEGIN = "//<generator>"
-    private static final String END = "//</generator>"
-    private static final String SINGLE_PREFIX = "//<generator name=\""
+    private final String COMMENT
+
+    private final String BEGIN
+    private final String END
+    private final String SINGLE_PREFIX
+
+    public LineGeneratorPreProcessor(String comment) {
+        COMMENT = comment
+        BEGIN = "$comment<generator>"
+        END = "$comment</generator>"
+        SINGLE_PREFIX = "$comment<generator name=\""
+    }
 
     @Override
     boolean test(String text) {
-        return text != null && text.contains("//<generator")
+        return text != null && (text.contains(BEGIN) || text.contains(SINGLE_PREFIX))
     }
 
     @Override
@@ -178,18 +190,20 @@ class LineGeneratorPreProcessor extends BasePreProcessor {
         boolean edited = false
         List<String> out = new ArrayList<>(lines.size())
         List<String> buffer = null
+        int state = 0
 
         for (int i = 0; i < lines.size(); i++) {
             String line = lines.get(i)
             String trim = line.trim()
 
-            if (!trim.startsWith("//")) {
+            if (!trim.startsWith(COMMENT)) {
                 if (buffer != null) continue
                 out.add(line)
                 continue
             }
 
             if (trim.equals(BEGIN) || trim.equals("<generator>")) {
+                state = 1
                 assertState(buffer == null, file, "<generator> in line " + (i + 1))
                 buffer = new ArrayList<>()
                 out.add(line)
@@ -197,6 +211,7 @@ class LineGeneratorPreProcessor extends BasePreProcessor {
             }
 
             if (trim.equals(END) || trim.equals("</generator>")) {
+                state = 0
                 assertState(buffer != null, file, "</generator> in line " + (i + 1))
                 String js = String.join("\n", buffer)
                 String result = evalJs(engine, js)
@@ -208,6 +223,7 @@ class LineGeneratorPreProcessor extends BasePreProcessor {
             }
 
             if (trim.startsWith(SINGLE_PREFIX)) {
+                state = 2
                 assertState(buffer == null, file, "Single-line generator inside open block at line " + (i + 1))
                 int idxEnd = trim.indexOf("\">", SINGLE_PREFIX.length())
                 assertState(idxEnd >= 0, file, "Bad generator name syntax at line " + (i + 1))
@@ -228,11 +244,13 @@ class LineGeneratorPreProcessor extends BasePreProcessor {
                 continue
             }
 
-            if (buffer != null) {
-                if (trim.startsWith("//")) buffer.add(trim.substring(2))
-                else buffer.add(line)
-            } else {
-                out.add(line)
+            if (state != 2) {
+                if (buffer != null) {
+                    if (trim.startsWith(COMMENT)) buffer.add(trim.substring(COMMENT.length()))
+                    else buffer.add(line)
+                } else {
+                    out.add(line)
+                }
             }
         }
 
@@ -255,8 +273,23 @@ class IfPreProcessor extends BasePreProcessor {
         }
     }
 
-    private static final String START = "//#if "
-    private static final String DISABLED = "//IF//"
+    private final String COMMENT
+
+    private final String START
+    private final String ELIF
+    private final String ELSE
+    private final String ENDIF
+
+    private final String DISABLED
+
+    public IfPreProcessor(String comment) {
+        COMMENT = comment
+        START = "$comment#if "
+        ELIF = "$comment#elif "
+        ELSE = "$comment#else"
+        ENDIF = "$comment#endif"
+        DISABLED = "${comment}IF$comment"
+    }
 
     @Override
     boolean test(String text) {
@@ -274,9 +307,9 @@ class IfPreProcessor extends BasePreProcessor {
             TrimResult trimResult = trimWithRemovedLeadingOnly(line)
             String trimmed = trimResult.trimmed
 
-            if (trimmed.startsWith("//#if ")) {
+            if (trimmed.startsWith(START)) {
                 out.add(line)
-                String expr = trimmed.substring(6).trim()
+                String expr = trimmed.substring(START.length()).trim()
                 boolean parentEnabled = stack.peek().currentEnabled
                 boolean cond
                 if (parentEnabled) {
@@ -288,9 +321,9 @@ class IfPreProcessor extends BasePreProcessor {
                 stack.push(newState)
                 continue
             }
-            if (trimmed.startsWith("//#elif ")) {
+            if (trimmed.startsWith(ELIF)) {
                 out.add(line)
-                assertState(stack.size() > 1, file, "Unexpected //#elif at line ${i+1}")
+                assertState(stack.size() > 1, file, "Unexpected $ELIF at line ${i+1}")
                 IfState top = stack.pop()
                 if (!top.parentEnabled) {
                     stack.push(new IfState(top.parentEnabled, top.branchTaken, false, trimResult.removedLeading))
@@ -298,16 +331,16 @@ class IfPreProcessor extends BasePreProcessor {
                     if (top.branchTaken) {
                         stack.push(new IfState(top.parentEnabled, true, false, trimResult.removedLeading))
                     } else {
-                        String expr = trimmed.substring(8).trim()
+                        String expr = trimmed.substring(ELIF.length()).trim()
                         boolean cond = evalCondition(engine, expr)
                         stack.push(new IfState(top.parentEnabled, cond, cond, trimResult.removedLeading))
                     }
                 }
                 continue
             }
-            if (trimmed == "//#else") {
+            if (trimmed == ELSE) {
                 out.add(line)
-                assertState(stack.size() > 1, file, "Unexpected //#else at line ${i+1}")
+                assertState(stack.size() > 1, file, "Unexpected $ELSE at line ${i+1}")
                 IfState top = stack.pop()
                 if (!top.parentEnabled) {
                     stack.push(new IfState(top.parentEnabled, top.branchTaken, false, trimResult.removedLeading))
@@ -317,9 +350,9 @@ class IfPreProcessor extends BasePreProcessor {
                 }
                 continue
             }
-            if (trimmed == "//#endif") {
+            if (trimmed == ENDIF) {
                 out.add(line)
-                assertState(stack.size() > 1, file, "Unexpected //#endif at line ${i+1}")
+                assertState(stack.size() > 1, file, "Unexpected $ENDIF at line ${i+1}")
                 stack.pop()
                 continue
             }
@@ -340,7 +373,7 @@ class IfPreProcessor extends BasePreProcessor {
             }
         }
 
-        assertState(stack.size() <= 1, file, "Unclosed //#if block(s) detected")
+        assertState(stack.size() <= 1, file, "Unclosed $START block(s) detected")
 
         return out
     }
@@ -360,8 +393,27 @@ class SwitchPreProcessor extends BasePreProcessor {
         }
     }
 
-    private static final String START = "//#switch "
-    private static final String DISABLED = "//OF//"
+    private final String COMMENT
+
+    private final String START
+    private final String CASE
+    private final String CASEOF
+    private final String CASEJS
+    private final String DEFAULT
+    private final String ENDSWITCH
+
+    private final String DISABLED
+
+    public SwitchPreProcessor(String comment) {
+        COMMENT = comment
+        START = "$comment#switch "
+        CASE = "$comment#case "
+        CASEOF = "$comment#caseof "
+        CASEJS = "$comment#casejs "
+        DEFAULT = "$comment#default"
+        ENDSWITCH = "$comment#endswitch"
+        DISABLED = "${comment}OF$comment"
+    }
 
     @Override
     boolean test(String text) {
@@ -377,23 +429,23 @@ class SwitchPreProcessor extends BasePreProcessor {
             TrimResult trimResult = trimWithRemovedLeadingOnly(line)
             String trimmed = trimResult.trimmed
 
-            if (trimmed.startsWith("//#switch ")) {
-                assertState(state == null, file, "Unexpected //#switch at line ${i+1}")
+            if (trimmed.startsWith(START)) {
+                assertState(state == null, file, "Unexpected $START at line ${i+1}")
 
                 out.add(line)
-                String expr = trimmed.substring(10).trim()
+                String expr = trimmed.substring(START.length()).trim()
                 String value = evalJs(engine, expr)
                 state = new SwitchState(value, false, false, trimResult.removedLeading)
                 continue
             }
-            if (trimmed.startsWith("//#case ")) {
-                assertState(state != null, file, "Unexpected //#case at line ${i+1}")
+            if (trimmed.startsWith(CASE)) {
+                assertState(state != null, file, "Unexpected $CASE at line ${i+1}")
                 out.add(line)
                 state.prefix = trimResult.removedLeading
                 if (state.selected) {
                     state.enable = false
                 } else {
-                    String value = trimmed.substring(8).trim()
+                    String value = trimmed.substring(CASE.length()).trim()
                     if (state.value == value) {
                         state.selected = true
                         state.enable = true
@@ -403,14 +455,14 @@ class SwitchPreProcessor extends BasePreProcessor {
                 }
                 continue
             }
-            if (trimmed.startsWith("//#caseof ")) {
-                assertState(state != null, file, "Unexpected //#caseof at line ${i+1}")
+            if (trimmed.startsWith(CASEOF)) {
+                assertState(state != null, file, "Unexpected $CASEOF at line ${i+1}")
                 out.add(line)
                 state.prefix = trimResult.removedLeading
                 if (state.selected) {
                     state.enable = false
                 } else {
-                    String[] values = trimmed.substring(10).trim().split(';')
+                    String[] values = trimmed.substring(CASEOF.length()).trim().split(';')
                     if (values.contains(state.value)) {
                         state.selected = true
                         state.enable = true
@@ -420,14 +472,14 @@ class SwitchPreProcessor extends BasePreProcessor {
                 }
                 continue
             }
-            if (trimmed.startsWith("//#casejs ")) {
-                assertState(state != null, file, "Unexpected //#casejs at line ${i+1}")
+            if (trimmed.startsWith(CASEJS)) {
+                assertState(state != null, file, "Unexpected $CASEJS at line ${i+1}")
                 out.add(line)
                 state.prefix = trimResult.removedLeading
                 if (state.selected) {
                     state.enable = false
                 } else {
-                    String js = trimmed.substring(10).trim()
+                    String js = trimmed.substring(CASEJS.length()).trim()
                     String value = evalJs(engine, js)
                     if (state.value == value) {
                         state.selected = true
@@ -438,8 +490,8 @@ class SwitchPreProcessor extends BasePreProcessor {
                 }
                 continue
             }
-            if (trimmed == "//#default") {
-                assertState(state != null, file, "Unexpected //#default at line ${i+1}")
+            if (trimmed == DEFAULT) {
+                assertState(state != null, file, "Unexpected $DEFAULT at line ${i+1}")
                 out.add(line)
                 state.prefix = trimResult.removedLeading
                 if (state.selected) {
@@ -450,8 +502,8 @@ class SwitchPreProcessor extends BasePreProcessor {
                 }
                 continue
             }
-            if (trimmed == "//#endswitch") {
-                assertState(state != null, file, "Unexpected //#endswitch at line ${i+1}")
+            if (trimmed == ENDSWITCH) {
+                assertState(state != null, file, "Unexpected $ENDSWITCH at line ${i+1}")
                 out.add(line)
                 state = null;
                 continue
@@ -473,7 +525,7 @@ class SwitchPreProcessor extends BasePreProcessor {
             }
         }
 
-        assertState(state == null, file, "Unclosed //#switch block(s) detected")
+        assertState(state == null, file, "Unclosed $START block(s) detected")
 
         return out
     }
@@ -501,15 +553,17 @@ class SourceGenerator {
     }
 
     final Project project;
-    final List<PreProcessor> preprocessors = new ArrayList<>()
+    final List<Function<String, PreProcessor>> preprocessors = new ArrayList<>()
+    final Map<String, Pattern> commentsValidations = Stream.of(List.of("//","/*"),List.of("#"))
+            .collect(Collectors.<List<String>, String, Pattern>toMap(v -> v.first(), v -> Pattern.compile("^\\s*(${v.collect {Pattern.quote(it)}.join('|')})", Pattern.MULTILINE)))
 
     SourceGenerator(Project project) {
         this.project = project
 
-        preprocessors.add(new InlineGeneratorPreProcessor())
-        preprocessors.add(new LineGeneratorPreProcessor())
-        preprocessors.add(new IfPreProcessor())
-        preprocessors.add(new SwitchPreProcessor())
+        preprocessors.add(s -> new InlineGeneratorPreProcessor())
+        preprocessors.add(LineGeneratorPreProcessor::new)
+        preprocessors.add(IfPreProcessor::new)
+        preprocessors.add(SwitchPreProcessor::new)
     }
 
     private ScriptEngine createEngine(String packageName) {
@@ -564,47 +618,47 @@ class SourceGenerator {
         }
     }
     void executeGenerator(String packageName, File file) {
-        String filePath = file.getAbsolutePath()
-        switch (getFileExtension(file)) {
-            case ".javas": {
-                HashMap<String, String> _files = generateJavas(packageName, file.parentFile, file.text)
-                for (Map.Entry<String, String> _kv : _files.entrySet()) {
-                    String _text = _kv.getValue()
-                    var _filePath = Paths.get(file.parentFile.absolutePath, _kv.getKey()).toAbsolutePath()
-                    var _file = _filePath.toFile()
-                    if (!_file.exists())
-                        _file.createNewFile()
-                    if (_file.text == _text) {
-                        //System.out.println("EQUALS EDITED: " + filePath);
-                    } else {
-                        System.out.println("EDITED: " + _filePath)
-                        _file.text = _text
+        String ext = getFileExtension(file)
+        if (ext == ".javas") {
+            HashMap<String, String> _files = generateJavas(packageName, file.parentFile, file.text)
+            for (Map.Entry<String, String> _kv : _files.entrySet()) {
+                String _text = _kv.getValue()
+                var _filePath = Paths.get(file.parentFile.absolutePath, _kv.getKey()).toAbsolutePath()
+                var _file = _filePath.toFile()
+                if (!_file.exists())
+                    _file.createNewFile()
+                if (_file.text == _text) {
+                    //System.out.println("EQUALS EDITED: " + filePath);
+                } else {
+                    System.out.println("EDITED: " + _filePath)
+                    _file.text = _text
+                }
+            }
+        } else {
+            def text = file.text
+            String commentType = commentsValidations.find {it.value.matcher(text).find()}?.key
+            if (commentType == null)
+                return
+
+            List<String> lines = null
+            boolean edited = false
+
+            for (Function<String, PreProcessor> factory : preprocessors) {
+                def p = factory.apply(commentType)
+                if (p.test(text)) {
+                    if (lines == null) {
+                        lines = List.of(text.replace("\r", "").split('\n'))
+                    }
+                    List<String> newLines = p.modify(file.toPath(), lines, () -> createEngine(packageName))
+                    if (newLines != null) {
+                        lines = newLines
+                        edited = true
                     }
                 }
-                break
             }
-            case ".java": {
-                def text = file.text
-                List<String> lines = null
-                boolean edited = false
 
-                for (PreProcessor p : preprocessors) {
-                    if (p.test(text)) {
-                        if (lines == null) {
-                            lines = List.of(text.replace("\r", "").split('\n'))
-                        }
-                        List<String> newLines = p.modify(file.toPath(), lines, () -> createEngine(packageName))
-                        if (newLines != null) {
-                            lines = newLines
-                            edited = true
-                        }
-                    }
-                }
-
-                if (edited)
-                    writeIfChanged(file, lines)
-                break
-            }
+            if (edited)
+                writeIfChanged(file, lines)
         }
     }
 }
