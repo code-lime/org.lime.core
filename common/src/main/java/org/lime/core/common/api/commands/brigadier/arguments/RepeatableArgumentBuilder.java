@@ -68,10 +68,10 @@ public class RepeatableArgumentBuilder<S, T>
             final Class<T> type) {
         return readRepeatable(ctx, name, (context, indexedName) -> context.getArgument(indexedName, type));
     }
-    public static <T>Stream<T> readRepeatable(
-            final CommandContext<?> ctx,
+    public static <S, T>Stream<T> readRepeatable(
+            final CommandContext<S> ctx,
             final String name,
-            final Func2<CommandContext<?>, String, T> reader) {
+            final Func2<CommandContext<S>, String, T> reader) {
         return IntStream.rangeClosed(0, LIMIT_MAX_COUNT)
                 .mapToObj(index -> getIndexedName(name, index))
                 .takeWhile(ARGUMENTS_GETTER.apply(ctx)::containsKey)
