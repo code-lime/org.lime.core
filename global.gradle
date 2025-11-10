@@ -1,18 +1,20 @@
-static String getNameWithSuffix(Project project) {
-    if (project.hasProperty('nameSuffix'))
+static String getName(Project project, boolean suffix) {
+    if (suffix && project.hasProperty('nameSuffix'))
         return "${project.name}${project.property('nameSuffix')}"
     else
         return project.name
 }
-static String getPathName(Project current) {
+static String getPathName(Project current, boolean suffix) {
     Project parent = current.parent
-    return parent == null ? getNameWithSuffix(current) : "${getNameWithSuffix(parent)}.${getNameWithSuffix(current)}"
+    return parent == null ? getName(current, suffix) : "${getName(parent, suffix)}.${getName(current, suffix)}"
 }
 
-def resultPathName = getNameWithSuffix(project)
+def resultPathName = getName(project, true)
 
 if (project.hasProperty('pathName'))
-    pathName = resultPathName = "${getPathName(project)}"
+    pathName = resultPathName = "${getPathName(project, true)}"
+if (project.hasProperty('pathNameWithoutSuffix'))
+    pathNameWithoutSuffix = "${getPathName(project, false)}"
 
 //<editor-fold desc="Settings: SourceGenerator">
 apply from: buildscript.sourceURI.resolve("./sourcegenerator.gradle")
