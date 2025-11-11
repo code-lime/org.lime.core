@@ -543,6 +543,25 @@ class SwitchPreProcessor extends BasePreProcessor {
         return out
     }
 }
+class CombinedClassLoader extends ClassLoader {
+    private final Iterable<ClassLoader> delegates
+
+    public CombinedClassLoader(ClassLoader root, Iterable<ClassLoader> delegates) {
+        super(root)
+        this.delegates = delegates
+    }
+
+    @Override
+    protected Class<?> findClass(String name) throws ClassNotFoundException {
+        System.out.println("LOAD $name")
+        for (ClassLoader loader : delegates) {
+            try {
+                return loader.findClass(name)
+            } catch (ClassNotFoundException ignored) {}
+        }
+        throw new ClassNotFoundException(name)
+    }
+}
 
 class SourceGenerator {
     class PackageName {
@@ -588,6 +607,8 @@ class SourceGenerator {
                         .allowHostAccess(HostAccess.ALL)
                         .allowHostClassLookup(v -> true))
         engine.put("PACKAGE", new PackageName(packageName.split("\\.")))
+        engine.put("PROJECT", project)
+        engine.put("LOADER", new CombinedClassLoader(this.class.classLoader, project.plugins.collect{it.class.classLoader}))
         engine.put("PROPERTIES", project.getProperties())
         return engine;
     }
