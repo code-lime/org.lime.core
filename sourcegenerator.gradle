@@ -248,14 +248,7 @@ class LineGeneratorPreProcessor extends BasePreProcessor {
                 String fileSpec = trim.substring(SINGLE_PREFIX.length(), idxEnd)
                 buffer = new ArrayList<String>()
 
-                String[] args = fileSpec.split(':')
-                if (args.length > 1) {
-                    System.out.println('Load file function: ' + args[0] + " : " + args[1])
-                    buffer.add(file.parent.resolve(args[0]).text + "\n" + args[1])
-                } else {
-                    System.out.println('Load single file: ' + args[0])
-                    buffer.add(file.parent.resolve(args[0]).text)
-                }
+                buffer.add(loadJsText(file.parent, fileSpec))
 
                 out.add(line)
                 edited = true
