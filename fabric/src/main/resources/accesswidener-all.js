@@ -1,4 +1,4 @@
-var logs = [];
+
 function getAllClasses(className, types = ['method'], regex = null) {
     try {
         const regexp = new RegExp(regex === null ? '.*' : regex);
@@ -42,6 +42,6 @@ function getAllClasses(className, types = ['method'], regex = null) {
         }
         return lines.sort().join('\n')
     } catch (e) {
-        return 'ERROR ' + e.name + ": " + e.message + "\nLogs:\n"+logs.join('\n');
+        return '#ERROR ' + e.name + ": " + e.message;
     }
 }
