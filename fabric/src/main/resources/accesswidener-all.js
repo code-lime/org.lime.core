@@ -1,8 +1,25 @@
-
+function loadMappingTree() {
+    if (PROPERTIES.containsKey('mappingTree'))
+        return PROPERTIES.get('mappingTree');
+    const ext = PROPERTIES.get('ext')
+    const loom = PROJECT.getExtensions().getByName("loom")
+    const serviceFactory = loom.getClass().getClassLoader().loadClass("net.fabricmc.loom.util.service.ScopedServiceFactory").newInstance()
+    try {
+        const mappingTree = PROJECT.getExtensions()
+                .getByName("loom")
+                .getMappingConfiguration()
+                .getMappingsService(PROJECT, serviceFactory)
+                .getMappingTree()
+        ext.set('mappingTree', mappingTree);
+        return mappingTree;
+    } finally {
+        serviceFactory.close();
+    }
+}
 function getAllClasses(className, types = ['method'], regex = null) {
     try {
         const regexp = new RegExp(regex === null ? '.*' : regex);
-        const mappingTree = PROPERTIES.mappingTree;
+        const mappingTree = loadMappingTree();
 
         className = className.replace(/\./g, '/');
 

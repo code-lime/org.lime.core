@@ -56,16 +56,6 @@ processResources {
             group: "${project.group}",
     ])
 }
-
-ext.mappingTree = null
-afterEvaluate {
-    try (var serviceFactory = new net.fabricmc.loom.util.service.ScopedServiceFactory()) {
-        ext.mappingTree = net.fabricmc.loom.LoomGradleExtension.get(project)
-                .mappingConfiguration
-                .getMappingsService(project, serviceFactory)
-                .mappingTree
-    }
-}
 //</editor-fold>
 
 //<editor-fold desc="Settings: Libraries">
