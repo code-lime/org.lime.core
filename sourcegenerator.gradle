@@ -36,7 +36,20 @@ interface PreProcessor {
     List<String> modify(Path file, List<String> lines, ScriptEngineProvider engine)
 }
 
+class PreProcessorContext {
+    public String commentType
+
+    public PreProcessorContext(String commentType) {
+        this.commentType = commentType
+    }
+}
+
 abstract class BasePreProcessor implements PreProcessor {
+    public final PreProcessorContext context
+    public BasePreProcessor(PreProcessorContext context) {
+        this.context = context
+    }
+
     protected String loadJsText(Path dir, String fileSpec) {
         if (fileSpec == null || fileSpec.isEmpty()) return ""
         String[] parts = fileSpec.split(':', 2)
@@ -121,6 +134,10 @@ class InlineGeneratorPreProcessor extends BasePreProcessor {
     private static final String END_CODE = "*/"
     private static final String END_GENERATOR = "/*</g>*/"
 
+    public InlineGeneratorPreProcessor(PreProcessorContext context) {
+        super(context)
+    }
+
     @Override
     boolean test(String text) {
         return text != null && text.contains(START)
@@ -173,11 +190,12 @@ class LineGeneratorPreProcessor extends BasePreProcessor {
     private final String END
     private final String SINGLE_PREFIX
 
-    public LineGeneratorPreProcessor(String comment) {
-        COMMENT = comment
-        BEGIN = "$comment<generator>"
-        END = "$comment</generator>"
-        SINGLE_PREFIX = "$comment<generator name=\""
+    public LineGeneratorPreProcessor(PreProcessorContext context) {
+        super(context)
+        COMMENT = context.commentType
+        BEGIN = "$COMMENT<generator>"
+        END = "$COMMENT</generator>"
+        SINGLE_PREFIX = "$COMMENT<generator name=\""
     }
 
     @Override
@@ -282,13 +300,14 @@ class IfPreProcessor extends BasePreProcessor {
 
     private final String DISABLED
 
-    public IfPreProcessor(String comment) {
-        COMMENT = comment
-        START = "$comment#if "
-        ELIF = "$comment#elif "
-        ELSE = "$comment#else"
-        ENDIF = "$comment#endif"
-        DISABLED = "${comment}IF$comment"
+    public IfPreProcessor(PreProcessorContext context) {
+        super(context)
+        COMMENT = context.commentType
+        START = "$COMMENT#if "
+        ELIF = "$COMMENT#elif "
+        ELSE = "$COMMENT#else"
+        ENDIF = "$COMMENT#endif"
+        DISABLED = "${COMMENT}IF$COMMENT"
     }
 
     @Override
@@ -404,15 +423,16 @@ class SwitchPreProcessor extends BasePreProcessor {
 
     private final String DISABLED
 
-    public SwitchPreProcessor(String comment) {
-        COMMENT = comment
-        START = "$comment#switch "
-        CASE = "$comment#case "
-        CASEOF = "$comment#caseof "
-        CASEJS = "$comment#casejs "
-        DEFAULT = "$comment#default"
-        ENDSWITCH = "$comment#endswitch"
-        DISABLED = "${comment}OF$comment"
+    public SwitchPreProcessor(PreProcessorContext context) {
+        super(context)
+        COMMENT = context.commentType
+        START = "$COMMENT#switch "
+        CASE = "$COMMENT#case "
+        CASEOF = "$COMMENT#caseof "
+        CASEJS = "$COMMENT#casejs "
+        DEFAULT = "$COMMENT#default"
+        ENDSWITCH = "$COMMENT#endswitch"
+        DISABLED = "${COMMENT}OF$COMMENT"
     }
 
     @Override
@@ -552,8 +572,8 @@ class SourceGenerator {
         }
     }
 
-    final Project project;
-    final List<Function<String, PreProcessor>> preprocessors = new ArrayList<>()
+    final Project project
+    final List<Function<PreProcessorContext, PreProcessor>> preprocessors = new ArrayList<>()
     final Map<String, Pattern> commentsValidations = Stream.of(List.of("//","/*"),List.of("#"))
             .collect(Collectors.<List<String>, String, Pattern>toMap(v -> v.first(), v -> Pattern.compile("^\\s*(${v.collect {Pattern.quote(it)}.join('|')})", Pattern.MULTILINE)))
 
@@ -643,8 +663,10 @@ class SourceGenerator {
             List<String> lines = null
             boolean edited = false
 
-            for (Function<String, PreProcessor> factory : preprocessors) {
-                def p = factory.apply(commentType)
+            PreProcessorContext context = new PreProcessorContext(commentType);
+
+            for (Function<PreProcessorContext, PreProcessor> factory : preprocessors) {
+                def p = factory.apply(context)
                 if (p.test(text)) {
                     if (lines == null) {
                         lines = List.of(text.replace("\r", "").split('\n'))
