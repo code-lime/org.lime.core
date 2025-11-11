@@ -38,6 +38,7 @@ interface PreProcessor {
 
 class PreProcessorContext {
     public String commentType
+    public Map<String, String> links = new HashMap<>()
 
     public PreProcessorContext(String commentType) {
         this.commentType = commentType
@@ -53,12 +54,17 @@ abstract class BasePreProcessor implements PreProcessor {
     protected String loadJsText(Path dir, String fileSpec) {
         if (fileSpec == null || fileSpec.isEmpty()) return ""
         String[] parts = fileSpec.split(':', 2)
-        if (parts.length > 1) {
-            Path p = dir.resolve(parts[0])
-            return readAllText(p) + "\n" + parts[1]
+        def link = context.links.get(parts[0])
+        String text;
+        if (link == null) {
+            text = dir.resolve(parts[0]).text
         } else {
-            Path p = dir.resolve(fileSpec)
-            return readAllText(p)
+            text = link
+        }
+        if (parts.length > 1) {
+            return text + "\n" + parts[1]
+        } else {
+            return text;
         }
     }
 
@@ -85,9 +91,6 @@ abstract class BasePreProcessor implements PreProcessor {
         return t.substring(start, end)
     }
 
-    protected String readAllText(Path p) {
-        return p.text
-    }
     protected List<String> toLines(String text) {
         if (text == null) return Collections.emptyList()
         return Arrays.asList(text.replace("\r","").split("\n", -1))
@@ -543,6 +546,44 @@ class SwitchPreProcessor extends BasePreProcessor {
         return out
     }
 }
+class RemoteFileLinkPreProcessor implements PreProcessor {
+    private final String COMMENT
+
+    private final String PREFIX
+
+    private final Pattern LINK_PATTERN
+
+    private final Map<String, String> links
+
+    public RemoteFileLinkPreProcessor(PreProcessorContext context) {
+        links = context.links
+        COMMENT = context.commentType
+        PREFIX = "$COMMENT<link "
+        LINK_PATTERN = Pattern.compile("^\\s*${Pattern.compile(PREFIX)}name=(?<name>[\\w_\\-.]+)>(?<url>.*)</link>\$")
+    }
+
+    @Override
+    boolean test(String text) {
+        return text.contains(PREFIX)
+    }
+    @Override
+    List<String> modify(Path file, List<String> lines, ScriptEngineProvider engine) {
+        lines.forEach {
+            var matcher = LINK_PATTERN.matcher(it)
+            if (matcher.matches()) {
+                def name = matcher.group("name")
+                def url = matcher.group("url")
+
+                println("LINK $name BY $url. Downloading...")
+                def text = URI.create(url).toURL().text
+                println(" - Total length: ${text.length()}")
+                links.put(name, text)
+            }
+        }
+        return null
+    }
+}
+
 class CombinedClassLoader extends ClassLoader {
     private final Iterable<ClassLoader> delegates
 
@@ -592,6 +633,7 @@ class SourceGenerator {
     SourceGenerator(Project project) {
         this.project = project
 
+        preprocessors.add(RemoteFileLinkPreProcessor::new)
         preprocessors.add(s -> new InlineGeneratorPreProcessor())
         preprocessors.add(LineGeneratorPreProcessor::new)
         preprocessors.add(IfPreProcessor::new)
