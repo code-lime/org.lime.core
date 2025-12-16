@@ -56,13 +56,13 @@ public class SkinUtility {
                 .execute()
                 .val0
                 .getAsJsonObject();
-        if (json.has("error")) {
-            String error = json.get("error").getAsString();
+        if (json.has("errorCode")) {
+            String error = json.get("errorCode").getAsString();
             switch (error) {
-                case "Too many requests" -> {
+                case "rate_limit" -> {
                     long ms = json.getAsJsonObject("delayInfo").get("millis").getAsLong();
                     try {
-                        logger.warn("Too many requests! Waiting {}ms...", ms);
+                        logger.warn("{}! Waiting {}ms...", json.get("error").getAsString(), ms);
                         Thread.sleep(ms);
                     } catch (Exception ignored) {
                     }
@@ -72,7 +72,7 @@ public class SkinUtility {
                     logger.warn("Not found image from url '{}'! Skip and get template...", url);
                     return SkinData.None;
                 }
-                default -> throw new IllegalArgumentException("MC ERROR: " + json.get("error").getAsString());
+                default -> throw new IllegalArgumentException("MC ERROR: " + json);
             }
         }
         JsonObject data = json.getAsJsonObject("data").getAsJsonObject("texture");
