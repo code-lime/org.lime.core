@@ -148,6 +148,7 @@ public final class RuntimeTypeAdapterFactory<T>
 
     private final Class<T> baseType;
     private final String typeFieldName;
+    private final @Nullable String defaultTypeValue;
     private final Map<String, Class<? extends T>> labelToSubtype = new LinkedHashMap<>();
     private final Map<Class<? extends T>, String> subtypeToLabel = new LinkedHashMap<>();
     private final boolean maintainType;
@@ -168,6 +169,11 @@ public final class RuntimeTypeAdapterFactory<T>
         } else if (propertyInfo == null) {
             throw new IllegalArgumentException("typeFieldName is not null & annotation JsonCastProperty exist");
         }
+
+        this.defaultTypeValue = Optional.ofNullable(propertyInfo)
+                .map(JsonCastProperty::defaultValue)
+                .filter(v -> !v.isEmpty())
+                .orElse(null);
 
         this.typeFieldName = typeFieldName;
         this.maintainType = maintainType;
@@ -293,14 +299,11 @@ public final class RuntimeTypeAdapterFactory<T>
                     labelJsonElement = jsonElement.getAsJsonObject().remove(typeFieldName);
                 }
 
-                if (labelJsonElement == null) {
-                    throw new JsonParseException(
-                            "cannot deserialize "
-                                    + baseType
-                                    + " because it does not define a field named "
-                                    + typeFieldName);
-                }
-                String label = labelJsonElement.getAsString();
+                String label = Optional.ofNullable(labelJsonElement)
+                        .map(JsonElement::getAsString)
+                        .or(() -> Optional.ofNullable(defaultTypeValue))
+                        .orElseThrow(() -> new JsonParseException(
+                                "cannot deserialize " + baseType + " because it does not define a field named " + typeFieldName));
                 @SuppressWarnings("unchecked") // registration requires that subtype extends T
                 TypeAdapter<R> delegate = (TypeAdapter<R>) labelToDelegate.get(label);
                 if (delegate == null) {
