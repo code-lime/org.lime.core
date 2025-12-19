@@ -23,7 +23,7 @@ env:
       "common": ["global"],
       "paper": ["global"],
       "velocity": ["global"],
-      "fabric": ["1.20.1", "1.21.4", "1.21.8"]
+      "fabric": ["1.20.1", "1.21.1", "1.21.4", "1.21.8"]
     }
 
 jobs:
