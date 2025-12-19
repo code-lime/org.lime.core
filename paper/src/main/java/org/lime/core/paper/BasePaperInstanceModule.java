@@ -1,7 +1,5 @@
 package org.lime.core.paper;
 
-import com.google.inject.Inject;
-import com.google.inject.Provider;
 import com.google.inject.TypeLiteral;
 import io.papermc.paper.datapack.DatapackManager;
 import io.papermc.paper.datapack.PaperDatapackManager;
@@ -94,6 +92,7 @@ public class BasePaperInstanceModule<Instance extends BasePaperInstance<Instance
         bind(PluginBase.class).toInstance(instance.plugin);
         bind(JavaPlugin.class).toInstance(instance.plugin);
         bind(BasePaperPlugin.class).toInstance(instance.plugin);
+        bind((Class)instance.plugin.getClass()).toInstance(instance.plugin);
 
         bind(MinecraftServer.class).toInstance(MinecraftServer.getServer());
         bindMapped(PlayerList.class, MinecraftServer.class, MinecraftServer::getPlayerList);
