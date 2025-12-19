@@ -34,7 +34,6 @@ public final class CoreFabricMod
         Set<String> visiting = new HashSet<>();
 
         mods.forEach((modId, mod) -> dfs(modId, mod, mods, visited, visiting, result));
-        Collections.reverse(result);
         return result;
     }
     private void dfs(
