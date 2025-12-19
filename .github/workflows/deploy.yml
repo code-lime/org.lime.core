@@ -44,26 +44,17 @@ jobs:
           echo "Input map:"
           echo '${{ env.MODULE_MATRIX }}'
 
-          matrix='{"include":['
-          first=true
+          matrix=$(echo '${{ env.MODULE_MATRIX }}' \
+            | jq -c '[to_entries[] | .key as $module | .value[] | {module: $module, variant: .}]')
 
-          echo '${{ env.MODULE_MATRIX }}' \
-            | jq -r 'to_entries[] | .key as $module | .value[] | [$module, .] | @tsv' \
-            | while IFS=$'\t' read -r module variant; do
-                if [ "$first" = true ]; then
-                  first=false
-                else
-                  matrix+=','
-                fi
-                matrix+="{\"module\":\"$module\",\"variant\":\"$variant\"}"
-              done
-
-          matrix+=']}'
+          # Wrap in include
+          matrix="{\"include\":$matrix}"
 
           echo "Generated matrix:"
           echo "$matrix"
 
           echo "matrix=$matrix" >> "$GITHUB_OUTPUT"
+
   build:
     name: Build (${{ matrix.module }} / ${{ matrix.variant }})
     runs-on: ubuntu-latest
