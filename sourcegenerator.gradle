@@ -413,6 +413,7 @@ class SwitchPreProcessor extends BasePreProcessor {
     private final String START
     private final String CASE
     private final String CASEOF
+    private final String CASEOFREGEX
     private final String CASEJS
     private final String DEFAULT
     private final String ENDSWITCH
@@ -425,6 +426,7 @@ class SwitchPreProcessor extends BasePreProcessor {
         START = "$COMMENT#switch "
         CASE = "$COMMENT#case "
         CASEOF = "$COMMENT#caseof "
+        CASEOFREGEX = "$COMMENT#caseofregex "
         CASEJS = "$COMMENT#casejs "
         DEFAULT = "$COMMENT#default"
         ENDSWITCH = "$COMMENT#endswitch"
@@ -480,6 +482,23 @@ class SwitchPreProcessor extends BasePreProcessor {
                 } else {
                     String[] values = trimmed.substring(CASEOF.length()).trim().split(';')
                     if (values.contains(state.value)) {
+                        state.selected = true
+                        state.enable = true
+                    } else {
+                        state.enable = false
+                    }
+                }
+                continue
+            }
+            if (trimmed.startsWith(CASEOFREGEX)) {
+                assertState(state != null, file, "Unexpected $CASEOFREGEX at line ${i+1}")
+                out.add(line)
+                state.prefix = trimResult.removedLeading
+                if (state.selected) {
+                    state.enable = false
+                } else {
+                    Pattern regex = Pattern.compile(trimmed.substring(CASEOFREGEX.length()).trim())
+                    if (regex.matcher(state.value).find()) {
                         state.selected = true
                         state.enable = true
                     } else {
