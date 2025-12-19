@@ -34,7 +34,7 @@ public class EntityBufferStorage
         BuiltInRegistries.ENTITY_TYPE.entrySet().forEach(dat -> {
             var entity = dat.getValue().create(overworld
                     //#switch PROPERTIES.versionMinecraft
-                    //#caseof 1.21.4;1.21.8
+                    //#caseofregex 1\.21\.[4-8]
                     //OF//                    , EntitySpawnReason.COMMAND
                     //#default
                     //#endswitch
@@ -102,7 +102,7 @@ public class EntityBufferStorage
         return getEntityType(entityClass)
                 .spawn(location.level(server),
                         //#switch PROPERTIES.versionMinecraft
-                        //#caseof 1.21.4;1.21.8
+                        //#caseofregex 1\.21\.*
                         //#default
                         null,
                         //#endswitch
@@ -117,7 +117,7 @@ public class EntityBufferStorage
                     setup.invoke(entity);
                 }, location.blockPos(),
                         //#switch PROPERTIES.versionMinecraft
-                        //#caseof 1.21.4;1.21.8
+                        //#caseofregex 1\.21\.[4-8]
                         //OF//                        EntitySpawnReason.COMMAND
                         //#default
                         MobSpawnType.COMMAND
@@ -150,14 +150,14 @@ public class EntityBufferStorage
         var pos = location.position();
         entity.teleportTo(location.level(server), pos.x, pos.y, pos.z,
                 //#switch PROPERTIES.versionMinecraft
-                //#caseof 1.21.4;1.21.8
+                //#caseofregex 1\.21\.[4-8]
                 //OF//                Relative.ALL
                 //#default
                 RelativeMovement.ALL
                 //#endswitch
                 , location.yaw(), location.pitch()
                 //#switch PROPERTIES.versionMinecraft
-                //#caseof 1.21.4;1.21.8
+                //#caseofregex 1\.21\.[4-8]
                 //OF//                , true
                 //#default
                 //#endswitch

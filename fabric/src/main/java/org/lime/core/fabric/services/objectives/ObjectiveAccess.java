@@ -22,7 +22,7 @@ public record ObjectiveAccess(
                 owner.nativeComponent.convert(Component.text(objectiveName)),
                 ObjectiveCriteria.RenderType.INTEGER
                 //#switch PROPERTIES.versionMinecraft
-                //#caseof 1.21.4;1.21.8
+                //#caseofregex 1\.21\.*
                 //OF//                , false, null
                 //#default
                 //#endswitch
@@ -30,7 +30,7 @@ public record ObjectiveAccess(
     }
 
     //#switch PROPERTIES.versionMinecraft
-    //#caseof 1.21.4;1.21.8
+    //#caseofregex 1\.21\.*
     //OF//    public ScoreHolder scoreKey(UUID player, String key) {
     //OF//        return ScoreHolder.forNameOnly(player + "." + key);
     //OF//    }
@@ -103,7 +103,7 @@ public record ObjectiveAccess(
     //#endswitch
 
     //#switch PROPERTIES.versionMinecraft
-    //#caseof 1.21.4;1.21.8
+    //#caseofregex 1\.21\.*
     //OF//    private static class Impl
     //OF//            extends ScoreProvider<ScoreHolder> {
     //OF//        public Impl(ScoreHolder s, ObjectiveAccess owner) {

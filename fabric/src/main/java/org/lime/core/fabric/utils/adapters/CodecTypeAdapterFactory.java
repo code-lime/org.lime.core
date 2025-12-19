@@ -10,7 +10,7 @@ import com.mojang.serialization.DynamicOps;
 import com.mojang.serialization.JsonOps;
 import net.minecraft.SharedConstants;
 //#switch PROPERTIES.versionMinecraft
-//#caseof 1.21.4;1.21.8
+//#caseofregex 1\.21\.[4-8]
 //#default
 import net.minecraft.resources.RegistryOps;
 //#endswitch
@@ -58,7 +58,7 @@ public class CodecTypeAdapterFactory
                 data = dataFixer.update(reference, new Dynamic<>(JsonOps.INSTANCE, data), version, currentVersion).getValue();
 
             //#switch PROPERTIES.versionMinecraft
-            //#caseof 1.21.4;1.21.8
+            //#caseofregex 1\.21\.*
             //OF//            return codec.parse(ops, data).getOrThrow(IllegalArgumentException::new);
             //#default
             return codec.parse(ops, data).getOrThrow(false, IllegalArgumentException::new);
@@ -74,7 +74,7 @@ public class CodecTypeAdapterFactory
             MinecraftServer server) {
         dataFixer = server.getFixerUpper();
         //#switch PROPERTIES.versionMinecraft
-        //#caseof 1.21.4;1.21.8
+        //#caseofregex 1\.21\.*
         //OF//        ops = server.registryAccess().createSerializationContext(JsonOps.INSTANCE);
         //#default
         ops = RegistryOps.create(JsonOps.INSTANCE, server.registryAccess());
