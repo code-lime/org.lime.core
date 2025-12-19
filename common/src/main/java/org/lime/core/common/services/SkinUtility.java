@@ -43,7 +43,7 @@ public class SkinUtility {
     public SkinData upload(String url, SkinVariant variant, int retry) {
         if (retry < 0)
             throw new IllegalArgumentException("Many retry");
-        logger.info("Uploading "+url+" skin with variant " + variant);
+        logger.info("Uploading {} skin with variant {}", url, variant);
         try {
             Thread.sleep(500);
         } catch (Exception ignored) {
