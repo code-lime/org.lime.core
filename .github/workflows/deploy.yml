@@ -17,25 +17,71 @@ env:
   GITHUB_REPOSITORY: ${{ github.repository }}
   GITHUB_PACKAGE_USERNAME: ${{ github.repository_owner }}
   GITHUB_PACKAGE_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-  VARIABLE_COMMON: global
-  VARIABLE_PAPER: global
-  VARIABLE_VELOCITY: global
-  VARIABLE_FABRIC: 1.20.1;1.21.4;1.21.8
+  
+  MODULE_MATRIX: |
+    {
+      "common": ["global"],
+      "paper": ["global"],
+      "velocity": ["global"],
+      "fabric": ["1.20.1", "1.21.4", "1.21.8"]
+    }
 
 jobs:
-  build:
+  matrix:
+    name: Generate matrix
     runs-on: ubuntu-latest
+
+    outputs:
+      matrix: ${{ steps.gen.outputs.matrix }}
+
     steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
+      - name: Generate matrix JSON
+        id: gen
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          echo "Input map:"
+          echo '${{ env.MODULE_MATRIX }}'
+
+          matrix='{"include":['
+          first=true
+
+          echo '${{ env.MODULE_MATRIX }}' \
+            | jq -r 'to_entries[] | .key as $module | .value[] | [$module, .] | @tsv' \
+            | while IFS=$'\t' read -r module variant; do
+                if [ "$first" = true ]; then
+                  first=false
+                else
+                  matrix+=','
+                fi
+                matrix+="{\"module\":\"$module\",\"variant\":\"$variant\"}"
+              done
+
+          matrix+=']}'
+
+          echo "Generated matrix:"
+          echo "$matrix"
+
+          echo "matrix=$matrix" >> "$GITHUB_OUTPUT"
+  build:
+    name: Build (${{ matrix.module }} / ${{ matrix.variant }})
+    runs-on: ubuntu-latest
+    needs: matrix
+
+    strategy:
+      fail-fast: false
+      matrix: ${{ fromJson(needs.matrix.outputs.matrix) }}
+
+    steps:
+      - uses: actions/checkout@v4
         with:
           fetch-depth: 0
 
-      - name: Set up JDK 23
-        uses: actions/setup-java@v4
+      - uses: actions/setup-java@v4
         with:
           java-version: '23'
-          distribution: 'oracle'
+          distribution: oracle
 
       - name: Make Gradle Wrapper Executable
         run: chmod +x gradlew
@@ -44,7 +90,7 @@ jobs:
         uses: gradle/actions/setup-gradle@v4
         with:
           gradle-version: wrapper
-
+          
       - name: Cache Gradle Dependencies
         uses: actions/cache@v4
         with:
@@ -55,42 +101,68 @@ jobs:
           restore-keys: |
             ${{ runner.os }}-gradle-
 
-      - name: Build Matrix
-        uses: ./.github/actions/build-matrix
-        with:
-          items: |
-            common=$VARIABLE_COMMON
-            paper=$VARIABLE_PAPER
-            velocity=$VARIABLE_VELOCITY
-            fabric=$VARIABLE_FABRIC
-          continue-on-error: false
-          gradle-args: '--build-cache --parallel'
-          output-dir: ./libs
-          default-task: build
-          default-copy: true
+      - name: Build
+        run: |
+          ./gradlew :${{ matrix.module }}:build \
+            -Pvariable=${{ matrix.variant }} \
+            -DincludeModules=${{ matrix.module }} \
+            --build-cache --parallel
 
-      - name: Upload Artifacts
+      - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:
-          name: all-artifacts
-          path: |
-            libs/*.jar
+          name: build-${{ matrix.module }}-${{ matrix.variant }}-artifacts
+          path: ${{ matrix.module }}/build/libs/*.jar
 
-      - name: Publish Matrix
-        uses: ./.github/actions/build-matrix
+  publish:
+    name: Publish (${{ matrix.module }} / ${{ matrix.variant }})
+    runs-on: ubuntu-latest
+    needs:
+      - matrix
+      - build
+    if: github.ref == 'refs/heads/master' || github.ref_type == 'tag'
+
+    strategy:
+      fail-fast: false
+      matrix: ${{ fromJson(needs.matrix.outputs.matrix) }}
+
+    steps:
+      - uses: actions/checkout@v4
         with:
-          items: |
-            common=$VARIABLE_COMMON
-            paper=$VARIABLE_PAPER
-            velocity=$VARIABLE_VELOCITY
-            fabric=$VARIABLE_FABRIC
-          continue-on-error: false
-          gradle-args: '--build-cache --parallel'
-          default-task: publish
-          default-copy: false
+          fetch-depth: 0
+
+      - uses: actions/setup-java@v4
+        with:
+          java-version: '23'
+          distribution: oracle
+
+      - name: Make Gradle Wrapper Executable
+        run: chmod +x gradlew
+
+      - name: Setup Gradle
+        uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: wrapper
+          
+      - name: Cache Gradle Dependencies
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.gradle/caches
+            ~/.gradle/wrapper
+          key: ${{ runner.os }}-gradle-${{ hashFiles('**/*.gradle*', '**/gradle-wrapper.properties') }}
+          restore-keys: |
+            ${{ runner.os }}-gradle-
+
+      - name: Publish
+        run: |
+          ./gradlew :${{ matrix.module }}:publish \
+            -Pvariable=${{ matrix.variant }} \
+            -DincludeModules=${{ matrix.module }} \
+            --build-cache --parallel
 
   release:
-    needs: [build]
+    needs: build
     runs-on: ubuntu-latest
     if: github.ref_type == 'tag'
     steps:
