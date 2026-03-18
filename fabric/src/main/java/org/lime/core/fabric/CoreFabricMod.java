@@ -33,7 +33,7 @@ public final class CoreFabricMod
         Set<String> visited = new HashSet<>();
         Set<String> visiting = new HashSet<>();
 
-        mods.forEach((modId, mod) -> dfs(modId, mod, mods, visited, visiting, result));
+        mods.forEach((modId, mod) -> dfs(modId, mod, mods, visited, visiting, result, 0));
         return result;
     }
     private void dfs(
@@ -42,12 +42,17 @@ public final class CoreFabricMod
             Map<String, BaseFabricMod> mods,
             Set<String> visited,
             Set<String> visiting,
-            List<BaseFabricMod> result) {
+            List<BaseFabricMod> result,
+            int deep) {
         if (visiting.contains(modId))
             throw new IllegalStateException("Cycled dependency: " + modId);
 
         if (visited.contains(modId))
             return;
+
+        String prefix = "   ".repeat(deep);
+
+        logger().info("{}Load mod {}", prefix, modId);
 
         visiting.add(modId);
         mod.metadata.getDependencies()
@@ -60,9 +65,10 @@ public final class CoreFabricMod
                         depModId = depModId.replace('-', '_');
                         depMod = mods.get(depModId);
                     }
+                    logger().info("{}   Try load dep mod {}", prefix, depModId);
                     if (depMod == null)
                         return;
-                    dfs(depModId, depMod, mods, visited, visiting, result);
+                    dfs(depModId, depMod, mods, visited, visiting, result, deep + 1);
                 });
 
         visiting.remove(modId);
