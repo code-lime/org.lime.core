@@ -13,6 +13,15 @@ public interface Disposable
     @Override
     void close();
 
+    static Disposable of(AutoCloseable closeable) {
+        return () -> {
+            try {
+                closeable.close();
+            } catch (Exception ex) {
+                throw new RuntimeException(ex);
+            }
+        };
+    }
     static Disposable.Composite combine(Collection<? extends Disposable> disposables) {
         return new Composite() {
             final ConcurrentLinkedDeque<Disposable> deque = new ConcurrentLinkedDeque<>(disposables);
