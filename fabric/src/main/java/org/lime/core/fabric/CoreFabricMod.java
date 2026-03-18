@@ -56,6 +56,10 @@ public final class CoreFabricMod
                 .map(ModDependency::getModId)
                 .forEach(depModId -> {
                     var depMod = mods.get(depModId);
+                    if (depMod == null) {
+                        depModId = depModId.replace('-', '_');
+                        depMod = mods.get(depModId);
+                    }
                     if (depMod == null)
                         return;
                     dfs(depModId, depMod, mods, visited, visiting, result);
