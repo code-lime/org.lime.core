@@ -6,7 +6,7 @@ import com.velocitypowered.api.plugin.PluginManager;
 import com.velocitypowered.api.plugin.annotation.DataDirectory;
 import com.velocitypowered.api.proxy.ProxyServer;
 import org.lime.core.common.agent.Agents;
-import org.lime.core.velocity.libby.LibbyVelocityDependencyLoader;
+import org.lime.core.velocity.dependencies.*;
 import org.slf4j.Logger;
 
 import java.nio.file.Files;
@@ -52,7 +52,7 @@ public final class CoreVelocityPlugin
 
         Agents.load();
 
-        globalDependencyLoader = new LibbyVelocityDependencyLoader(this, logger, dataFolder.toPath().resolve("../libby"));
+        globalDependencyLoader = new MavenResolverVelocityDependencyLoader(this, logger, dataFolder.toPath().resolve("../.."));
 
         super.enable();
     }

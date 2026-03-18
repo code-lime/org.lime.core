@@ -19,7 +19,7 @@ import org.lime.core.common.utils.execute.ActionEx2;
 import org.lime.core.common.utils.tuple.Tuple;
 import org.lime.core.common.utils.tuple.Tuple1;
 import org.lime.core.velocity.commands.NativeCommandConsumerFactory;
-import org.lime.core.velocity.libby.VelocityDependencyLoader;
+import org.lime.core.velocity.dependencies.VelocityDependencyLoader;
 import org.lime.core.velocity.tasks.VelocityScheduleTaskService;
 import org.slf4j.Logger;
 
@@ -79,7 +79,7 @@ public abstract class BaseVelocityPlugin
         if (velocityDependency.has("maven"))
             velocityDependency.getAsJsonObject("maven")
                     .entrySet()
-                    .forEach(kv -> dependencyLoader.loadRepository(kv.getKey(), kv.getValue().getAsString()));
+                    .forEach(kv -> dependencyLoader.loadRepository(kv.getKey(), kv.getValue()));
         if (velocityDependency.has("libraries"))
             velocityDependency.getAsJsonArray("libraries")
                     .forEach(v -> dependencyLoader.loadDependency(v.getAsString()));

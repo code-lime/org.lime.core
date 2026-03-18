@@ -57,16 +57,11 @@ dependencies {
     embedded "net.bytebuddy:byte-buddy:${versionByteBuddy}"
 }
 //</editor-fold>
-//<editor-fold desc="Settings: Libraries: Libby">
-repositories {
-    maven {
-        url = "https://s01.oss.sonatype.org/content/repositories/snapshots/"
-    }
-}
-
+//<editor-fold desc="Settings: Libraries: Apache Maven Resolver">
 dependencies {
-    compileOnly "com.alessiodp.libby:libby-velocity:${versionLibby}"
-    embedded "com.alessiodp.libby:libby-velocity:${versionLibby}"
+    compileOnly "org.apache.maven.resolver:maven-resolver-supplier:${versionMavenResolver}"
+
+    embedded "org.apache.maven.resolver:maven-resolver-supplier:${versionMavenResolver}"
 }
 //</editor-fold>
 //<editor-fold desc="Settings: Libraries: ObjectWebAsm">
