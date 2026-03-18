@@ -354,12 +354,14 @@ public abstract class BaseInstanceModule<Instance extends BaseInstance<Instance>
         bind(serviceClass)
                 .toProvider(new Provider<>() {
                     @Inject InstancesUtility instances;
+
+                    private final Lazy<Provider<T>> access = Lazy.of(() -> instances.core().injector().getProvider(serviceClass));
+
                     @Override
                     public T get() {
-                        return instances.core().injector().getInstance(serviceClass);
+                        return access.value().get();
                     }
-                })
-                .asEagerSingleton();
+                });
     }
 
     protected MiniMessage.Builder miniMessage() {
