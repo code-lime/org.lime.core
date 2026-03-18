@@ -383,6 +383,8 @@ public abstract class BaseInstanceModule<Instance extends BaseInstance<Instance>
 
     @Override
     protected void configure() {
+        super.configure();
+
         bind(UnsafeMappingsUtility.class).toProvider(() -> Unsafe.MAPPINGS).asEagerSingleton();
 
         bind(Artifact.class).toInstance(instance.artifact());
