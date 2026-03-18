@@ -1,7 +1,8 @@
 package net.minecraft.paper.java;
 
 import com.google.common.collect.Streams;
-import net.minecraft.paper.java.view.OtherView;
+import net.minecraft.java.maven.RemoteRepositoryImpl;
+import net.minecraft.java.view.OtherView;
 import net.minecraft.unsafe.GlobalConfigure;
 import org.bukkit.plugin.PluginDescriptionFile;
 import org.bukkit.plugin.java.LibraryLoader;
@@ -88,91 +89,26 @@ public class CacheLibraryLoader extends LibraryLoader {
                 }));
     }
 
-    private String readUpdatePolicy(Map<?, ?> dat) {
-        String updatePolicy = Objects.toString(dat.get("update"), RepositoryPolicy.UPDATE_POLICY_ALWAYS);
-        boolean updateIntervalPolicy = false;
-        if (!updatePolicy.equals(RepositoryPolicy.UPDATE_POLICY_ALWAYS)
-                && !updatePolicy.equals(RepositoryPolicy.UPDATE_POLICY_DAILY)
-                && !updatePolicy.equals(RepositoryPolicy.UPDATE_POLICY_NEVER)
-                && !(updateIntervalPolicy = updatePolicy.startsWith(RepositoryPolicy.UPDATE_POLICY_INTERVAL + ":")))
-            throw new IllegalArgumentException("Update policy '" + updatePolicy + "' not supported");
-        if (updateIntervalPolicy) {
-            String intervalNumber = updatePolicy.substring(RepositoryPolicy.UPDATE_POLICY_INTERVAL.length() + 1);
-            try {
-                int interval = Integer.parseInt(intervalNumber);
-                if (interval <= 0) {
-                    throw new IllegalArgumentException("Update policy '" + updatePolicy + "' must be a positive integer after ':', but got: " + interval);
-                }
-            } catch (NumberFormatException ex) {
-                throw new IllegalArgumentException("Update policy '" + updatePolicy + "' must be a valid integer after ':', but got: " + intervalNumber, ex);
-            }
-        }
-        return updatePolicy;
+    private RepositoryPolicy cast(RemoteRepositoryImpl.PolicyImpl impl) {
+        return new RepositoryPolicy(impl.enable(), impl.updatePolicy(), impl.checksumPolicy());
     }
-    private String readChecksumPolicy(Map<?, ?> dat) {
-        String checksumPolicy = Objects.toString(dat.get("checksum"), RepositoryPolicy.CHECKSUM_POLICY_FAIL);
-        if (!checksumPolicy.equals(RepositoryPolicy.CHECKSUM_POLICY_FAIL)
-                && !checksumPolicy.equals(RepositoryPolicy.CHECKSUM_POLICY_WARN)
-                && !checksumPolicy.equals(RepositoryPolicy.CHECKSUM_POLICY_IGNORE))
-            throw new IllegalArgumentException("Checksum policy '" + checksumPolicy + "' not supported");
-        return checksumPolicy;
+    private Proxy cast(RemoteRepositoryImpl.ProxyImpl impl) {
+        return new Proxy(impl.protocol(), impl.host(), impl.port(), Optional.ofNullable(impl.auth())
+                .map(this::cast)
+                .orElse(null));
     }
-    private RepositoryPolicy readPolicy(Object value) {
-        if (value instanceof Map<?,?> dat) {
-            String enableStr = Objects.toString(dat.get("enable"), "true");
-            boolean enable = switch (enableStr) {
-                case "true" -> true;
-                case "false" -> false;
-                default -> throw new IllegalArgumentException("Enable '" + enableStr + "' can be only 'true' or 'false'");
-            };
-            String updatePolicy = readUpdatePolicy(dat);
-            String checksumPolicy = readChecksumPolicy(dat);
-
-            return new RepositoryPolicy(enable, updatePolicy, checksumPolicy);
-        } else {
-            String enableStr = value.toString();
-            boolean enable = switch (enableStr) {
-                case "true" -> true;
-                case "false" -> false;
-                default -> throw new IllegalArgumentException("Enable '" + enableStr + "' can be only 'true' or 'false'");
-            };
-            return new RepositoryPolicy(enable, RepositoryPolicy.UPDATE_POLICY_DAILY, RepositoryPolicy.CHECKSUM_POLICY_WARN);
-        }
-    }
-
-    private Authentication readAuthentication(Object value) {
-        Map<?, ?> dat = (Map<?,?>) value;
+    private Authentication cast(RemoteRepositoryImpl.AuthenticationImpl impl) {
         return new AuthenticationBuilder()
-                .addUsername(dat.get("username").toString())
-                .addPassword(dat.get("password").toString())
+                .addUsername(impl.username())
+                .addPassword(impl.password())
                 .build();
     }
-    private Proxy readProxy(Object value) {
-        Map<?, ?> dat = (Map<?,?>) value;
-        String host = dat.get("host").toString();
-        int port = Integer.parseInt(dat.get("port").toString());
-        Authentication proxyAuth = null;
-        if (dat.containsKey("auth"))
-            proxyAuth = readAuthentication(dat.get("auth"));
-        return new Proxy("http", host, port, proxyAuth);
-    }
-    private RemoteRepository readRemote(String id, Object value) {
-        RemoteRepository.Builder repo;
-        if (value instanceof Map<?,?> dat) {
-            String url = dat.get("url").toString();
-            repo = new RemoteRepository.Builder(id, "default", url);
-            dat.forEach((kk,vv) -> {
-                var ignored = switch (kk.toString()) {
-                    case "snapshot" -> repo.setSnapshotPolicy(readPolicy(vv));
-                    case "release" -> repo.setReleasePolicy(readPolicy(vv));
-                    case "auth" -> repo.setAuthentication(readAuthentication(vv));
-                    case "proxy" -> repo.setProxy(readProxy(vv));
-                    default -> repo;
-                };
-            });
-        } else {
-            repo = new RemoteRepository.Builder(id, "default", value.toString());
-        }
+    private RemoteRepository cast(RemoteRepositoryImpl impl) {
+        var repo = new RemoteRepository.Builder(impl.id(), impl.type(), impl.url());
+        Optional.ofNullable(impl.snapshotPolicy()).map(this::cast).ifPresent(repo::setSnapshotPolicy);
+        Optional.ofNullable(impl.releasePolicy()).map(this::cast).ifPresent(repo::setReleasePolicy);
+        Optional.ofNullable(impl.auth()).map(this::cast).ifPresent(repo::setAuthentication);
+        Optional.ofNullable(impl.proxy()).map(this::cast).ifPresent(repo::setProxy);
         return repo.build();
     }
 
@@ -220,9 +156,9 @@ public class CacheLibraryLoader extends LibraryLoader {
 
                     logger.log(Level.INFO, "[{0}] Registering {1} repositories... please wait", new Object[] { LOG_PREFIX, map.size() });
                     map.forEach((k, v) -> {
-                        var repo = readRemote(k.toString(), v);
-                        repositories.add(repo);
-                        this.logger.log(Level.INFO, "[{0}] Registered repository {1}", new Object[] { LOG_PREFIX, repo.getId() + "::" + repo.getUrl() });
+                        var repo = RemoteRepositoryImpl.of(k.toString(), v);
+                        repositories.add(cast(repo));
+                        this.logger.log(Level.INFO, "[{0}] Registered repository {1}", new Object[] { LOG_PREFIX, repo.toString() });
                     });
 
                     var newList = repository.newResolutionRepositories(session, repositories);
