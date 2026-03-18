@@ -87,12 +87,13 @@ public abstract class BaseInstance<Instance extends BaseInstance<Instance>> {
     public void enable() {
         if (isCore())
             GlobalConfigure.configure();
+        Logger logger = logger();
+        logger.info("Preload {}", id());
 
         module = createModule();
         if (isCore())
             module.executeCore();
         injector = Guice.createInjector(module);
-        Logger logger = logger();
         logger.info("Load {} services", module.services.size());
         module.services
                 .forEach(serviceClass -> {
@@ -137,7 +138,7 @@ public abstract class BaseInstance<Instance extends BaseInstance<Instance>> {
         compositeDisposable.close();
     }
 
-    protected Stream<Class<?>> findAnnotatedClasses(Class<? extends Annotation> annotationClass) {
+    public Stream<Class<?>> findAnnotatedClasses(Class<? extends Annotation> annotationClass) {
         return JarAccessUtils.findAnnotatedClasses(logger(), annotationClass, jars(), loader());
     }
 }
