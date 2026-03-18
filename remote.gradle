@@ -87,11 +87,6 @@ tasks.register("upload") {
 
         def jarFile = jars[0]
 
-        if (remotePath.endsWith("/") || remotePath.endsWith("\\")) {
-            def baseName = jarFile.name.replaceAll(/-.+\.jar$/, ".jar")
-            remotePath = remotePath + baseName
-        }
-
         println "Uploading ${jarFile.name} to remote ${remotePath}"
 
         JSch jsch = new JSch()
@@ -120,6 +115,25 @@ tasks.register("upload") {
         Channel channel = session.openChannel("sftp")
         channel.connect()
         ChannelSftp sftp = (ChannelSftp) channel
+
+        if (remotePath.endsWith("/") || remotePath.endsWith("\\")) {
+            remotePath = remotePath + jarFile.name
+
+            def dir = remotePath.replaceAll(/[^\/\\]+$/, "")
+            def pluginNamePattern = jarFile.name.replaceAll(/-.+\.jar$/, "")
+            def files = sftp.ls(dir)
+            for (fileEntry in files) {
+                if (fileEntry instanceof ChannelSftp.LsEntry) {
+                    def name = fileEntry.getFilename()
+                    if (name == "." || name == "..") continue
+                    if (name == jarFile.name) continue
+                    if (name.startsWith(pluginNamePattern) && name.endsWith(".jar")) {
+                        sftp.rm(dir + name)
+                        println "Deleted old jar: $name"
+                    }
+                }
+            }
+        }
 
         sftp.put(jarFile.absolutePath, remotePath)
 
