@@ -1,10 +1,11 @@
-package org.lime.core.common.services;
+package org.lime.core.common.services.skins;
 
 import com.google.gson.JsonObject;
 import com.google.inject.Inject;
 import com.google.inject.Singleton;
-import org.lime.core.common.utils.skin.SkinData;
-import org.lime.core.common.utils.skin.SkinVariant;
+import org.lime.core.common.services.WebUtility;
+import org.lime.core.common.services.skins.common.SkinData;
+import org.lime.core.common.services.skins.common.SkinVariant;
 import org.slf4j.Logger;
 
 @Singleton
@@ -19,17 +20,17 @@ public class SkinUtility {
     private JsonObject getBody(String url, SkinVariant variant) {
         JsonObject json = new JsonObject();
         json.addProperty("visibility", 0);
-        if (variant == SkinVariant.Auto) {
+        if (variant == SkinVariant.AUTO) {
             if (url.startsWith("slim#")) {
                 url = url.substring(5);
-                variant = SkinVariant.Slim;
+                variant = SkinVariant.SLIM;
             }
             else if (url.startsWith("classic#")) {
                 url = url.substring(8);
-                variant = SkinVariant.Classic;
+                variant = SkinVariant.CLASSIC;
             }
         }
-        if (variant != SkinVariant.Auto) json.addProperty("variant", variant.name().toLowerCase());
+        if (variant != SkinVariant.AUTO) json.addProperty("variant", variant.name().toLowerCase());
         json.addProperty("url", url);
         return json;
     }
@@ -37,7 +38,7 @@ public class SkinUtility {
         return upload(url, variant, DEFAULT_RETRY);
     }
     public SkinData upload(String url) {
-        return upload(url, SkinVariant.Auto, DEFAULT_RETRY);
+        return upload(url, SkinVariant.AUTO, DEFAULT_RETRY);
     }
 
     public SkinData upload(String url, SkinVariant variant, int retry) {
@@ -70,16 +71,16 @@ public class SkinUtility {
                 }
                 case "Failed to find image from url" -> {
                     logger.warn("Not found image from url '{}'! Skip and get template...", url);
-                    return SkinData.None;
+                    return SkinData.NONE;
                 }
                 default -> throw new IllegalArgumentException("MC ERROR: " + json);
             }
         }
         JsonObject data = json.getAsJsonObject("data").getAsJsonObject("texture");
         logger.info("Uploaded!");
-        return new SkinData(data);
+        return SkinData.parse(data);
     }
     public SkinData upload(String url, int retry) {
-        return upload(url, SkinVariant.Auto, retry);
+        return upload(url, SkinVariant.AUTO, retry);
     }
 }
