@@ -196,6 +196,11 @@ public class Reflection {
                 .map(c -> c == null ? "null" : c.getName())
                 .collect(Collectors.joining(",", "(", ")"));
     }
+
+    @SuppressWarnings("unchecked")
+    public static <E extends Throwable> RuntimeException sneakyThrow(Throwable e) throws E {
+        throw (E) e;
+    }
 }
 
 
