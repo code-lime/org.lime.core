@@ -10,8 +10,8 @@ import java.lang.reflect.Method;
 
 public record ReflectionConstructor<T>(Constructor<T> target)
         implements ReflectionAccessible<Constructor<T>, ReflectionConstructor<T>>, ReflectionMember<Constructor<T>, ReflectionConstructor<T>> {
-    public static <T> ReflectionConstructor<T> of(Constructor<T> method) {
-        return new ReflectionConstructor<>(method);
+    public static <T> ReflectionConstructor<T> of(Constructor<T> constructor) {
+        return new ReflectionConstructor<>(constructor);
     }
 
     public static <T> ReflectionConstructor<T> of(Class<T> tClass, Class<?>... args) {
