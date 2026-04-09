@@ -462,7 +462,7 @@ public abstract class BaseInstanceModule<Instance extends BaseInstance<Instance>
                         .orElse(false))
                 .forEach(custom -> {
                     if (!Service.class.isAssignableFrom(custom))
-                        throw new IllegalArgumentException("Class '"+custom+"' annotated as @BindService but not implemented Service");
+                        throw new IllegalArgumentException("Class '" + custom.getName() + "' annotated as @BindService but not implemented Service");
                     bindCustom(custom, true);
                 });
 
