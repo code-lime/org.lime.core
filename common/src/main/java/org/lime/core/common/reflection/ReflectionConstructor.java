@@ -16,6 +16,13 @@ public record ReflectionConstructor<T>(Constructor<T> target)
         return of(Reflection.constructor(tClass, args));
     }
 
+    public static String constructorToString(Constructor<?> constructor) {
+        return constructorToString(constructor.getDeclaringClass(), constructor.getParameterTypes());
+    }
+    public static String constructorToString(Class<?> tClass, Class<?> @Nullable [] argTypes) {
+        return tClass.getName() + ".<ctor>" + Reflection.argsToString(argTypes);
+    }
+
     @Override
     public ReflectionConstructor<T> self() {
         return this;
@@ -41,5 +48,10 @@ public record ReflectionConstructor<T>(Constructor<T> target)
     }
     public <J>J lambda(Class<J> tClass, Method invoke) {
         return Lambda.lambda(target, tClass, invoke);
+    }
+
+    @Override
+    public @NotNull String toString() {
+        return constructorToString(target);
     }
 }

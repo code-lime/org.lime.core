@@ -1,5 +1,6 @@
 package org.lime.core.common.reflection;
 
+import org.jetbrains.annotations.NotNull;
 import org.lime.core.common.utils.execute.Callable;
 
 import java.lang.reflect.Field;
@@ -16,6 +17,13 @@ public record ReflectionField<T>(Field target)
     public static <T> ReflectionField<T> ofMojang(Class<?> tClass, String mojangName) {
         return of(Reflection.getFirst(tClass, m -> Reflection.name(m).equals(mojangName))
                 .orElseThrow(() -> new IllegalArgumentException(new NoSuchFieldException(mojangName))));
+    }
+
+    public static String fieldToString(Field field, boolean mojang) {
+        return fieldToString(field.getDeclaringClass(), mojang ? Reflection.name(field) : field.getName());
+    }
+    public static String fieldToString(Class<?> tClass, String name) {
+        return tClass.getName() + '.' + name;
     }
 
     @Override
@@ -63,5 +71,10 @@ public record ReflectionField<T>(Field target)
     }
     public <J>J setter(Class<J> tClass, Method invoke) {
         return Lambda.setter(target, tClass, invoke);
+    }
+
+    @Override
+    public @NotNull String toString() {
+        return fieldToString(target, true);
     }
 }

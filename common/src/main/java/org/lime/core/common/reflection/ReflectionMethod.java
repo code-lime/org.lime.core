@@ -1,5 +1,7 @@
 package org.lime.core.common.reflection;
 
+import org.jetbrains.annotations.NotNull;
+import org.jetbrains.annotations.Nullable;
 import org.lime.core.common.utils.execute.Callable;
 
 import java.lang.reflect.InvocationTargetException;
@@ -21,11 +23,8 @@ public record ReflectionMethod(Method target)
     public static String methodToString(Method method, boolean mojang) {
         return methodToString(method.getDeclaringClass(), mojang ? Reflection.name(method) : method.getName(), method.getParameterTypes());
     }
-
-    public static String methodToString(Class<?> tClass, String name, Class<?>[] argTypes) {
-        return tClass.getName() + '.' + name + ((argTypes == null || argTypes.length == 0) ? "()" : Arrays.stream(argTypes)
-                .map(c -> c == null ? "null" : c.getName())
-                .collect(Collectors.joining(",", "(", ")")));
+    public static String methodToString(Class<?> tClass, String name, Class<?> @Nullable [] argTypes) {
+        return tClass.getName() + '.' + name + Reflection.argsToString(argTypes);
     }
 
     public static ReflectionMethod ofMojang(Class<?> tClass, String mojangName, Class<?>... args) {
@@ -64,5 +63,10 @@ public record ReflectionMethod(Method target)
     }
     public <J> J lambda(Class<J> tClass, Method invoke) {
         return Lambda.lambda(target, tClass, invoke);
+    }
+
+    @Override
+    public @NotNull String toString() {
+        return methodToString(target, true);
     }
 }
