@@ -1,12 +1,13 @@
 package org.lime.core.common.services.buffers;
 
+import com.google.inject.TypeLiteral;
 import org.jetbrains.annotations.Nullable;
 
 public abstract class BaseIndexedEntityBuffer<Index, T extends Entity, Entity, Location>
         extends BaseEntityBuffer<Index, T, Entity, Location> {
-    protected Class<Index> indexClass;
+    protected TypeLiteral<Index> indexClass;
 
-    protected BaseIndexedEntityBuffer(BaseEntityBufferStorage<Entity, Location> owner, BaseEntityBufferSetup<Location> setup, Class<Index> indexClass, Class<T> tClass) {
+    protected BaseIndexedEntityBuffer(BaseEntityBufferStorage<Entity, Location> owner, BaseEntityBufferSetup<Location> setup, TypeLiteral<Index> indexClass, Class<T> tClass) {
         super(owner, setup, tClass);
         this.indexClass = indexClass;
     }

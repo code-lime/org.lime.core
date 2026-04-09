@@ -1,6 +1,7 @@
 package org.lime.core.paper.services.buffers;
 
 import com.google.inject.Inject;
+import com.google.inject.TypeLiteral;
 import net.minecraft.world.entity.events.EntityTrackingRangeEvent;
 import net.minecraft.world.entity.events.ShouldEntityBeSavedEvent;
 import org.bukkit.Bukkit;
@@ -43,6 +44,10 @@ public class EntityBufferStorage
     }
     @Override
     public <Index, T extends Entity> IndexedEntityBuffer<Index, T> entity(BaseEntityBufferSetup<Location> setup, Class<Index> indexClass, Class<T> tClass) {
+        return new IndexedEntityBuffer<>(this, setup, TypeLiteral.get(indexClass), tClass);
+    }
+    @Override
+    public <Index, T extends Entity> IndexedEntityBuffer<Index, T> entity(BaseEntityBufferSetup<Location> setup, TypeLiteral<Index> indexClass, Class<T> tClass) {
         return new IndexedEntityBuffer<>(this, setup, indexClass, tClass);
     }
 

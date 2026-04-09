@@ -1,6 +1,7 @@
 package org.lime.core.fabric.services.buffers;
 
 import com.google.inject.Inject;
+import com.google.inject.TypeLiteral;
 import net.fabricmc.fabric.api.event.lifecycle.v1.ServerEntityEvents;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.server.MinecraftServer;
@@ -62,6 +63,10 @@ public class EntityBufferStorage
     }
     @Override
     public <Index, T extends Entity> IndexedEntityBuffer<Index, T> entity(BaseEntityBufferSetup<WorldLocation> setup, Class<Index> indexClass, Class<T> tClass) {
+        return new IndexedEntityBuffer<>(this, setup, TypeLiteral.get(indexClass), tClass);
+    }
+    @Override
+    public <Index, T extends Entity> IndexedEntityBuffer<Index, T> entity(BaseEntityBufferSetup<WorldLocation> setup, TypeLiteral<Index> indexClass, Class<T> tClass) {
         return new IndexedEntityBuffer<>(this, setup, indexClass, tClass);
     }
 
