@@ -2,6 +2,7 @@ package org.lime.core.common.utils;
 
 import com.google.common.collect.Streams;
 import org.apache.commons.lang3.reflect.TypeUtils;
+import org.lime.core.common.reflection.ClassInfo;
 
 import java.lang.annotation.Annotation;
 import java.lang.reflect.*;
@@ -40,6 +41,12 @@ public class AnnotationUtils {
 
         Type resolvedTargetType = TypeUtils.unrollVariables(typeVarAssigns, targetType);
 
+        Stream<Info<T>> supers = ClassInfo.of(raw)
+                .superWithInterfaceClasses()
+                .stream()
+                .filter(v -> v != raw)
+                .flatMap(v -> recursiveAnnotations(annotationClass, v, visitedTypes));
+
         Stream<Info<T>> classLevel = Arrays.stream(raw.getDeclaredAnnotationsByType(annotationClass))
                 .map(a -> Info.of(a, raw, resolvedTargetType));
 
@@ -52,7 +59,7 @@ public class AnnotationUtils {
         Stream<Info<T>> methods = Arrays.stream(raw.getDeclaredMethods())
                 .flatMap(m -> processMethod(annotationClass, m, typeVarAssigns));
 
-        return Streams.concat(classLevel, fields, constructors, methods);
+        return Streams.concat(classLevel, fields, constructors, methods, supers);
     }
 
     private static <T extends Annotation> Stream<Info<T>> processField(
