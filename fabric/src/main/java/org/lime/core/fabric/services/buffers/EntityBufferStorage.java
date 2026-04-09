@@ -12,6 +12,7 @@ import net.minecraft.world.phys.Vec3;
 import org.lime.core.common.api.BindService;
 import org.lime.core.common.services.buffers.BaseEntityBufferSetup;
 import org.lime.core.common.services.buffers.BaseEntityBufferStorage;
+import org.lime.core.common.services.buffers.InjectBuffer;
 import org.lime.core.common.utils.Disposable;
 import org.lime.core.common.utils.execute.Action1;
 import org.lime.core.fabric.hooks.EntityTrackingRangeHook;
@@ -19,6 +20,7 @@ import org.lime.core.fabric.hooks.ShouldBeEntitySavedHook;
 import org.lime.core.fabric.utils.WorldLocation;
 
 import java.util.Collections;
+import java.util.OptionalInt;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 
@@ -68,6 +70,14 @@ public class EntityBufferStorage
     @Override
     public <Index, T extends Entity> IndexedEntityBuffer<Index, T> entity(BaseEntityBufferSetup<WorldLocation> setup, TypeLiteral<Index> indexClass, Class<T> tClass) {
         return new IndexedEntityBuffer<>(this, setup, indexClass, tClass);
+    }
+    @Override
+    public BaseEntityBufferSetup<WorldLocation> createSetup(InjectBuffer injectBuffer) {
+        var trackingDistance = injectBuffer.trackingDistance();
+        return new EntityBufferSetup(
+                injectBuffer.tag(),
+                null,
+                trackingDistance < 0 ? OptionalInt.empty() : OptionalInt.of(trackingDistance));
     }
 
     public IterationEntityBuffer<Display.TextDisplay> text(EntityBufferSetup setup) {

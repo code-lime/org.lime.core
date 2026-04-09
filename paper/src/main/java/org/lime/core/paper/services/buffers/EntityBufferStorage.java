@@ -14,9 +14,11 @@ import org.bukkit.event.world.ChunkLoadEvent;
 import org.lime.core.common.api.BindService;
 import org.lime.core.common.services.buffers.BaseEntityBufferSetup;
 import org.lime.core.common.services.buffers.BaseEntityBufferStorage;
+import org.lime.core.common.services.buffers.InjectBuffer;
 import org.lime.core.common.utils.execute.Action1;
 
 import java.util.Arrays;
+import java.util.OptionalInt;
 import java.util.Set;
 
 @BindService
@@ -49,6 +51,15 @@ public class EntityBufferStorage
     @Override
     public <Index, T extends Entity> IndexedEntityBuffer<Index, T> entity(BaseEntityBufferSetup<Location> setup, TypeLiteral<Index> indexClass, Class<T> tClass) {
         return new IndexedEntityBuffer<>(this, setup, indexClass, tClass);
+    }
+
+    @Override
+    public BaseEntityBufferSetup<Location> createSetup(InjectBuffer injectBuffer) {
+        var trackingDistance = injectBuffer.trackingDistance();
+        return new EntityBufferSetup(
+                injectBuffer.tag(),
+                null,
+                trackingDistance < 0 ? OptionalInt.empty() : OptionalInt.of(trackingDistance));
     }
 
     public IterationEntityBuffer<TextDisplay> text(EntityBufferSetup setup) {
