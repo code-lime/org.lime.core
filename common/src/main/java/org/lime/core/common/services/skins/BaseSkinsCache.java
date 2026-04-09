@@ -25,8 +25,6 @@ import org.lime.core.common.utils.execute.ActionEx2;
 import javax.imageio.ImageIO;
 import java.awt.*;
 import java.awt.image.BufferedImage;
-import java.io.ByteArrayOutputStream;
-import java.io.IOException;
 import java.net.URI;
 import java.util.*;
 
@@ -107,21 +105,8 @@ public abstract class BaseSkinsCache<ServerPlayer, GameProfile>
             return loaded;
         });
     }
-
-    public SkinData get(byte[] png, SkinVariant variant) {
-        return get(getUrl(png), variant);
-    }
-    public SkinData get(BufferedImage image, SkinVariant variant) {
-        try (ByteArrayOutputStream out = new ByteArrayOutputStream()) {
-            ImageIO.write(image, "png", out);
-            return get(out.toByteArray(), variant);
-        } catch (IOException e) {
-            throw new RuntimeException(e);
-        }
-    }
-
-    public static String getUrl(byte[] png) {
-        return "data:image/png;base64," + Base64.getEncoder().encodeToString(png);
+    public SkinData get(SkinKey key) {
+        return get(key.url(), key.variant());
     }
 
     private static final String OLD_TEXTURES = "old_textures";
@@ -229,7 +214,7 @@ public abstract class BaseSkinsCache<ServerPlayer, GameProfile>
         } finally {
             g.dispose();
         }
-        return get(img, variant);
+        return get(SkinKey.of(img, variant));
     }
     public SkinVariant getVariant(@Nullable MinecraftProfileTexture texture) {
         return Optional.ofNullable(texture)
