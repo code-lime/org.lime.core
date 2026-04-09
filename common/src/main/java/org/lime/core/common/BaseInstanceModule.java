@@ -3,6 +3,9 @@ package org.lime.core.common;
 import com.google.common.base.CaseFormat;
 import com.google.gson.*;
 import com.google.inject.*;
+import com.google.inject.matcher.Matchers;
+import com.google.inject.spi.TypeEncounter;
+import com.google.inject.spi.TypeListener;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.minimessage.MiniMessage;
 import net.kyori.adventure.text.minimessage.tag.Tag;
@@ -17,6 +20,7 @@ import org.apache.commons.lang3.reflect.TypeUtils;
 import org.lime.core.common.api.minimessage.TagContextReader;
 import org.lime.core.common.api.scope.BaseKeyedScope;
 import org.lime.core.common.api.scope.ScopeKey;
+import org.lime.core.common.reflection.ClassInfo;
 import org.lime.core.common.reflection.ReflectionConstructor;
 import org.lime.core.common.services.InstancesUtility;
 import org.lime.core.common.utils.Unsafe;
@@ -27,9 +31,9 @@ import org.lime.core.common.api.impl.ConfigAccessImpl;
 import org.lime.core.common.utils.*;
 import org.lime.core.common.utils.adapters.CommonGsonTypeAdapters;
 import org.lime.core.common.utils.adapters.GsonTypeAdapters;
+import org.lime.core.common.utils.execute.*;
 import org.lime.core.common.utils.json.builder.Json;
 import org.lime.core.common.utils.Lazy;
-import org.lime.core.common.utils.execute.Func1;
 import org.slf4j.Logger;
 
 import java.io.File;
@@ -43,6 +47,7 @@ import java.nio.file.Path;
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentLinkedDeque;
+import java.util.concurrent.ConcurrentLinkedQueue;
 
 public abstract class BaseInstanceModule<Instance extends BaseInstance<Instance>>
         extends AbstractModule {
@@ -376,6 +381,12 @@ public abstract class BaseInstanceModule<Instance extends BaseInstance<Instance>
                 });
     }
 
+    private final ConcurrentLinkedQueue<FieldFactory> fieldFactories = new ConcurrentLinkedQueue<>();
+
+    protected void bindFieldFactory(FieldFactory fieldFactory) {
+        fieldFactories.add(fieldFactory);
+    }
+
     protected MiniMessage.Builder miniMessage() {
         return MiniMessage.builder()
                 .editTags(v -> v
@@ -446,6 +457,18 @@ public abstract class BaseInstanceModule<Instance extends BaseInstance<Instance>
                         throw new IllegalArgumentException("Class '"+custom+"' annotated as @BindService but not implemented Service");
                     bindCustom(custom, true);
                 });
+
+        this.bindListener(Matchers.any(), new TypeListener() {
+            @Override
+            public <I> void hear(TypeLiteral<I> declareType, TypeEncounter<I> encounter) {
+                for (var field : ClassInfo.of(declareType.getRawType()).fields()) {
+                    for (var factory : fieldFactories) {
+                        if (factory.register(declareType, field, encounter))
+                            break;
+                    }
+                }
+            }
+        });
     }
 
     public Collection<String> configKeys() {
