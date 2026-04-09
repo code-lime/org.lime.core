@@ -6,16 +6,27 @@ import org.lime.core.common.utils.tuple.LockTuple1;
 import org.lime.core.common.utils.tuple.Tuple;
 
 import java.lang.instrument.Instrumentation;
-import java.util.List;
 
 public class Agents {
-    private static final LockTuple1<@Nullable List<Agent>> agents = Tuple.lock(null);
+    private static final LockTuple1<Agent @Nullable []> agents = Tuple.lock(null);
     public static void load(Instrumentation instrumentation) {
         agents.invoke(v -> {
             if (v.val0 != null)
                 return;
-            v.val0 = List.of(new OpenAllAgent());
-            v.val0.forEach(agent -> agent.run(instrumentation));
+            //noinspection resource
+            v.val0 = new Agent[]
+            {
+                    new OpenAllAgent(),
+            };
+            try {
+                for (Agent agent : v.val0) {
+                    System.out.println("[Agent] Load agent " + agent.getClass().getSimpleName());
+                    agent.run(instrumentation);
+                }
+            } catch (Throwable ex) {
+                System.out.println("ERROR : " + ex);
+                throw new RuntimeException(ex);
+            }
         });
     }
     public static void load() {
@@ -25,7 +36,8 @@ public class Agents {
         agents.invoke(v -> {
             if (v.val0 == null)
                 return;
-            v.val0.forEach(Agent::close);
+            for (var i : v.val0)
+                i.close();
             v.val0 = null;
         });
     }

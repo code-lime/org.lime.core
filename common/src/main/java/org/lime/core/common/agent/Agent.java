@@ -5,6 +5,6 @@ import java.lang.instrument.Instrumentation;
 
 public interface Agent
         extends Closeable {
-    void run(Instrumentation instrumentation);
+    void run(Instrumentation instrumentation) throws Throwable;
     @Override void close();
 }
