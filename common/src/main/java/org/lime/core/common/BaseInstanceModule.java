@@ -24,6 +24,8 @@ import org.lime.core.common.reflection.ClassInfo;
 import org.lime.core.common.reflection.ReflectionConstructor;
 import org.lime.core.common.services.InstancesUtility;
 import org.lime.core.common.services.buffers.EntityBufferFieldFactory;
+import org.lime.core.common.services.cooldowns.CooldownFieldFactory;
+import org.lime.core.common.services.cooldowns.Cooldowns;
 import org.lime.core.common.utils.Unsafe;
 import org.lime.core.common.services.UnsafeMappingsUtility;
 import org.lime.core.common.api.*;
@@ -448,6 +450,7 @@ public abstract class BaseInstanceModule<Instance extends BaseInstance<Instance>
         bind(new TypeLiteral<BaseInstance<?>>() {}).toInstance(instance);
         bind(new TypeLiteral<NativeCommandConsumer.Factory<?,?>>() {}).toInstance(nativeCommandFactory());
 
+        bindFieldFactory(new CooldownFieldFactory());
         bindFieldFactory(new EntityBufferFieldFactory());
 
         instance
@@ -472,6 +475,10 @@ public abstract class BaseInstanceModule<Instance extends BaseInstance<Instance>
                 }
             }
         });
+
+        if (!instance.isCore()) {
+            bindFromCore(Cooldowns.class);
+        }
     }
 
     public Collection<String> configKeys() {
