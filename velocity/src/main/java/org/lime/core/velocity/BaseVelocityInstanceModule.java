@@ -1,5 +1,6 @@
 package org.lime.core.velocity;
 
+import com.google.inject.TypeLiteral;
 import com.velocitypowered.api.proxy.ProxyServer;
 import net.kyori.adventure.text.minimessage.MiniMessage;
 import org.lime.core.common.BaseInstanceModule;
@@ -7,9 +8,11 @@ import org.lime.core.common.services.InstancesUtility;
 import org.lime.core.common.services.ScheduleTaskService;
 import org.lime.core.common.services.UnsafeMappingsUtility;
 import org.lime.core.common.services.memories.BaseConnectionStorageService;
+import org.lime.core.common.services.skins.BaseSkinsCache;
 import org.lime.core.common.utils.Lazy;
 import org.lime.core.velocity.commands.NativeCommandConsumerFactory;
 import org.lime.core.velocity.services.ConnectionStorageService;
+import org.lime.core.velocity.services.SkinsCache;
 import org.lime.core.velocity.utils.adapters.VelocityGsonTypeAdapters;
 
 public class BaseVelocityInstanceModule
@@ -55,9 +58,12 @@ public class BaseVelocityInstanceModule
 
         bind(ScheduleTaskService.class).toInstance(instance.taskService);
         bind(NativeCommandConsumerFactory.class).toInstance(nativeCommandFactory());
+
+        bindCast(new TypeLiteral<BaseSkinsCache<?,?>>() {}, SkinsCache.class);
         bindCast(BaseConnectionStorageService.class, ConnectionStorageService.class);
 
         if (!instance.isCore()) {
+            bindFromCore(SkinsCache.class);
             bindFromCore(ConnectionStorageService.class);
         }
     }

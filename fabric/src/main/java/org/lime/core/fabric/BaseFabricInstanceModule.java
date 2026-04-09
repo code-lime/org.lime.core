@@ -28,9 +28,11 @@ import org.lime.core.common.services.ScheduleTaskService;
 import org.lime.core.common.services.UnsafeMappingsUtility;
 import org.lime.core.common.services.buffers.BaseEntityBufferStorage;
 import org.lime.core.common.services.memories.BaseConnectionStorageService;
+import org.lime.core.common.services.skins.BaseSkinsCache;
 import org.lime.core.common.utils.Lazy;
 import org.lime.core.fabric.commands.NativeCommandConsumerFactory;
 import org.lime.core.fabric.services.ConnectionStorageService;
+import org.lime.core.fabric.services.SkinsCache;
 import org.lime.core.fabric.services.buffers.EntityBufferStorage;
 import org.lime.core.fabric.utils.adapters.FabricGsonTypeAdapters;
 
@@ -91,10 +93,12 @@ public class BaseFabricInstanceModule
         bind(NativeCommandConsumerFactory.class).toInstance(nativeCommandFactory());
 
         bindCast(new TypeLiteral<BaseEntityBufferStorage<?,?>>() {}, EntityBufferStorage.class);
+        bindCast(new TypeLiteral<BaseSkinsCache<?,?>>() {}, SkinsCache.class);
         bindCast(BaseConnectionStorageService.class, ConnectionStorageService.class);
 
         if (!instance.isCore()) {
             bindFromCore(EntityBufferStorage.class);
+            bindFromCore(SkinsCache.class);
             bindFromCore(ConnectionStorageService.class);
         }
     }

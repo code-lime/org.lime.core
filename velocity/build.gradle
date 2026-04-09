@@ -57,6 +57,20 @@ dependencies {
     embedded "net.bytebuddy:byte-buddy:${versionByteBuddy}"
 }
 //</editor-fold>
+//<editor-fold desc="Settings: Libraries: Joml">
+dependencies {
+    compileOnly "org.joml:joml:${versionJoml}"
+
+    embedded "org.joml:joml:${versionJoml}"
+}
+//</editor-fold>
+//<editor-fold desc="Settings: Libraries: Mojang Auth Library">
+dependencies {
+    compileOnly "com.mojang:authlib:${versionMojangAuthLib}"
+
+    embedded "com.mojang:authlib:${versionMojangAuthLib}"
+}
+//</editor-fold>
 //<editor-fold desc="Settings: Libraries: Apache Maven Resolver">
 dependencies {
     compileOnly "org.apache.maven.resolver:maven-resolver-supplier:${versionMavenResolver}"

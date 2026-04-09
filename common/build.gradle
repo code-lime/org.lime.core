@@ -32,6 +32,8 @@ dependencies {
     implementation "net.kyori:adventure-text-serializer-plain:${versionAdventureApi}"
     implementation "commons-io:commons-io:${versionCommonsIO}"
     implementation "org.apache.commons:commons-lang3:${versionCommonsLang3}"
+    implementation "org.joml:joml:${versionJoml}"
+    implementation "com.mojang:authlib:${versionMojangAuthLib}"
     implementation "org.ow2.asm:asm:9.7.1"
     compileOnly "com.mojang:brigadier:${versionBrigadierApi}"
     compileOnly 'org.slf4j:slf4j-api:2.0.1'
