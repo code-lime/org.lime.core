@@ -26,6 +26,7 @@ import org.lime.core.common.services.InstancesUtility;
 import org.lime.core.common.services.buffers.EntityBufferFieldFactory;
 import org.lime.core.common.services.cooldowns.CooldownFieldFactory;
 import org.lime.core.common.services.cooldowns.Cooldowns;
+import org.lime.core.common.services.memories.MemoryConnectionFieldFactory;
 import org.lime.core.common.utils.Unsafe;
 import org.lime.core.common.services.UnsafeMappingsUtility;
 import org.lime.core.common.api.*;
@@ -452,6 +453,7 @@ public abstract class BaseInstanceModule<Instance extends BaseInstance<Instance>
 
         bindFieldFactory(new CooldownFieldFactory());
         bindFieldFactory(new EntityBufferFieldFactory());
+        bindFieldFactory(new MemoryConnectionFieldFactory());
 
         instance
                 .findAnnotatedClasses(BindService.class)
