@@ -38,6 +38,7 @@ import org.lime.core.common.services.InstancesUtility;
 import org.lime.core.common.services.UnsafeMappingsUtility;
 import org.lime.core.common.services.ScheduleTaskService;
 import org.lime.core.common.BaseInstanceModule;
+import org.lime.core.common.services.buffers.BaseEntityBufferStorage;
 import org.lime.core.common.utils.adapters.CommonGsonTypeAdapters;
 import org.lime.core.paper.commands.NativeCommandConsumerFactory;
 import org.lime.core.paper.services.buffers.EntityBufferStorage;
@@ -123,6 +124,8 @@ public class BasePaperInstanceModule<Instance extends BasePaperInstance<Instance
         bind(BukkitScheduler.class).toInstance(Bukkit.getScheduler());
         bind(ScheduleTaskService.class).to(BukkitScheduleTaskService.class);
         bind(NativeCommandConsumerFactory.class).toInstance(nativeCommandFactory());
+
+        bindCast(new TypeLiteral<BaseEntityBufferStorage<?,?>>() {}, EntityBufferStorage.class);
 
         if (!instance.isCore()) {
             bindFromCore(EntityBufferStorage.class);

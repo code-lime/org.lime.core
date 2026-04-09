@@ -8,6 +8,7 @@ package org.lime.core.fabric;
 import net.kyori.adventure.platform.fabric.FabricAudiences;
 import net.kyori.adventure.platform.fabric.FabricServerAudiences;
 //#endswitch
+import com.google.inject.TypeLiteral;
 import net.kyori.adventure.platform.AudienceProvider;
 import net.minecraft.commands.Commands;
 import net.minecraft.core.RegistryAccess;
@@ -25,6 +26,7 @@ import org.lime.core.common.BaseInstanceModule;
 import org.lime.core.common.services.InstancesUtility;
 import org.lime.core.common.services.ScheduleTaskService;
 import org.lime.core.common.services.UnsafeMappingsUtility;
+import org.lime.core.common.services.buffers.BaseEntityBufferStorage;
 import org.lime.core.common.utils.Lazy;
 import org.lime.core.fabric.commands.NativeCommandConsumerFactory;
 import org.lime.core.fabric.services.buffers.EntityBufferStorage;
@@ -85,6 +87,8 @@ public class BaseFabricInstanceModule
 
         bind(ScheduleTaskService.class).toInstance(instance.scheduleTaskService);
         bind(NativeCommandConsumerFactory.class).toInstance(nativeCommandFactory());
+
+        bindCast(new TypeLiteral<BaseEntityBufferStorage<?,?>>() {}, EntityBufferStorage.class);
 
         if (!instance.isCore()) {
             bindFromCore(EntityBufferStorage.class);
