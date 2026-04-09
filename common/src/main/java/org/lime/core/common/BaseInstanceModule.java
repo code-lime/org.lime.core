@@ -332,6 +332,18 @@ public abstract class BaseInstanceModule<Instance extends BaseInstance<Instance>
                     }
                 });
     }
+    protected <F extends T, T>void bindCast(TypeLiteral<T> serviceClass, Class<F> targetClass) {
+        bind(serviceClass)
+                .toProvider(new Provider<>() {
+                    @Inject Injector injector;
+                    private final Lazy<Provider<F>> targetProvider = Lazy.of(() -> injector.getProvider(targetClass));
+
+                    @Override
+                    public T get() {
+                        return injector.getInstance(targetClass);
+                    }
+                });
+    }
     protected <F, T extends TSub, TSub>void bindMappedCast(Class<T> serviceClass, Class<TSub> subClass, Class<F> targetClass, Func1<F, T> provider) {
         bindMapped(serviceClass, targetClass, provider);
         bindCast(subClass, serviceClass);
