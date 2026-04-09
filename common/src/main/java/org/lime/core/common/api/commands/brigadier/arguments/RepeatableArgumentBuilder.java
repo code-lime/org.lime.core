@@ -5,6 +5,7 @@ import com.mojang.brigadier.builder.ArgumentBuilder;
 import com.mojang.brigadier.builder.RequiredArgumentBuilder;
 import com.mojang.brigadier.context.CommandContext;
 import com.mojang.brigadier.context.ParsedArgument;
+import com.mojang.brigadier.exceptions.CommandSyntaxException;
 import com.mojang.brigadier.suggestion.SuggestionProvider;
 import com.mojang.brigadier.tree.CommandNode;
 import org.jetbrains.annotations.Nullable;
@@ -76,6 +77,24 @@ public class RepeatableArgumentBuilder<S, T>
                 .mapToObj(index -> getIndexedName(name, index))
                 .takeWhile(ARGUMENTS_GETTER.apply(ctx)::containsKey)
                 .map(indexedName -> reader.invoke(ctx, indexedName));
+    }
+    public static <S, T>Stream<ArgumentAccess<T>> readRepeatableAccess(
+            final CommandContext<S> ctx,
+            final String name,
+            final ArgumentReader<T, S> reader) {
+        return IntStream.rangeClosed(0, LIMIT_MAX_COUNT)
+                .mapToObj(index -> getIndexedName(name, index))
+                .takeWhile(ARGUMENTS_GETTER.apply(ctx)::containsKey)
+                .map(indexedName -> reader.access(ctx, indexedName));
+    }
+    public static <S, T>List<T> readRepeatableList(
+            final CommandContext<S> ctx,
+            final String name,
+            final ArgumentReader<T, S> reader)
+            throws CommandSyntaxException {
+        return readRepeatableAccess(ctx, name, reader)
+                .map(ArgumentAccess::throwableGet)
+                .toList();
     }
 
     public RepeatableArgumentBuilder<S, T> suggests(
