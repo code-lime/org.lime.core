@@ -127,6 +127,13 @@ public class Reflection {
                 ? Stream.empty()
                 : Streams.concat(Stream.of(clazz), superClasses(clazz.getSuperclass()), Arrays.stream(clazz.getInterfaces()).flatMap(v -> superClasses(v)));
     }
+    public static String argsToString(@Nullable Class<?> @Nullable [] argTypes) {
+        if (argTypes == null || argTypes.length == 0)
+            return "()";
+        return Arrays.stream(argTypes)
+                .map(c -> c == null ? "null" : c.getName())
+                .collect(Collectors.joining(",", "(", ")"));
+    }
 }
 
 
