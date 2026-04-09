@@ -23,6 +23,7 @@ public abstract class BaseEntityBufferStorage<Entity, Location>
     public abstract <T extends Entity> BaseIterationEntityBuffer<T, Entity, Location> entity(BaseEntityBufferSetup<Location> setup, Class<T> tClass);
     public abstract <Index, T extends Entity> BaseIndexedEntityBuffer<Index, T, Entity, Location> entity(BaseEntityBufferSetup<Location> setup, Class<Index> indexClass, Class<T> tClass);
     public abstract <Index, T extends Entity> BaseIndexedEntityBuffer<Index, T, Entity, Location> entity(BaseEntityBufferSetup<Location> setup, TypeLiteral<Index> indexClass, Class<T> tClass);
+    public abstract BaseEntityBufferSetup<Location> createSetup(InjectBuffer injectBuffer);
 
     protected abstract Location defaultLocation();
 

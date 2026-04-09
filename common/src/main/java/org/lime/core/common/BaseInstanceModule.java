@@ -23,6 +23,7 @@ import org.lime.core.common.api.scope.ScopeKey;
 import org.lime.core.common.reflection.ClassInfo;
 import org.lime.core.common.reflection.ReflectionConstructor;
 import org.lime.core.common.services.InstancesUtility;
+import org.lime.core.common.services.buffers.EntityBufferFieldFactory;
 import org.lime.core.common.utils.Unsafe;
 import org.lime.core.common.services.UnsafeMappingsUtility;
 import org.lime.core.common.api.*;
@@ -446,6 +447,8 @@ public abstract class BaseInstanceModule<Instance extends BaseInstance<Instance>
 
         bind(new TypeLiteral<BaseInstance<?>>() {}).toInstance(instance);
         bind(new TypeLiteral<NativeCommandConsumer.Factory<?,?>>() {}).toInstance(nativeCommandFactory());
+
+        bindFieldFactory(new EntityBufferFieldFactory());
 
         instance
                 .findAnnotatedClasses(BindService.class)
