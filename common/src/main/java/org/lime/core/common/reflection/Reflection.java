@@ -1,7 +1,7 @@
 package org.lime.core.common.reflection;
 
-import com.google.common.collect.Streams;
 import net.minecraft.unsafe.Native;
+import org.jetbrains.annotations.Nullable;
 import org.lime.core.common.utils.execute.Func1;
 import org.lime.core.common.utils.Unsafe;
 import org.objectweb.asm.Type;
@@ -9,7 +9,7 @@ import org.objectweb.asm.Type;
 import java.lang.invoke.MethodHandles;
 import java.lang.reflect.*;
 import java.util.*;
-import java.util.stream.Stream;
+import java.util.stream.Collectors;
 
 public class Reflection {
     public static String signature(Method method) {
@@ -36,97 +36,159 @@ public class Reflection {
         return Native.lookup(tClass);
     }
 
-    public static <T>Constructor<T> constructor(Class<T> tClass, Class<?>... args) {
-        try { return access(tClass.getDeclaredConstructor(args)); }
-        catch (Exception e) { throw new IllegalArgumentException(e); }
+    private interface Find<J, T> {
+        @Nullable T call(J callbackClass) throws ReflectiveOperationException;
     }
+
+    private static <T>Optional<T> findRecursive(
+            Class<?> tClass,
+            boolean includeInterfaces,
+            Find<Class<?>, T> classCallback) {
+        for (var frame : ClassInfo.of(tClass).classes(includeInterfaces)) {
+            try {
+                var result = classCallback.call(frame);
+                if (result != null)
+                    return Optional.of(result);
+            } catch (ReflectiveOperationException ignored) {
+            }
+        }
+        return Optional.empty();
+    }
+    private static <T>Optional<T> findRecursive(
+            Class<?> tClass,
+            boolean includeInterfaces,
+            Find<Class<?>, Iterable<T>> classCallbackIterables,
+            Find<T, T> classCallback) {
+        for (var frame : ClassInfo.of(tClass).classes(includeInterfaces)) {
+            try {
+                var iterables = classCallbackIterables.call(frame);
+                if (iterables == null)
+                    continue;
+                for (var item : iterables) {
+                    var result = classCallback.call(item);
+                    if (result != null)
+                        return Optional.of(result);
+                }
+            } catch (ReflectiveOperationException ignored) {
+            }
+        }
+        return Optional.empty();
+    }
+
+    public static <T>Constructor<T> constructor(Class<T> tClass, Class<?>... args) {
+        return constructorOptional(tClass, args)
+                .orElseThrow(() -> new IllegalArgumentException("Constructor not found: " + ReflectionMethod.methodToString(tClass, "<init>", args)));
+    }
+    @SuppressWarnings("unchecked")
+    public static <T>Optional<Constructor<T>> constructorOptional(Class<T> tClass, Class<?>... args) {
+        return findRecursive(tClass, false, v -> v.getDeclaredConstructor(args))
+                .map(v -> (Constructor<T>) access(v));
+    }
+
     public static Method get(Class<?> tClass, String name, Class<?>... args) {
-        try { return access(tClass.getDeclaredMethod(name, args)); }
-        catch (Exception e) { throw new IllegalArgumentException(e); }
+        return getOptional(tClass, name, args)
+                .orElseThrow(() -> new IllegalArgumentException("Method not found: " + ReflectionMethod.methodToString(tClass, name, args)));
+    }
+    public static Optional<Method> getOptional(Class<?> tClass, String name, Class<?>... args) {
+        return findRecursive(tClass, true, v -> v.getDeclaredMethod(name, args)).map(Reflection::access);
     }
     public static Optional<Method> getFirst(Class<?> tClass, Func1<Method, Boolean> filter, Class<?>... args) {
-        try {
-            int args_length = args.length;
-            for (Method method : tClass.getDeclaredMethods()) {
-                if (method.getParameterCount() != args_length) continue;
-                try { tClass.getDeclaredMethod(method.getName(), args); } catch (NoSuchMethodException ignored) { continue; }
-                if (filter.invoke(method)) return Optional.of(access(method));
+        int argsLength = args.length;
+        return findRecursive(tClass, true, v -> {
+            for (Method method : v.getDeclaredMethods()) {
+                if (method.getParameterCount() != argsLength) continue;
+                Method result;
+                try {
+                    result = v.getDeclaredMethod(method.getName(), args);
+                } catch (NoSuchMethodException ignored) {
+                    continue;
+                }
+                if (filter.invoke(result))
+                    return result;
             }
-            return Optional.empty();
-        }
-        catch (Exception e) { throw new IllegalArgumentException(e); }
+            return null;
+        }).map(Reflection::access);
     }
+
     public static Field get(Class<?> tClass, String name) {
-        try { return access(tClass.getDeclaredField(name)); }
-        catch (Exception e) { throw new IllegalArgumentException(e); }
+        return getOptional(tClass, name)
+                .orElseThrow(() -> new IllegalArgumentException("Method not found: " + ReflectionField.fieldToString(tClass, name)));
+    }
+    public static Optional<Field> getOptional(Class<?> tClass, String name) {
+        return findRecursive(tClass, false, v -> v.getDeclaredField(name)).map(Reflection::access);
     }
     public static Optional<Field> getFirst(Class<?> tClass, Func1<Field, Boolean> filter) {
-        try {
-            for (Field field : tClass.getDeclaredFields()) {
-                if (filter.invoke(field)) return Optional.of(access(field));
+        return findRecursive(tClass, false, v -> {
+            for (Field field : v.getDeclaredFields()) {
+                if (filter.invoke(field))
+                    return field;
             }
-            return Optional.empty();
-        }
-        catch (Exception e) { throw new IllegalArgumentException(e); }
+            return null;
+        }).map(Reflection::access);
     }
+
     public static boolean hasField(Class<?> tClass, String field) {
-        try { tClass.getDeclaredField(field); return true; }
-        catch (NoSuchFieldException e) { return false; }
-        catch (Exception e) { throw new IllegalArgumentException(e); }
+        return getOptional(tClass, field).isPresent();
     }
     @SuppressWarnings("unchecked")
-    public static <T>T getField(Class<?> tClass, String field, Object obj) {
-        try { return (T)access(tClass.getDeclaredField(field)).get(obj); }
+    public static <T>T getField(Class<?> tClass, String field, @Nullable Object obj) {
+        try { return (T)get(tClass, field).get(obj); }
         catch (Exception e) { throw new IllegalArgumentException(e); }
     }
-    public static void setField(Class<?> tClass, String field, Object obj, Object value) {
-        try { access(tClass.getDeclaredField(field)).set(obj, value); }
-        catch (Exception e) { throw new IllegalArgumentException(e); }
-    }
-    @SuppressWarnings("unchecked")
-    public static <T>T invokeMethod(Class<?> tClass, String method, Class<?>[] targs, Object obj, Object[] args) {
-        try { return (T)access(tClass.getDeclaredMethod(method, targs)).invoke(obj, args); }
-        catch (Exception e) { throw new IllegalArgumentException(e); }
-    }
-    @SuppressWarnings("unchecked")
-    public static <T>T invokeMethod(Class<?> tClass, Class<?> tret, Class<?>[] targs, Object obj, Object[] args) {
-        try {
-            int length = targs.length;
-            for (Method method : tClass.getDeclaredMethods()) {
-                if (method.getReturnType() != tret) continue;
-                Class<?>[] ttargs = method.getParameterTypes();
-                if (ttargs.length != length) continue;
-                boolean ok = true;
-                for (int i = 0; i < length; i++) {
-                    if (ttargs[i] == targs[i]) continue;
-                    ok = false;
-                    break;
-                }
-                if (!ok) continue;
-                return (T)access(method).invoke(obj, args);
-            }
-            throw new NoSuchMethodException();
-        }
+    public static void setField(Class<?> tClass, String field, @Nullable Object obj, Object value) {
+        try { get(tClass, field).set(obj, value); }
         catch (Exception e) { throw new IllegalArgumentException(e); }
     }
 
+    @SuppressWarnings("unchecked")
+    public static <T>T invokeMethod(Class<?> tClass, String method, Class<?>[] targs, Object obj, Object[] args) {
+        try {
+            return (T)get(tClass, method, targs).invoke(obj, args);
+        } catch (IllegalAccessException | InvocationTargetException e) {
+            throw new RuntimeException(e);
+        }
+    }
+    @SuppressWarnings("unchecked")
+    public static <T>T invokeMethod(Class<?> tClass, Class<?> tret, Class<?>[] targs, Object obj, Object[] args) {
+        int length = targs.length;
+            var resultMethod = findRecursive(tClass, true, v -> {
+                for (Method method : v.getDeclaredMethods()) {
+                    if (method.getReturnType() != tret) continue;
+                    Class<?>[] ttargs = method.getParameterTypes();
+                    if (ttargs.length != length) continue;
+                    try {
+                        return v.getDeclaredMethod(method.getName(), targs);
+                    } catch (NoSuchMethodException ignored) {
+                    }
+                }
+                return null;
+            })
+                    .map(Reflection::access)
+                    .orElseThrow(() -> new IllegalArgumentException("Method not found: " + ReflectionMethod.methodToString(tClass, "*", targs)));
+        try {
+            return (T)resultMethod.invoke(obj, args);
+        } catch (IllegalAccessException | InvocationTargetException e) {
+            throw new RuntimeException(e);
+        }
+    }
+
     public static String name(Field field) {
-        return superClasses(field.getDeclaringClass())
+        return ClassInfo.of(field.getDeclaringClass())
+                .superWithInterfaceClasses()
+                .stream()
                 .flatMap(tClass -> Unsafe.ofMapped(tClass, field.getName(), Type.getType(field.getType()), false).stream())
                 .findFirst()
                 .orElseGet(field::getName);
     }
     public static String name(Method method) {
-        return superClasses(method.getDeclaringClass())
+        return ClassInfo.of(method.getDeclaringClass())
+                .superWithInterfaceClasses()
+                .stream()
                 .flatMap(tClass -> Unsafe.ofMapped(tClass, method.getName(), Type.getType(method), true).stream())
                 .findFirst()
                 .orElseGet(method::getName);
     }
-    private static Stream<Class<?>> superClasses(Class<?> clazz) {
-        return clazz == null
-                ? Stream.empty()
-                : Streams.concat(Stream.of(clazz), superClasses(clazz.getSuperclass()), Arrays.stream(clazz.getInterfaces()).flatMap(v -> superClasses(v)));
-    }
+
     public static String argsToString(@Nullable Class<?> @Nullable [] argTypes) {
         if (argTypes == null || argTypes.length == 0)
             return "()";
