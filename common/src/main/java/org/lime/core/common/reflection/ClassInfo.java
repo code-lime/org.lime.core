@@ -1,13 +1,16 @@
 package org.lime.core.common.reflection;
 
 import com.google.common.collect.ImmutableSet;
+import com.google.inject.TypeLiteral;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Unmodifiable;
 
 import java.lang.reflect.Constructor;
 import java.lang.reflect.Field;
 import java.lang.reflect.Method;
-import java.util.HashSet;
+import java.util.ArrayDeque;
+import java.util.Deque;
+import java.util.LinkedHashSet;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 
@@ -27,8 +30,7 @@ public record ClassInfo<T>(
     }
 
     private static <T>ClassInfo<T> load(Class<T> currentClass) {
-        HashSet<Class<?>> classes = new HashSet<>();
-        loadRecursive(currentClass, classes);
+        LinkedHashSet<Class<?>> classes = loadParentClassesWithInterfaces(currentClass);
         var superClassesBuilder = ImmutableSet.<Class<?>>builder();
         var interfaceClassesBuilder = ImmutableSet.<Class<?>>builder();
         var constructorsBuilder = ImmutableSet.<Constructor<T>>builder();
@@ -54,19 +56,23 @@ public record ClassInfo<T>(
                 superWithInterfaceClasses);
     }
 
-    private static void loadRecursive(
-            Class<?> currentClass,
-            Set<Class<?>> classes) {
+    private static LinkedHashSet<Class<?>> loadParentClassesWithInterfaces(
+            Class<?> currentClass) {
+        LinkedHashSet<Class<?>> classes = new LinkedHashSet<>();
         while (currentClass != null) {
             if (!classes.add(currentClass))
                 break;
-
-            for (final Class<?> interfaceClass : currentClass.getInterfaces())
-                if (classes.add(interfaceClass))
-                    loadRecursive(interfaceClass, classes);
-
             currentClass = currentClass.getSuperclass();
         }
+        Deque<Class<?>> stack = new ArrayDeque<>(classes);
+        while (!stack.isEmpty()) {
+            Class<?> cls = stack.pop();
+            for (Class<?> interfaceClass : cls.getInterfaces()) {
+                if (classes.add(interfaceClass))
+                    stack.push(interfaceClass);
+            }
+        }
+        return classes;
     }
 
     public @Unmodifiable Set<Class<?>> classes(boolean includeInterfaces) {
