@@ -30,11 +30,13 @@ import org.jetbrains.annotations.NotNull;
 import org.lime.core.common.reflection.ReflectionField;
 import org.lime.core.common.utils.adapters.CommonGsonTypeAdapters;
 import org.lime.core.common.utils.adapters.StringTypeAdapter;
+import org.slf4j.Logger;
 
 import java.io.IOException;
 import java.lang.reflect.Modifier;
 import java.lang.reflect.ParameterizedType;
 import java.util.*;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.stream.Stream;
 
 public class PaperGsonTypeAdapters
@@ -42,6 +44,7 @@ public class PaperGsonTypeAdapters
     @Inject protected RegistryAccess registryAccess;
     @Inject protected io.papermc.paper.registry.RegistryAccess registryAccessPaper;
     @Inject protected MinecraftServer server;
+    @Inject Logger logger;
 
     protected TypeAdapterFactory blockPos() {
         final TypeAdapter<BlockPos> keyTypeAdapter = new StringTypeAdapter<>() {
@@ -235,12 +238,27 @@ public class PaperGsonTypeAdapters
             if (list.size() == 1)
                 registries.put(type, list.getFirst());
         });
+
         return new TypeAdapterFactory() {
+            final ConcurrentHashMap<TypeToken<?>, Optional<TypeToken<?>>> hierarchyTypes = new ConcurrentHashMap<>();
+
+            private Optional<TypeToken<?>> findHierarchy(TypeToken<?> requestedType) {
+                for (var kv : registries.entrySet())
+                    if (kv.getKey().isAssignableFrom(requestedType)) {
+                        logger.info("Found hierarchy registry: {} -> {}", requestedType, kv.getKey());
+                        return Optional.of(kv.getKey());
+                    }
+                return Optional.empty();
+            }
+
             @Override
             public <T> TypeAdapter<T> create(Gson gson, TypeToken<T> type) {
-                org.bukkit.Registry<?> registry = registries.get(type);
+                org.bukkit.Registry<?> registry = hierarchyTypes.computeIfAbsent(type, this::findHierarchy)
+                        .map(registries::get)
+                        .orElse(null);
                 if (registry == null)
                     return null;
+                logger.info("Created registry adapter: {}", type);
                 return new StringTypeAdapter<>() {
                     @Override
                     public String write(T value) throws IOException {
