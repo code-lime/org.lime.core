@@ -138,7 +138,7 @@ public abstract class BaseInstanceModule<Instance extends BaseInstance<Instance>
                         throw new IllegalArgumentException("Error create new instance for config file " + file + " of " + configClass, e);
                     }
                 });
-        JsonElement defaultJson = gson.toJsonTree(defaultValue);
+        JsonElement defaultJson = gson.toJsonTree(defaultValue, configClass);
         try {
             JsonElement valueJson;
             int partLength = part.length;
@@ -171,7 +171,7 @@ public abstract class BaseInstanceModule<Instance extends BaseInstance<Instance>
             Path parent = file.getParent();
             if (!Files.exists(parent))
                 Files.createDirectories(parent);
-            valueJson = gson.toJsonTree(defaultValue, configClass);
+            valueJson = defaultJson;
             Files.writeString(file, Json.format(partLength == 0
                     ? valueJson
                     : createPart(part, valueJson)));
