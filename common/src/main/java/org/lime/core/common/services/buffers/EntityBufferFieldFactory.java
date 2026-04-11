@@ -1,15 +1,16 @@
 package org.lime.core.common.services.buffers;
 
 import com.google.inject.Key;
-import com.google.inject.Provider;
 import com.google.inject.TypeLiteral;
 import com.google.inject.spi.TypeEncounter;
 import org.jetbrains.annotations.NotNull;
 import org.lime.core.common.api.FieldFactory;
 import org.lime.core.common.reflection.ReflectionField;
+import org.lime.core.common.utils.Disposable;
 
 import java.lang.reflect.ParameterizedType;
 import java.lang.reflect.Type;
+import java.util.function.Function;
 
 public class EntityBufferFieldFactory
         extends FieldFactory.Annotated<InjectBuffer> {
@@ -32,7 +33,7 @@ public class EntityBufferFieldFactory
     }
 
     @Override
-    protected @NotNull <I, T> Provider<T> create(TypeLiteral<I> declareType, TypeLiteral<T> fieldType, ReflectionField<T> field, InjectBuffer annotation, TypeEncounter<I> encounter) {
+    protected @NotNull <I, T> Function<Disposable.Composite, T> create(TypeLiteral<I> declareType, TypeLiteral<T> fieldType, ReflectionField<T> field, InjectBuffer annotation, TypeEncounter<I> encounter) {
         var rawFieldClass = fieldType.getRawType();
 
         boolean isIndexed = BaseIndexedEntityBuffer.class.isAssignableFrom(rawFieldClass);
@@ -48,10 +49,13 @@ public class EntityBufferFieldFactory
                     || !(args[1] instanceof Class<?> entityClass))
                 throw new IllegalArgumentException("In field '"+field+"' return type '"+fieldType+"' is not valid parameterized '"+BaseIndexedEntityBuffer.class+"'");
             var indexClass = TypeLiteral.get(args[0]);
-            return () -> {
+            return composite -> {
                 var buffer = bufferProvider.get();
                 //noinspection rawtypes,unchecked
-                return (T)entity(buffer, annotation, indexClass, (Class)entityClass);
+                var result = entity(buffer, annotation, indexClass, (Class)entityClass);
+                composite.add(result);
+                //noinspection unchecked
+                return (T)result;
             };
         } else {
             var iterationBufferType = fieldType.getSupertype(BaseIterationEntityBuffer.class);
@@ -60,10 +64,13 @@ public class EntityBufferFieldFactory
                     || (args = parameterizedType.getActualTypeArguments()).length != 4
                     || !(args[0] instanceof Class<?> entityClass))
                 throw new IllegalArgumentException("In field '"+field+"' return type '"+fieldType+"' is not valid parameterized '"+BaseIterationEntityBuffer.class+"'");
-            return () -> {
+            return composite -> {
                 var buffer = bufferProvider.get();
                 //noinspection rawtypes,unchecked
-                return (T)entity(buffer, annotation, (Class)entityClass);
+                var result = entity(buffer, annotation, (Class)entityClass);
+                composite.add(result);
+                //noinspection unchecked
+                return (T)result;
             };
         }
     }

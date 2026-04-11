@@ -472,7 +472,7 @@ public abstract class BaseInstanceModule<Instance extends BaseInstance<Instance>
             public <I> void hear(TypeLiteral<I> declareType, TypeEncounter<I> encounter) {
                 for (var field : ClassInfo.of(declareType.getRawType()).fields()) {
                     for (var factory : fieldFactories) {
-                        if (factory.register(declareType, field, encounter))
+                        if (factory.register(declareType, field, encounter, compositeDisposable))
                             break;
                     }
                 }

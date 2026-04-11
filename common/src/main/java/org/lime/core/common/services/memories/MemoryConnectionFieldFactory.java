@@ -1,9 +1,11 @@
 package org.lime.core.common.services.memories;
 
-import com.google.inject.Provider;
 import com.google.inject.TypeLiteral;
 import com.google.inject.spi.TypeEncounter;
 import org.lime.core.common.api.FieldFactory;
+import org.lime.core.common.utils.Disposable;
+
+import java.util.function.Function;
 
 public class MemoryConnectionFieldFactory
         extends FieldFactory.AnnotatedGeneric<InjectMemoryConnection> {
@@ -12,9 +14,9 @@ public class MemoryConnectionFieldFactory
     }
 
     @Override
-    protected <T> Provider<T> create(InjectMemoryConnection annotation, TypeLiteral<?> key, TypeEncounter<?> encounter) {
+    protected <T> Function<Disposable.Composite, T> create(InjectMemoryConnection annotation, TypeLiteral<?> key, TypeEncounter<?> encounter) {
         var provider = encounter.getProvider(BaseConnectionStorageService.class);
         //noinspection unchecked
-        return () -> (T)provider.get().createStorage(key, annotation);
+        return composite -> (T)provider.get().createStorage(key, annotation);
     }
 }
