@@ -26,7 +26,7 @@ public class LambdaInfo {
 
     public static Method getMethod(String owner, String name, String descriptor) {
         Class<?> tClass = classes.computeIfAbsent(owner.replace('/', '.'), classReader);
-        for (Method method : tClass.getMethods()) {
+        for (Method method : ClassInfo.of(tClass).methods()) {
             if (method.getName().equals(name) && Type.getMethodDescriptor(method).equals(descriptor))
                 return method;
         }
@@ -44,7 +44,7 @@ public class LambdaInfo {
 
     public static Field getField(String owner, String name, String descriptor) {
         Class<?> tClass = classes.computeIfAbsent(owner.replace('/', '.'), classReader);
-        for (Field field : tClass.getFields()) {
+        for (Field field : ClassInfo.of(tClass).fields()) {
             if (field.getName().equals(name) && Type.getDescriptor(field.getType()).equals(descriptor))
                 return field;
         }
