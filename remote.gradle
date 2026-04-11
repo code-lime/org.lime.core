@@ -37,6 +37,49 @@ PropertiesAccess loadEnv() {
         }
     }
 }
+List<String> expand(String input) {
+    List<String> results = new ArrayList<>();
+    results.add(input);
+
+    while (true) {
+        List<String> next = new ArrayList<>();
+        boolean expanded = false;
+
+        for (String s : results) {
+            int open = s.indexOf('(');
+            if (open == -1) {
+                next.add(s);
+                continue;
+            }
+
+            int close = s.indexOf(')', open);
+            if (close == -1) {
+                next.add(s);
+                continue;
+            }
+
+            String prefix = s.substring(0, open);
+            String body = s.substring(open + 1, close);
+            String suffix = s.substring(close + 1);
+
+            String[] options = body.split("\\|");
+
+            for (String opt : options) {
+                next.add(prefix + opt + suffix);
+            }
+
+            expanded = true;
+        }
+
+        results = next;
+
+        if (!expanded) {
+            break;
+        }
+    }
+
+    return results;
+}
 
 tasks.register("upload") {
     description = "Upload built jar to remote server via scp"
@@ -87,7 +130,7 @@ tasks.register("upload") {
 
         def jarFile = jars[0]
 
-        println "Uploading ${jarFile.name} to remote ${remotePath}"
+        def remoteExpandPaths = expand(remotePath)
 
         JSch jsch = new JSch()
 
@@ -116,26 +159,31 @@ tasks.register("upload") {
         channel.connect()
         ChannelSftp sftp = (ChannelSftp) channel
 
-        if (remotePath.endsWith("/") || remotePath.endsWith("\\")) {
-            remotePath = remotePath + jarFile.name
+        println "Expanded ${remoteExpandPaths.size()} paths:"
+        remoteExpandPaths.forEach { remoteExpandPath ->
+            println " - Uploading ${jarFile.name} to remote ${remoteExpandPath}"
 
-            def dir = remotePath.replaceAll(/[^\/\\]+$/, "")
-            def pluginNamePattern = jarFile.name.replaceAll(/-.+\.jar$/, "")
-            def files = sftp.ls(dir)
-            for (fileEntry in files) {
-                if (fileEntry instanceof ChannelSftp.LsEntry) {
-                    def name = fileEntry.getFilename()
-                    if (name == "." || name == "..") continue
-                    if (name == jarFile.name) continue
-                    if (name.startsWith(pluginNamePattern) && name.endsWith(".jar")) {
-                        sftp.rm(dir + name)
-                        println "Deleted old jar: $name"
+            if (remoteExpandPath.endsWith("/") || remoteExpandPath.endsWith("\\")) {
+                remoteExpandPath = remoteExpandPath + jarFile.name
+
+                def dir = remoteExpandPath.replaceAll(/[^\/\\]+$/, "")
+                def pluginNamePattern = jarFile.name.replaceAll(/-.+\.jar$/, "")
+                def files = sftp.ls(dir)
+                for (fileEntry in files) {
+                    if (fileEntry instanceof ChannelSftp.LsEntry) {
+                        def name = fileEntry.getFilename()
+                        if (name == "." || name == "..") continue
+                        if (name == jarFile.name) continue
+                        if (name.startsWith(pluginNamePattern) && name.endsWith(".jar")) {
+                            sftp.rm(dir + name)
+                            println "   Deleted old jar: $name"
+                        }
                     }
                 }
             }
-        }
 
-        sftp.put(jarFile.absolutePath, remotePath)
+            sftp.put(jarFile.absolutePath, remoteExpandPath)
+        }
 
         sftp.disconnect()
         session.disconnect()
