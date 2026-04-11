@@ -3,9 +3,7 @@ package org.lime.core.common;
 import com.google.inject.Provider;
 import org.lime.core.common.utils.Lazy;
 import org.lime.core.common.utils.execute.Func0;
-import org.lime.core.common.utils.execute.Func1;
 
-import java.util.Optional;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.stream.Stream;
 
