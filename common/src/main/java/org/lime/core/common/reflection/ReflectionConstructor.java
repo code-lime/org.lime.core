@@ -25,6 +25,10 @@ public record ReflectionConstructor<T>(Constructor<T> target)
         return tClass.getName() + ".<ctor>" + Reflection.argsToString(argTypes);
     }
 
+    public boolean matchArgs(Class<?>... args) {
+        return Reflection.matchConstructor(target, args);
+    }
+
     @Override
     public ReflectionConstructor<T> self() {
         return this;

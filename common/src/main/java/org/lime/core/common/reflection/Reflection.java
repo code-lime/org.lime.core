@@ -2,8 +2,10 @@ package org.lime.core.common.reflection;
 
 import net.minecraft.unsafe.Native;
 import org.jetbrains.annotations.Nullable;
+import org.lime.core.common.utils.Lazy;
 import org.lime.core.common.utils.execute.Func1;
 import org.lime.core.common.utils.Unsafe;
+import org.lime.core.common.utils.execute.Func2;
 import org.objectweb.asm.Type;
 
 import java.lang.invoke.MethodHandles;
@@ -34,6 +36,27 @@ public class Reflection {
     }
     public static MethodHandles.Lookup lookup(Class<?> tClass) {
         return Native.lookup(tClass);
+    }
+
+    public static Class<?> findClass(String className) {
+        try {
+            return Class.forName(className);
+        } catch (ClassNotFoundException e) {
+            throw new RuntimeException(e);
+        }
+    }
+
+    private static final Class<?> memberUtils = findClass("org.apache.commons.lang3.reflect.MemberUtils");
+    private static final Lazy<Func2<Method, Class<?>[], Boolean>> isMatchingMethod = Lazy.of(() -> ReflectionMethod.of(memberUtils, "isMatchingMethod", Method.class, Class[].class)
+            .lambda(Func2.class));
+    private static final Lazy<Func2<Constructor<?>, Class<?>[], Boolean>> isMatchingConstructor = Lazy.of(() ->ReflectionMethod.of(memberUtils, "isMatchingConstructor", Constructor.class, Class[].class)
+            .lambda(Func2.class));
+
+    public static boolean matchMethod(final Method method, final Class<?>[] parameterTypes) {
+        return isMatchingMethod.value().invoke(method, parameterTypes);
+    }
+    public static boolean matchConstructor(final Constructor<?> constructor, final Class<?>[] parameterTypes) {
+        return isMatchingConstructor.value().invoke(constructor, parameterTypes);
     }
 
     private interface Find<J, T> {
@@ -79,10 +102,15 @@ public class Reflection {
         return constructorOptional(tClass, args)
                 .orElseThrow(() -> new IllegalArgumentException("Constructor not found: " + ReflectionMethod.methodToString(tClass, "<init>", args)));
     }
-    @SuppressWarnings("unchecked")
     public static <T>Optional<Constructor<T>> constructorOptional(Class<T> tClass, Class<?>... args) {
-        return findRecursive(tClass, false, v -> v.getDeclaredConstructor(args))
-                .map(v -> (Constructor<T>) access(v));
+        return ClassInfo.of(tClass)
+                .constructors()
+                .stream()
+                .filter(v -> matchConstructor(v, args))
+                .map(Optional::of)
+                .reduce((a, b) -> Optional.empty())
+                .orElse(Optional.empty())
+                .map(Reflection::access);
     }
 
     public static Method get(Class<?> tClass, String name, Class<?>... args) {
@@ -93,21 +121,15 @@ public class Reflection {
         return findRecursive(tClass, true, v -> v.getDeclaredMethod(name, args)).map(Reflection::access);
     }
     public static Optional<Method> getFirst(Class<?> tClass, Func1<Method, Boolean> filter, Class<?>... args) {
-        int argsLength = args.length;
-        return findRecursive(tClass, true, v -> {
-            for (Method method : v.getDeclaredMethods()) {
-                if (method.getParameterCount() != argsLength) continue;
-                Method result;
-                try {
-                    result = v.getDeclaredMethod(method.getName(), args);
-                } catch (NoSuchMethodException ignored) {
-                    continue;
-                }
-                if (filter.invoke(result))
-                    return result;
-            }
-            return null;
-        }).map(Reflection::access);
+        return ClassInfo.of(tClass)
+                .methods()
+                .stream()
+                .filter(v -> matchMethod(v, args))
+                .filter(filter::invoke)
+                .map(Optional::of)
+                .reduce((a, b) -> Optional.empty())
+                .orElse(Optional.empty())
+                .map(Reflection::access);
     }
 
     public static Field get(Class<?> tClass, String name) {

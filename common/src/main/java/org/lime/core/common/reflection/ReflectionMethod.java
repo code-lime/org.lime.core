@@ -8,7 +8,6 @@ import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;
 import java.util.Arrays;
-import java.util.stream.Collectors;
 
 public record ReflectionMethod(Method target)
         implements ReflectionAccessible<Method, ReflectionMethod>, ReflectionMember<Method, ReflectionMethod> {
@@ -25,6 +24,10 @@ public record ReflectionMethod(Method target)
     }
     public static String methodToString(Class<?> tClass, String name, Class<?> @Nullable [] argTypes) {
         return tClass.getName() + '.' + name + Reflection.argsToString(argTypes);
+    }
+
+    public boolean matchArgs(Class<?>... args) {
+        return Reflection.matchMethod(target, args);
     }
 
     public static ReflectionMethod ofMojang(Class<?> tClass, String mojangName, Class<?>... args) {
