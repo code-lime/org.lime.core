@@ -51,6 +51,9 @@ public abstract class BaseEntityBuffer<Index, T extends Entity, Entity, Location
         return indexedNextBuffer(index, null);
     }
     protected T indexedNextBuffer(Index index, @Nullable Location location) {
+        return indexedNextBuffer(index, location, false);
+    }
+    protected T indexedNextBuffer(Index index, @Nullable Location location, boolean worldOnly) {
         if (closed)
             throw new IllegalArgumentException("Buffer "+this.tag+" closed");
         if (usedIndexes == null)
@@ -64,7 +67,7 @@ public abstract class BaseEntityBuffer<Index, T extends Entity, Entity, Location
         } else {
             entity = displayBuffer.get(index);
             if (owner.isValid(entity)) {
-                if (location != null && !owner.getLocation(entity).equals(location))
+                if (location != null && !owner.isEquals(owner.getLocation(entity), location, worldOnly))
                     owner.teleport(entity, location);
             } else {
                 owner.remove(entity);

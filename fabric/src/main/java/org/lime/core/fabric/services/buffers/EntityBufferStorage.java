@@ -9,6 +9,7 @@ import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.entity.*;
 import net.minecraft.world.phys.Vec2;
 import net.minecraft.world.phys.Vec3;
+import org.jetbrains.annotations.Nullable;
 import org.lime.core.common.api.BindService;
 import org.lime.core.common.services.buffers.BaseEntityBufferSetup;
 import org.lime.core.common.services.buffers.BaseEntityBufferStorage;
@@ -20,6 +21,7 @@ import org.lime.core.fabric.hooks.ShouldBeEntitySavedHook;
 import org.lime.core.fabric.utils.WorldLocation;
 
 import java.util.Collections;
+import java.util.Objects;
 import java.util.OptionalInt;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
@@ -177,5 +179,14 @@ public class EntityBufferStorage
                 //#default
                 //#endswitch
                 );
+    }
+    @Override
+    protected boolean isEquals(@Nullable WorldLocation a, @Nullable WorldLocation b, boolean worldOnly) {
+        return a == null
+                ? b == null
+                : b != null
+                  && (worldOnly
+                      ? Objects.equals(a.levelKey(), b.levelKey())
+                      : a.equals(b));
     }
 }

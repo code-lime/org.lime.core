@@ -11,6 +11,7 @@ import org.bukkit.entity.*;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.Listener;
 import org.bukkit.event.world.ChunkLoadEvent;
+import org.jetbrains.annotations.Nullable;
 import org.lime.core.common.api.BindService;
 import org.lime.core.common.services.buffers.BaseEntityBufferSetup;
 import org.lime.core.common.services.buffers.BaseEntityBufferStorage;
@@ -18,6 +19,7 @@ import org.lime.core.common.services.buffers.InjectBuffer;
 import org.lime.core.common.utils.execute.Action1;
 
 import java.util.Arrays;
+import java.util.Objects;
 import java.util.OptionalInt;
 import java.util.Set;
 
@@ -121,5 +123,14 @@ public class EntityBufferStorage
     @Override
     protected void teleport(Entity entity, Location location) {
         entity.teleport(location);
+    }
+    @Override
+    protected boolean isEquals(@Nullable Location a, @Nullable Location b, boolean worldOnly) {
+        return a == null
+                ? b == null
+                : b != null
+                  && (worldOnly
+                      ? Objects.equals(a.getWorld(), b.getWorld())
+                      : a.equals(b));
     }
 }

@@ -18,4 +18,9 @@ public abstract class BaseIterationEntityBuffer<T extends Entity, Entity, Locati
             throw new IllegalArgumentException("Buffer "+this.tag+" not begin");
         return indexedNextBuffer(usedIndexes.size(), location);
     }
+    public T nextBuffer(@Nullable Location location, boolean worldOnly) {
+        if (usedIndexes == null)
+            throw new IllegalArgumentException("Buffer "+this.tag+" not begin");
+        return indexedNextBuffer(usedIndexes.size(), location, worldOnly);
+    }
 }

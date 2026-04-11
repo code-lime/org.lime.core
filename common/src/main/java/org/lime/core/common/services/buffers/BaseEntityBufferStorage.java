@@ -1,6 +1,7 @@
 package org.lime.core.common.services.buffers;
 
 import com.google.inject.TypeLiteral;
+import org.jetbrains.annotations.Nullable;
 import org.lime.core.common.api.Service;
 import org.lime.core.common.utils.execute.Action1;
 
@@ -35,6 +36,7 @@ public abstract class BaseEntityBufferStorage<Entity, Location>
     protected abstract boolean isValid(Entity entity);
     protected abstract Location getLocation(Entity entity);
     protected abstract void teleport(Entity entity, Location location);
+    protected abstract boolean isEquals(@Nullable Location a, @Nullable Location b, boolean worldOnly);
 
     protected void onLoaded(Iterable<Entity> entities) {
         for (Entity entity : entities)

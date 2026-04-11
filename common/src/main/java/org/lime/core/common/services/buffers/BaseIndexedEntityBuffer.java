@@ -20,4 +20,8 @@ public abstract class BaseIndexedEntityBuffer<Index, T extends Entity, Entity, L
     public T indexedNextBuffer(Index index, @Nullable Location location) {
         return super.indexedNextBuffer(index, location);
     }
+    @Override
+    public T indexedNextBuffer(Index index, @Nullable Location location, boolean worldOnly) {
+        return super.indexedNextBuffer(index, location, worldOnly);
+    }
 }
