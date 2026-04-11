@@ -4,6 +4,7 @@ import com.google.inject.MembersInjector;
 import com.google.inject.TypeLiteral;
 import com.google.inject.spi.TypeEncounter;
 import org.jetbrains.annotations.NotNull;
+import org.lime.core.common.reflection.Reflection;
 import org.lime.core.common.reflection.ReflectionField;
 import org.lime.core.common.utils.Disposable;
 import org.lime.core.common.utils.execute.Action1;
@@ -63,6 +64,7 @@ public interface FieldFactory {
         protected final Class<A> annotationClass;
 
         public Annotated(Class<A> annotationClass) {
+            Reflection.validateRuntimeAnnotation(annotationClass);
             this.annotationClass = annotationClass;
         }
 
