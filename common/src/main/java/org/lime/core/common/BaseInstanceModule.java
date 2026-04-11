@@ -436,6 +436,7 @@ public abstract class BaseInstanceModule<Instance extends BaseInstance<Instance>
                     public Gson get() {
                         GsonBuilder builder = new GsonBuilder()
                                 .setFieldNamingPolicy(FieldNamingPolicy.LOWER_CASE_WITH_UNDERSCORES)
+                                .enableComplexMapKeySerialization()
                                 .serializeNulls()
                                 .disableHtmlEscaping();
                         gsonTypeAdapters.factories().forEach(builder::registerTypeAdapterFactory);
