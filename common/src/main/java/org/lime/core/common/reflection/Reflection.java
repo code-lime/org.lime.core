@@ -8,9 +8,13 @@ import org.lime.core.common.utils.Unsafe;
 import org.lime.core.common.utils.execute.Func2;
 import org.objectweb.asm.Type;
 
+import java.lang.annotation.Annotation;
+import java.lang.annotation.Retention;
+import java.lang.annotation.RetentionPolicy;
 import java.lang.invoke.MethodHandles;
 import java.lang.reflect.*;
 import java.util.*;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.stream.Collectors;
 
 public class Reflection {
@@ -36,6 +40,19 @@ public class Reflection {
     }
     public static MethodHandles.Lookup lookup(Class<?> tClass) {
         return Native.lookup(tClass);
+    }
+
+    private static final ConcurrentHashMap<Class<? extends Annotation>, Boolean> annotationRuntimeState = new ConcurrentHashMap<>();
+    public static boolean isRuntimeAnnotation(Class<? extends Annotation> annotationClass) {
+        return annotationRuntimeState.computeIfAbsent(annotationClass, v -> {
+            Retention retention = v.getAnnotation(Retention.class);
+            return retention != null && retention.value() == RetentionPolicy.RUNTIME;
+        });
+    }
+    public static void validateRuntimeAnnotation(Class<? extends Annotation> annotationClass) throws IllegalArgumentException {
+        if (isRuntimeAnnotation(annotationClass))
+            return;
+        throw new IllegalArgumentException("Annotation class " + annotationClass.getName() + " is not valid. RetentionPolicy not is RUNTIME");
     }
 
     public static Class<?> findClass(String className) {
