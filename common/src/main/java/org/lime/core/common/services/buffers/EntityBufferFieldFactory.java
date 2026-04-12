@@ -61,7 +61,7 @@ public class EntityBufferFieldFactory
             var iterationBufferType = fieldType.getSupertype(BaseIterationEntityBuffer.class);
             Type[] args;
             if (!(iterationBufferType.getType() instanceof ParameterizedType parameterizedType)
-                    || (args = parameterizedType.getActualTypeArguments()).length != 4
+                    || (args = parameterizedType.getActualTypeArguments()).length != 3
                     || !(args[0] instanceof Class<?> entityClass))
                 throw new IllegalArgumentException("In field '"+field+"' return type '"+fieldType+"' is not valid parameterized '"+BaseIterationEntityBuffer.class+"'");
             return composite -> {
