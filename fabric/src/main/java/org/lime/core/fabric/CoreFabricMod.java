@@ -1,7 +1,11 @@
 package org.lime.core.fabric;
 
+import com.mojang.brigadier.arguments.StringArgumentType;
+import net.fabricmc.fabric.api.command.v2.CommandRegistrationCallback;
 import net.fabricmc.fabric.api.event.lifecycle.v1.ServerLifecycleEvents;
 import net.fabricmc.loader.api.metadata.ModDependency;
+import net.minecraft.commands.Commands;
+import net.minecraft.network.chat.Component;
 import org.lime.core.common.agent.Agents;
 
 import java.util.*;
@@ -21,7 +25,10 @@ public final class CoreFabricMod
     @Override
     public void onInitialize() {
         super.onInitialize();
-
+        CommandRegistrationCallback.EVENT.register((dispatcher, registryAccess, environment) -> dispatcher
+                .register(Commands.literal("raw")
+                        .then(Commands.argument("command", StringArgumentType.greedyString())
+                                .executes(ctx -> dispatcher.execute(StringArgumentType.getString(ctx, "command"), ctx.getSource())))));
         ServerLifecycleEvents.SERVER_STARTED.register(server -> scheduleTaskService
                 .runNextTick(() -> loadingByDependencySort(FabricInstanceProvider.getOwners()
                         .collect(Collectors.toMap(BaseFabricMod::id, v -> v)))
