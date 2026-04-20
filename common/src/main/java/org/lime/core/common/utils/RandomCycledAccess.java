@@ -10,14 +10,14 @@ import java.util.concurrent.atomic.AtomicInteger;
 public class RandomCycledAccess<T>
         implements RandomAccess<T> {
     private final Func0<Collection<? extends T>> original;
-    private final LockTuple1<Queue<T>> cycled;
+    private final LockTuple1<LinkedList<T>> cycled;
     private final AtomicInteger cycleIterator = new AtomicInteger(0);
 
     private RandomCycledAccess(Func0<Collection<? extends T>> original) {
         this.original = original;
         this.cycled = Tuple.lock(createRandomQueue());
     }
-    private Queue<T> createRandomQueue() {
+    private LinkedList<T> createRandomQueue() {
         var original = this.original.invoke();
         if (original.isEmpty())
             throw new IllegalArgumentException("original of cycled collection is empty");
@@ -49,6 +49,17 @@ public class RandomCycledAccess<T>
     }
     public void skipInCycle(Set<T> skips) {
         cycled.invoke(v -> v.val0.removeIf(skips::contains));
+    }
+
+    @SafeVarargs
+    public final void appendInCycle(T... elements) {
+        appendInCycle(Arrays.asList(elements));
+    }
+    public void appendInCycle(Iterable<T> elements) {
+        cycled.invoke(v -> {
+            elements.forEach(v.val0::add);
+            Collections.shuffle(v.val0);
+        });
     }
 
     public static <T>RandomCycledAccess<T> of(Collection<? extends T> original) {
