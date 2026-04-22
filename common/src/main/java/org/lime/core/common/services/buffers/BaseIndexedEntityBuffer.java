@@ -2,6 +2,8 @@ package org.lime.core.common.services.buffers;
 
 import com.google.inject.TypeLiteral;
 import org.jetbrains.annotations.Nullable;
+import org.lime.core.common.utils.Disposable;
+import org.lime.core.common.utils.execute.Action2;
 
 public abstract class BaseIndexedEntityBuffer<Index, T extends Entity, Entity, Location>
         extends BaseEntityBuffer<Index, T, Entity, Location> {
@@ -23,5 +25,9 @@ public abstract class BaseIndexedEntityBuffer<Index, T extends Entity, Entity, L
     @Override
     public T indexedNextBuffer(Index index, @Nullable Location location, boolean worldOnly) {
         return super.indexedNextBuffer(index, location, worldOnly);
+    }
+    @Override
+    public Disposable listenSetup(Action2<Index, T> setupAction) {
+        return super.listenSetup(setupAction);
     }
 }

@@ -3,6 +3,7 @@ package org.lime.core.common.services.buffers;
 import org.jetbrains.annotations.Nullable;
 import org.lime.core.common.utils.Disposable;
 import org.lime.core.common.utils.execute.Action1;
+import org.lime.core.common.utils.execute.Action2;
 
 import java.util.HashSet;
 import java.util.Map;
@@ -20,7 +21,7 @@ public abstract class BaseEntityBuffer<Index, T extends Entity, Entity, Location
     protected final Class<T> tClass;
     protected final BaseEntityBufferSetup<Location> setup;
 
-    protected final Map<UUID, Action1<T>> setupActions = new ConcurrentHashMap<>();
+    protected final Map<UUID, Action2<Index, T>> setupActions = new ConcurrentHashMap<>();
 
     protected BaseEntityBuffer(BaseEntityBufferStorage<Entity, Location> owner, BaseEntityBufferSetup<Location> setup, Class<T> tClass) {
         this.owner = owner;
@@ -40,7 +41,7 @@ public abstract class BaseEntityBuffer<Index, T extends Entity, Entity, Location
         return owner.spawn(location, tClass, setup.entityKey().orElse(null), v -> {
             owner.getTags(v).add(this.tag);
             displayBuffer.put(index, v);
-            setupActions.values().forEach(action -> action.invoke(v));
+            setupActions.values().forEach(action -> action.invoke(index, v));
         });
     }
 
@@ -82,6 +83,14 @@ public abstract class BaseEntityBuffer<Index, T extends Entity, Entity, Location
 
         return entity;
     }
+    protected Disposable listenSetup(Action2<Index, T> setupAction) {
+        UUID id = UUID.randomUUID();
+        setupActions.put(id, setupAction);
+        return () -> setupActions.remove(id);
+    }
+    public Disposable listenSetup(Action1<T> setupAction) {
+        return listenSetup((v,e) -> setupAction.invoke(e));
+    }
     public void endBuffer() {
         if (closed)
             throw new IllegalArgumentException("Buffer "+this.tag+" closed");
@@ -116,12 +125,6 @@ public abstract class BaseEntityBuffer<Index, T extends Entity, Entity, Location
         if (!owner.getTags(entity).contains(this.tag))
             return false;
         return displayBuffer.containsValue(tClass.cast(entity));
-    }
-
-    public Disposable listenSetup(Action1<T> setupAction) {
-        UUID id = UUID.randomUUID();
-        setupActions.put(id, setupAction);
-        return () -> setupActions.remove(id);
     }
 
     @Override
