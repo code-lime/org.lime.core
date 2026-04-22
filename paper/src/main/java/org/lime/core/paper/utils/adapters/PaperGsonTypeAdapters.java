@@ -246,8 +246,8 @@ public class PaperGsonTypeAdapters
             final Map<TypeToken<?>, Map.Entry<org.bukkit.Registry<?>, Key>> hierarchy = HierarchyMap.ofToken(registries);
             @Override
             public <T> TypeAdapter<T> create(Gson gson, TypeToken<T> type) {
-                org.bukkit.Registry<?> registry = hierarchy.get(type);
-                if (registry == null)
+                Map.Entry<org.bukkit.Registry<?>, Key> registryEntry = hierarchy.get(type);
+                if (registryEntry == null)
                     return null;
                 var registry = registryEntry.getKey();
                 logger.info("Created registry adapter for {} by {}", type, registryEntry.getValue().asString());
