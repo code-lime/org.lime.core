@@ -1,5 +1,6 @@
 package org.lime.core.paper.utils.adapters;
 
+import com.google.common.base.CaseFormat;
 import com.google.common.collect.Iterables;
 import com.google.common.collect.Streams;
 import com.google.gson.Gson;
@@ -196,7 +197,7 @@ public class PaperGsonTypeAdapters
     }
     protected TypeAdapterFactory registryKeyAuto(
             io.papermc.paper.registry.RegistryAccess registryAccess) {
-        Map<TypeToken<?>, List<org.bukkit.Registry<?>>> collected = new HashMap<>();
+        Map<TypeToken<?>, List<Map.Entry<org.bukkit.Registry<?>, Key>>> collected = new HashMap<>();
         Stream.of(RegistryKey.class.getDeclaredFields())
                 .map(ReflectionField::of)
                 .filter(v -> v.is(Modifier.PUBLIC, Modifier.STATIC, Modifier.FINAL))
@@ -212,8 +213,9 @@ public class PaperGsonTypeAdapters
                         return;
                     var typeToken = TypeToken.get(itemType);
                     @SuppressWarnings("unchecked")
-                    org.bukkit.Registry<?> registry = registryAccess.getRegistry((RegistryKey<? extends @NotNull Keyed>)v.get(null));
-                    collected.computeIfAbsent(typeToken, vv -> new ArrayList<>()).add(registry);
+                    var registryKey = (RegistryKey<? extends @NotNull Keyed>)v.get(null);
+                    org.bukkit.Registry<?> registry = registryAccess.getRegistry(registryKey);
+                    collected.computeIfAbsent(typeToken, vv -> new ArrayList<>()).add(Map.entry(registry, registryKey.key()));
                 });
         Stream.of(org.bukkit.Registry.class.getDeclaredFields())
                 .map(ReflectionField::of)
@@ -232,22 +234,23 @@ public class PaperGsonTypeAdapters
                     org.bukkit.Registry<?> registry = (org.bukkit.Registry<?>)v.get(null);
                     var list = collected.computeIfAbsent(typeToken, vv -> new ArrayList<>());
                     if (list.isEmpty())
-                        list.add(registry);
+                        list.add(Map.entry(registry, Key.key(Key.MINECRAFT_NAMESPACE, CaseFormat.UPPER_UNDERSCORE.to(CaseFormat.LOWER_UNDERSCORE, v.target().getName()))));
                 });
-        Map<TypeToken<?>, org.bukkit.Registry<?>> registries = new ConcurrentHashMap<>();
+        Map<TypeToken<?>, Map.Entry<org.bukkit.Registry<?>, Key>> registries = new ConcurrentHashMap<>();
         collected.forEach((type, list) -> {
             if (list.size() == 1)
                 registries.put(type, list.getFirst());
         });
 
         return new TypeAdapterFactory() {
-            final Map<TypeToken<?>, org.bukkit.Registry<?>> hierarchy = HierarchyMap.ofToken(registries);
+            final Map<TypeToken<?>, Map.Entry<org.bukkit.Registry<?>, Key>> hierarchy = HierarchyMap.ofToken(registries);
             @Override
             public <T> TypeAdapter<T> create(Gson gson, TypeToken<T> type) {
                 org.bukkit.Registry<?> registry = hierarchy.get(type);
                 if (registry == null)
                     return null;
-                logger.info("Created registry adapter: {}", type);
+                var registry = registryEntry.getKey();
+                logger.info("Created registry adapter for {} by {}", type, registryEntry.getValue().asString());
                 return new StringTypeAdapter<>() {
                     @Override
                     public String write(T value) throws IOException {
