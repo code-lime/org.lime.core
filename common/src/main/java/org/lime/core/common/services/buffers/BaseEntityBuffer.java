@@ -2,10 +2,12 @@ package org.lime.core.common.services.buffers;
 
 import org.jetbrains.annotations.Nullable;
 import org.lime.core.common.utils.Disposable;
+import org.lime.core.common.utils.execute.Action1;
 
 import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
+import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 
 public abstract class BaseEntityBuffer<Index, T extends Entity, Entity, Location>
@@ -17,6 +19,8 @@ public abstract class BaseEntityBuffer<Index, T extends Entity, Entity, Location
     protected final String tag;
     protected final Class<T> tClass;
     protected final BaseEntityBufferSetup<Location> setup;
+
+    protected final Map<UUID, Action1<T>> setupActions = new ConcurrentHashMap<>();
 
     protected BaseEntityBuffer(BaseEntityBufferStorage<Entity, Location> owner, BaseEntityBufferSetup<Location> setup, Class<T> tClass) {
         this.owner = owner;
@@ -36,6 +40,7 @@ public abstract class BaseEntityBuffer<Index, T extends Entity, Entity, Location
         return owner.spawn(location, tClass, setup.entityKey().orElse(null), v -> {
             owner.getTags(v).add(this.tag);
             displayBuffer.put(index, v);
+            setupActions.values().forEach(action -> action.invoke(v));
         });
     }
 
@@ -113,6 +118,12 @@ public abstract class BaseEntityBuffer<Index, T extends Entity, Entity, Location
         return displayBuffer.containsValue(tClass.cast(entity));
     }
 
+    public Disposable listenSetup(Action1<T> setupAction) {
+        UUID id = UUID.randomUUID();
+        setupActions.put(id, setupAction);
+        return () -> setupActions.remove(id);
+    }
+
     @Override
     public void close() {
         closed = true;
@@ -121,5 +132,6 @@ public abstract class BaseEntityBuffer<Index, T extends Entity, Entity, Location
             owner.remove(v);
             return true;
         });
+        setupActions.clear();
     }
 }
