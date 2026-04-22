@@ -2,14 +2,17 @@ package org.lime.core.paper.services.buffers;
 
 import com.google.inject.Inject;
 import com.google.inject.TypeLiteral;
+import net.kyori.adventure.key.Key;
 import net.minecraft.world.entity.events.EntityTrackingRangeEvent;
 import net.minecraft.world.entity.events.ShouldEntityBeSavedEvent;
 import org.bukkit.Bukkit;
 import org.bukkit.Location;
+import org.bukkit.Registry;
 import org.bukkit.World;
 import org.bukkit.entity.*;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.Listener;
+import org.bukkit.event.entity.CreatureSpawnEvent;
 import org.bukkit.event.world.ChunkLoadEvent;
 import org.jetbrains.annotations.Nullable;
 import org.lime.core.common.api.BindService;
@@ -18,10 +21,7 @@ import org.lime.core.common.services.buffers.BaseEntityBufferStorage;
 import org.lime.core.common.services.buffers.InjectBuffer;
 import org.lime.core.common.utils.execute.Action1;
 
-import java.util.Arrays;
-import java.util.Objects;
-import java.util.OptionalInt;
-import java.util.Set;
+import java.util.*;
 
 @BindService
 public class EntityBufferStorage
@@ -60,6 +60,9 @@ public class EntityBufferStorage
         var trackingDistance = injectBuffer.trackingDistance();
         return new EntityBufferSetup(
                 injectBuffer.tag(),
+                Optional.of(injectBuffer.entityKey())
+                        .filter(v -> !v.isEmpty())
+                        .map(Key::key),
                 null,
                 trackingDistance < 0 ? OptionalInt.empty() : OptionalInt.of(trackingDistance));
     }
@@ -96,8 +99,15 @@ public class EntityBufferStorage
     }
 
     @Override
-    protected <T extends Entity> T spawn(Location location, Class<T> entityClass, Action1<T> setup) {
-        return location.getWorld().spawn(location, entityClass, setup);
+    protected <T extends Entity> T spawn(Location location, Class<T> entityClass, @Nullable Key entityKey, Action1<T> setup) {
+        var world = location.getWorld();
+        if (entityKey == null)
+            return world.spawn(location, entityClass, setup);
+
+        var type = Registry.ENTITY_TYPE.get(entityKey);
+        if (type == null)
+            throw new IllegalArgumentException("Entity " + entityKey.asString() + " not found");
+        return entityClass.cast(world.spawnEntity(location, type, CreatureSpawnEvent.SpawnReason.CUSTOM, v -> setup.invoke(entityClass.cast(v))));
     }
     @Override
     protected void remove(Entity entity) {

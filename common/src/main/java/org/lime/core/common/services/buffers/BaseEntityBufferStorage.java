@@ -1,6 +1,7 @@
 package org.lime.core.common.services.buffers;
 
 import com.google.inject.TypeLiteral;
+import net.kyori.adventure.key.Key;
 import org.jetbrains.annotations.Nullable;
 import org.lime.core.common.api.Service;
 import org.lime.core.common.utils.execute.Action1;
@@ -28,7 +29,7 @@ public abstract class BaseEntityBufferStorage<Entity, Location>
 
     protected abstract Location defaultLocation();
 
-    protected abstract <T extends Entity>T spawn(Location location, Class<T> entityClass, Action1<T> setup);
+    protected abstract <T extends Entity>T spawn(Location location, Class<T> entityClass, @Nullable Key entityKey, Action1<T> setup);
     protected abstract void remove(Entity entity);
     protected abstract void forEntities(Action1<Entity> entityLoad);
     protected abstract Set<String> getTags(Entity v);

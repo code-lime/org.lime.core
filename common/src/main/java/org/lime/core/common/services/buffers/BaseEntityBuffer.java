@@ -33,7 +33,7 @@ public abstract class BaseEntityBuffer<Index, T extends Entity, Entity, Location
 
     private T spawnEntity(Index index, @Nullable Location location) {
         location = orDefault(location);
-        return owner.spawn(location, tClass, v -> {
+        return owner.spawn(location, tClass, setup.entityKey().orElse(null), v -> {
             owner.getTags(v).add(this.tag);
             displayBuffer.put(index, v);
         });

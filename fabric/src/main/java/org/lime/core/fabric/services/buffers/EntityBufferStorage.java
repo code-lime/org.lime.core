@@ -3,6 +3,7 @@ package org.lime.core.fabric.services.buffers;
 import com.google.inject.Inject;
 import com.google.inject.TypeLiteral;
 import net.fabricmc.fabric.api.event.lifecycle.v1.ServerEntityEvents;
+import net.kyori.adventure.key.Key;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerLevel;
@@ -18,18 +19,17 @@ import org.lime.core.common.utils.Disposable;
 import org.lime.core.common.utils.execute.Action1;
 import org.lime.core.fabric.hooks.EntityTrackingRangeHook;
 import org.lime.core.fabric.hooks.ShouldBeEntitySavedHook;
+import org.lime.core.fabric.services.NativeComponent;
 import org.lime.core.fabric.utils.WorldLocation;
 
-import java.util.Collections;
-import java.util.Objects;
-import java.util.OptionalInt;
-import java.util.Set;
+import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 
 @BindService
 public class EntityBufferStorage
         extends BaseEntityBufferStorage<Entity, WorldLocation> {
     @Inject MinecraftServer server;
+    @Inject NativeComponent nativeComponent;
     @Inject ServerLevel overworld;
 
     private final ConcurrentHashMap<Class<? extends Entity>, EntityType<?>> entities = new ConcurrentHashMap<>();
@@ -54,10 +54,18 @@ public class EntityBufferStorage
         return super.register();
     }
     @SuppressWarnings("unchecked")
-    private <T extends Entity>EntityType<T> getEntityType(Class<T> entityClass) {
-        var result = entities.get(entityClass);
-        if (result == null)
-            throw new IllegalArgumentException("Entity class "+entityClass+" not supported");
+    private <T extends Entity>EntityType<T> getEntityType(
+            Class<T> entityClass,
+            @Nullable Key entityKey) {
+        EntityType<?> result;
+        if (entityKey != null) {
+            result = BuiltInRegistries.ENTITY_TYPE.getOptional(nativeComponent.convert(entityKey))
+                    .orElseThrow(() -> new IllegalArgumentException("Entity " + entityKey.asString() + " not found"));
+        } else {
+            result = entities.get(entityClass);
+            if (result == null)
+                throw new IllegalArgumentException("Entity class "+entityClass+" not supported");
+        }
         return (EntityType<T>)result;
     }
 
@@ -78,6 +86,9 @@ public class EntityBufferStorage
         var trackingDistance = injectBuffer.trackingDistance();
         return new EntityBufferSetup(
                 injectBuffer.tag(),
+                Optional.of(injectBuffer.entityKey())
+                        .filter(v -> !v.isEmpty())
+                        .map(Key::key),
                 null,
                 trackingDistance < 0 ? OptionalInt.empty() : OptionalInt.of(trackingDistance));
     }
@@ -114,9 +125,9 @@ public class EntityBufferStorage
     }
 
     @Override
-    protected <T extends Entity> T spawn(WorldLocation location, Class<T> entityClass, Action1<T> setup) {
+    protected <T extends Entity> T spawn(WorldLocation location, Class<T> entityClass, @Nullable Key entityKey, Action1<T> setup) {
         //ServerLevel serverLevel, @Nullable Consumer<T> consumer, BlockPos blockPos, EntitySpawnReason entitySpawnReason, boolean bl, boolean bl2
-        return getEntityType(entityClass)
+        return getEntityType(entityClass, entityKey)
                 .spawn(location.level(server),
                         //#switch PROPERTIES.versionMinecraft
                         //#caseofregex 1\.21\.*
