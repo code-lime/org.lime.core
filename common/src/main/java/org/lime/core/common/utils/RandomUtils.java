@@ -11,16 +11,9 @@ public class RandomUtils {
     private final static Random rnd = new Random();
 
     public static <T>Optional<T> weighted(
-            final @NotNull Collection<@NotNull T> items,
-            final @NotNull Func1<@NotNull T, Double> weightCalculator) {
-        double sum = 0.0;
-        for (T item : items)
-            sum += weightCalculator.invoke(item);
-
-        if (sum <= 0.0)
-            return Optional.empty();
-
-        double randomizedSum = rnd.nextDouble() * sum;
+            final @NotNull Iterable<@NotNull T> items,
+            final @NotNull Func1<@NotNull T, Double> weightCalculator,
+            final double randomizedSum) {
         double cumulative = 0.0;
         T last = null;
 
@@ -32,6 +25,23 @@ public class RandomUtils {
             last = item;
         }
         return Optional.ofNullable(last);
+    }
+    public static <T>Optional<T> weighted(
+            final @NotNull Collection<@NotNull T> items,
+            final @NotNull Func1<@NotNull T, Double> weightCalculator) {
+        return weighted((Iterable<T>)items, weightCalculator);
+    }
+    public static <T>Optional<T> weighted(
+            final @NotNull Iterable<@NotNull T> items,
+            final @NotNull Func1<@NotNull T, Double> weightCalculator) {
+        double sum = 0.0;
+        for (T item : items)
+            sum += weightCalculator.invoke(item);
+
+        if (sum <= 0.0)
+            return Optional.empty();
+
+        return weighted(items, weightCalculator, rnd.nextDouble() * sum);
     }
     public static <T>Optional<T> weighted(
             final @NotNull Map<T, Double> weights) {
