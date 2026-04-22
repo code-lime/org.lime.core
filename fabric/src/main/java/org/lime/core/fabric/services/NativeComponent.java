@@ -9,7 +9,9 @@ import net.kyori.adventure.platform.fabric.FabricAudiences;
 
 import com.google.inject.Inject;
 import com.google.inject.Singleton;
+import net.kyori.adventure.key.Key;
 import net.kyori.adventure.text.Component;
+import net.minecraft.resources.ResourceLocation;
 
 @Singleton
 public class NativeComponent {
@@ -35,5 +37,17 @@ public class NativeComponent {
         //#default
         return audiences.toNative(component.asComponent());
         //#endswitch
+    }
+
+    public ResourceLocation convert(Key key) {
+        //#switch PROPERTIES.versionAdventurePlatform
+        //#caseof 6.3.0;6.6.0
+        //OF//        return MinecraftAudiences.asNative(key);
+        //#default
+        return FabricAudiences.toNative(key);
+        //#endswitch
+    }
+    public Key convert(ResourceLocation key) {
+        return key;
     }
 }
