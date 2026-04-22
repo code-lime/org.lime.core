@@ -171,7 +171,7 @@ public class EntityBufferStorage
     }
     @Override
     protected WorldLocation getLocation(Entity entity) {
-        return new WorldLocation(entity.level().dimension(), entity.position(), entity.getRotationVector());
+        return WorldLocation.of(entity);
     }
     @Override
     protected void teleport(Entity entity, WorldLocation location) {
