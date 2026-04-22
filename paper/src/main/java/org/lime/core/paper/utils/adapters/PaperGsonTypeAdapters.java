@@ -27,6 +27,7 @@ import org.bukkit.*;
 import org.bukkit.configuration.serialization.ConfigurationSerializable;
 import org.bukkit.inventory.ItemStack;
 import org.jetbrains.annotations.NotNull;
+import org.lime.core.common.reflection.HierarchyMap;
 import org.lime.core.common.reflection.ReflectionField;
 import org.lime.core.common.utils.adapters.CommonGsonTypeAdapters;
 import org.lime.core.common.utils.adapters.StringTypeAdapter;
@@ -233,29 +234,17 @@ public class PaperGsonTypeAdapters
                     if (list.isEmpty())
                         list.add(registry);
                 });
-        Map<TypeToken<?>, org.bukkit.Registry<?>> registries = new HashMap<>();
+        Map<TypeToken<?>, org.bukkit.Registry<?>> registries = new ConcurrentHashMap<>();
         collected.forEach((type, list) -> {
             if (list.size() == 1)
                 registries.put(type, list.getFirst());
         });
 
         return new TypeAdapterFactory() {
-            final ConcurrentHashMap<TypeToken<?>, Optional<TypeToken<?>>> hierarchyTypes = new ConcurrentHashMap<>();
-
-            private Optional<TypeToken<?>> findHierarchy(TypeToken<?> requestedType) {
-                for (var kv : registries.entrySet())
-                    if (kv.getKey().isAssignableFrom(requestedType)) {
-                        logger.info("Found hierarchy registry: {} -> {}", requestedType, kv.getKey());
-                        return Optional.of(kv.getKey());
-                    }
-                return Optional.empty();
-            }
-
+            final Map<TypeToken<?>, org.bukkit.Registry<?>> hierarchy = HierarchyMap.ofToken(registries);
             @Override
             public <T> TypeAdapter<T> create(Gson gson, TypeToken<T> type) {
-                org.bukkit.Registry<?> registry = hierarchyTypes.computeIfAbsent(type, this::findHierarchy)
-                        .map(registries::get)
-                        .orElse(null);
+                org.bukkit.Registry<?> registry = hierarchy.get(type);
                 if (registry == null)
                     return null;
                 logger.info("Created registry adapter: {}", type);
