@@ -9,8 +9,8 @@ import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Redirect;
 
 @Pseudo
-@Mixin(targets = "net.minecraftforge.server.command.CommandHelper", remap = false)
-public class ForgeCommandHelperMixin {
+@Mixin(targets = "net.neoforged.neoforge.server.command.CommandHelper", remap = false)
+public class NeoForgeCommandHelperMixin {
     @SuppressWarnings("UnresolvedMixinReference")
     @Redirect(
             method = "toResult",
