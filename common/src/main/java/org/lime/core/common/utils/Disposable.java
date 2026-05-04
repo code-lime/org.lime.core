@@ -5,10 +5,12 @@ import java.util.Collection;
 import java.util.Collections;
 import java.util.List;
 import java.util.concurrent.ConcurrentLinkedDeque;
+import java.util.stream.Collector;
 
 public interface Disposable
         extends Closeable {
     Disposable EMPTY = () -> {};
+    Collector<Disposable, Composite, Composite> COLLECTOR = Collector.of(Disposable::composite, Composite::add, Composite::add);
 
     @Override
     void close();
@@ -54,6 +56,10 @@ public interface Disposable
     }
     static Disposable empty() {
         return EMPTY;
+    }
+
+    static Collector<Disposable, Composite, Composite> toDisposable() {
+        return COLLECTOR;
     }
 
     interface Composite
