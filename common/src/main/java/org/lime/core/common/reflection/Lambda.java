@@ -15,7 +15,7 @@ public class Lambda {
     private static int getExecuteCount(Executable executable) {
         return executable.getParameterCount() + (Modifier.isStatic(executable.getModifiers()) ? 0 : 1);
     }
-    private static Method getInvokeMethod(Class<?> tClass) {
+    public static Method getInvokeMethod(Class<?> tClass) {
         List<Method> samMethods = Arrays.stream(tClass.getMethods())
                 .filter(m -> Modifier.isAbstract(m.getModifiers()))
                 .toList();

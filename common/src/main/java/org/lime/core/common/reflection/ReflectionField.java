@@ -5,6 +5,7 @@ import org.lime.core.common.utils.execute.Callable;
 
 import java.lang.reflect.Field;
 import java.lang.reflect.Method;
+import java.util.Optional;
 
 public record ReflectionField<T>(Field target)
         implements ReflectionAccessible<Field, ReflectionField<T>>, ReflectionMember<Field, ReflectionField<T>> {
@@ -14,9 +15,15 @@ public record ReflectionField<T>(Field target)
     public static <T> ReflectionField<T> of(Class<?> tClass, String name) {
         return of(Reflection.get(tClass, name));
     }
+    public static <T> Optional<ReflectionField<T>> ofOptional(Class<?> tClass, String name) {
+        return Reflection.getOptional(tClass, name).map(ReflectionField::of);
+    }
     public static <T> ReflectionField<T> ofMojang(Class<?> tClass, String mojangName) {
-        return of(Reflection.getFirst(tClass, m -> Reflection.name(m).equals(mojangName))
-                .orElseThrow(() -> new IllegalArgumentException(new NoSuchFieldException(mojangName))));
+        return ReflectionField.<T>ofMojangOptional(tClass, mojangName)
+                .orElseThrow(() -> new IllegalArgumentException(new NoSuchFieldException(mojangName)));
+    }
+    public static <T> Optional<ReflectionField<T>> ofMojangOptional(Class<?> tClass, String mojangName) {
+        return Reflection.getFirst(tClass, m -> Reflection.name(m).equals(mojangName)).map(ReflectionField::of);
     }
 
     public static String fieldToString(Field field, boolean mojang) {

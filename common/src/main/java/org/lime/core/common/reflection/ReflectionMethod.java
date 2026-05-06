@@ -8,6 +8,7 @@ import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;
 import java.util.Arrays;
+import java.util.Optional;
 
 public record ReflectionMethod(Method target)
         implements ReflectionAccessible<Method, ReflectionMethod>, ReflectionMember<Method, ReflectionMethod> {
@@ -17,6 +18,9 @@ public record ReflectionMethod(Method target)
 
     public static ReflectionMethod of(Class<?> tClass, String name, Class<?>... args) {
         return of(Reflection.get(tClass, name, args));
+    }
+    public static Optional<ReflectionMethod> ofOptional(Class<?> tClass, String name, Class<?>... args) {
+        return Reflection.getOptional(tClass, name, args).map(ReflectionMethod::of);
     }
 
     public static String methodToString(Method method, boolean mojang) {
@@ -29,10 +33,17 @@ public record ReflectionMethod(Method target)
     public boolean matchArgs(Class<?>... args) {
         return Reflection.matchMethod(target, args);
     }
+    public boolean matchReturn(Class<?> returnClass) {
+        return Reflection.matchMethodReturn(target, returnClass);
+    }
 
     public static ReflectionMethod ofMojang(Class<?> tClass, String mojangName, Class<?>... args) {
-        return of(Reflection.getFirst(tClass, m -> Reflection.name(m).equals(mojangName), args)
-                .orElseThrow(() -> new IllegalArgumentException(new NoSuchMethodException(methodToString(tClass, mojangName, args)))));
+        return ofMojangOptional(tClass, mojangName, args)
+                .orElseThrow(() -> new IllegalArgumentException(new NoSuchMethodException(methodToString(tClass, mojangName, args))));
+    }
+    public static Optional<ReflectionMethod> ofMojangOptional(Class<?> tClass, String mojangName, Class<?>... args) {
+        return Reflection.getFirst(tClass, m -> Reflection.name(m).equals(mojangName), args)
+                .map(ReflectionMethod::of);
     }
 
     @Override

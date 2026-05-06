@@ -1,6 +1,9 @@
 package org.lime.core.common.reflection;
 
+import com.google.gson.reflect.TypeToken;
+import com.google.inject.TypeLiteral;
 import net.minecraft.unsafe.Native;
+import org.apache.commons.lang3.ClassUtils;
 import org.jetbrains.annotations.Nullable;
 import org.lime.core.common.utils.Lazy;
 import org.lime.core.common.utils.execute.Func1;
@@ -55,11 +58,25 @@ public class Reflection {
         throw new IllegalArgumentException("Annotation class " + annotationClass.getName() + " is not valid. RetentionPolicy not is RUNTIME");
     }
 
+
+    public static TypeLiteral<?> componentType(
+            TypeLiteral<?> recordLiteral,
+            RecordComponent recordComponent) {
+        return recordLiteral.getReturnType(recordComponent.getAccessor());
+    }
+
     public static Class<?> findClass(String className) {
         try {
             return Class.forName(className);
         } catch (ClassNotFoundException e) {
             throw new RuntimeException(e);
+        }
+    }
+    public static Optional<Class<?>> findClassOptional(String className) {
+        try {
+            return Optional.of(Class.forName(className));
+        } catch (ClassNotFoundException e) {
+            return Optional.empty();
         }
     }
 
@@ -72,8 +89,14 @@ public class Reflection {
     public static boolean matchMethod(final Method method, final Class<?>[] parameterTypes) {
         return isMatchingMethod.value().invoke(method, parameterTypes);
     }
+    public static boolean matchMethodReturn(final Method method, final Class<?> returnClass) {
+        return ClassUtils.isAssignable(method.getReturnType(), returnClass, true);
+    }
     public static boolean matchConstructor(final Constructor<?> constructor, final Class<?>[] parameterTypes) {
         return isMatchingConstructor.value().invoke(constructor, parameterTypes);
+    }
+    public static boolean matchClass(final Class<?> aClass, final Class<?> bClass) {
+        return ClassUtils.isAssignable(aClass, bClass, true);
     }
 
     private interface Find<J, T> {
