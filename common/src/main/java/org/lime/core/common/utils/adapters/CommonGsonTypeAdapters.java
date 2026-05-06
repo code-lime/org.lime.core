@@ -160,6 +160,7 @@ public abstract class CommonGsonTypeAdapters
             duration(),
             rgbColor(),
             range(),
+            JsonRecordSingleTypeAdapterFactory.INSTANCE,
             RuntimeTypeAdapterFactory.AUTO);
     }
 }
