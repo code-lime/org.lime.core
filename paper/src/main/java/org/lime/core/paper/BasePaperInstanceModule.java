@@ -1,6 +1,7 @@
 package org.lime.core.paper;
 
 import com.google.inject.TypeLiteral;
+import com.mojang.authlib.minecraft.MinecraftSessionService;
 import io.papermc.paper.datapack.DatapackManager;
 import io.papermc.paper.datapack.PaperDatapackManager;
 import io.papermc.paper.registry.PaperRegistryAccess;
@@ -13,6 +14,7 @@ import net.minecraft.server.ServerScoreboard;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.packs.resources.ResourceManager;
 import net.minecraft.server.players.PlayerList;
+import net.minecraft.util.Util;
 import net.minecraft.world.item.crafting.RecipeAccess;
 import net.minecraft.world.item.crafting.RecipeManager;
 import net.minecraft.world.level.Level;
@@ -34,6 +36,7 @@ import org.bukkit.plugin.java.JavaPlugin;
 import org.bukkit.scheduler.BukkitScheduler;
 import org.bukkit.scoreboard.ScoreboardManager;
 import org.bukkit.structure.StructureManager;
+import org.lime.core.common.reflection.ReflectionMethod;
 import org.lime.core.common.services.InstancesUtility;
 import org.lime.core.common.services.UnsafeMappingsUtility;
 import org.lime.core.common.services.ScheduleTaskService;
@@ -41,7 +44,9 @@ import org.lime.core.common.BaseInstanceModule;
 import org.lime.core.common.services.buffers.BaseEntityBufferStorage;
 import org.lime.core.common.services.memories.BaseConnectionStorageService;
 import org.lime.core.common.services.skins.BaseSkinsCache;
+import org.lime.core.common.utils.Lazy;
 import org.lime.core.common.utils.adapters.CommonGsonTypeAdapters;
+import org.lime.core.common.utils.execute.Func1;
 import org.lime.core.paper.commands.NativeCommandConsumerFactory;
 import org.lime.core.paper.services.ConnectionStorageService;
 import org.lime.core.paper.services.SkinsCache;
@@ -88,6 +93,17 @@ public class BasePaperInstanceModule<Instance extends BasePaperInstance<Instance
         Patcher.patch(instance.plugin.getLogger()::warning);
     }
 
+    @SuppressWarnings("unchecked")
+    private static final Lazy<Func1<MinecraftServer, MinecraftSessionService>> sessionServiceAccess = Lazy.of(() -> ReflectionMethod
+            .ofMojangOptional(MinecraftServer.class, "services")
+            .flatMap(v -> ReflectionMethod.ofMojangOptional(v.target().getReturnType(), "sessionService")
+                    .<Func1<MinecraftServer, MinecraftSessionService>>map(j -> {
+                        Func1<MinecraftServer, Object> services = v.lambda(Func1.class);
+                        Func1<Object, MinecraftSessionService> sessionService = j.lambda(Func1.class);
+                        return server -> sessionService.invoke(services.invoke(server));
+                    }))
+            .orElseGet(() -> ReflectionMethod.ofMojang(MinecraftServer.class, "getSessionService").lambda(Func1.class)));
+
     @Override
     protected void configure() {
         super.configure();
@@ -109,6 +125,7 @@ public class BasePaperInstanceModule<Instance extends BasePaperInstance<Instance
         bindMappedCast(RecipeManager.class, RecipeAccess.class, MinecraftServer.class, MinecraftServer::getRecipeManager);
         bindMapped(ResourceManager.class, MinecraftServer.class, MinecraftServer::getResourceManager);
         bindMapped(StructureTemplateManager.class, MinecraftServer.class, MinecraftServer::getStructureManager);
+        bindMapped(MinecraftSessionService.class, MinecraftServer.class, sessionServiceAccess.value());
 
         bind(CraftServer.class).toInstance((CraftServer) Bukkit.getServer());
         bindCast(Server.class, CraftServer.class);

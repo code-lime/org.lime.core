@@ -3,6 +3,7 @@ package org.lime.core.paper.services;
 import com.google.inject.Inject;
 import com.mojang.authlib.GameProfile;
 import com.mojang.authlib.minecraft.MinecraftProfileTexture;
+import com.mojang.authlib.minecraft.MinecraftSessionService;
 import com.mojang.authlib.properties.Property;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerPlayer;
@@ -23,6 +24,7 @@ import java.util.Optional;
 public class SkinsCache
         extends BaseSkinsCache<ServerPlayer, GameProfile> {
     @Inject MinecraftServer server;
+    @Inject MinecraftSessionService sessionService;
 
     @Override
     protected Property renameProperty(Property property, String name) {
@@ -46,7 +48,7 @@ public class SkinsCache
 
     @Override
     public Map<MinecraftProfileTexture.Type, MinecraftProfileTexture> skinDataProfile(GameProfile profile) {
-        var textures = server.getSessionService().getTextures(profile);
+        var textures = sessionService.getTextures(profile);
         HashMap<MinecraftProfileTexture.Type, MinecraftProfileTexture> result = new HashMap<>();
         putIfNotNull(result, MinecraftProfileTexture.Type.SKIN, textures.skin());
         putIfNotNull(result, MinecraftProfileTexture.Type.CAPE, textures.cape());

@@ -20,7 +20,6 @@ import net.minecraft.core.Registry;
 import net.minecraft.core.RegistryAccess;
 import net.minecraft.core.registries.Registries;
 import net.minecraft.resources.ResourceKey;
-import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.world.phys.Vec3;
 import org.apache.commons.lang3.reflect.TypeUtils;
@@ -84,16 +83,16 @@ public class PaperGsonTypeAdapters
                 new StringTypeAdapter<ResourceKey<T>>() {
                     @Override
                     public String write(ResourceKey<T> value) {
-                        return value.location().toString();
+                        return ResourceLocationIdentifierProxy.identifierLocation(value).toString();
                     }
                     @Override
                     public ResourceKey<T> read(String value) {
-                        ResourceLocation location = ResourceLocation.parse(value);
+                        ResourceLocationIdentifierProxy location = ResourceLocationIdentifierProxy.parse(value);
                         for (ResourceKey<T> key : resourceKeys) {
-                            if (key.location().equals(location))
+                            if (location.equals(ResourceLocationIdentifierProxy.identifierLocation(key)))
                                 return key;
                         }
-                        throw new IllegalArgumentException("Resource "+resourceClass.getSimpleName()+"#"+location+" not found. Allowed: " + String.join(", ", Iterables.transform(resourceKeys, v -> Objects.requireNonNull(v).location().toString())));
+                        throw new IllegalArgumentException("Resource "+resourceClass.getSimpleName()+"#"+location+" not found. Allowed: " + String.join(", ", Iterables.transform(resourceKeys, v -> ResourceLocationIdentifierProxy.identifierLocation(Objects.requireNonNull(v)).toString())));
                     }
                 });
     }
@@ -111,13 +110,13 @@ public class PaperGsonTypeAdapters
                 new StringTypeAdapter<ResourceKey<T>>() {
                     @Override
                     public String write(ResourceKey<T> value) {
-                        return value.location().toString();
+                        return ResourceLocationIdentifierProxy.identifierLocation(value).toString();
                     }
                     @Override
                     public ResourceKey<T> read(String value) {
-                        ResourceLocation location = ResourceLocation.parse(value);
+                        ResourceLocationIdentifierProxy location = ResourceLocationIdentifierProxy.parse(value);
                         return registry.listElementIds()
-                                .filter(v -> v.location().equals(location))
+                                .filter(v -> ResourceLocationIdentifierProxy.identifierLocation(v).equals(location))
                                 .findFirst()
                                 .orElseThrow(() -> new IllegalStateException("Missing element " + location + " in " + registry.key()));
                     }
@@ -161,14 +160,14 @@ public class PaperGsonTypeAdapters
                         .map(registry -> new StringTypeAdapter<T>() {
                             @Override
                             public String write(T value) throws IOException {
-                                return ((ResourceKey<?>)value).location().toString();
+                                return ResourceLocationIdentifierProxy.identifierLocation((ResourceKey<?>)value).toString();
                             }
                             @SuppressWarnings("unchecked")
                             @Override
                             public T read(String value) throws IOException {
-                                ResourceLocation location = ResourceLocation.parse(value);
+                                ResourceLocationIdentifierProxy location = ResourceLocationIdentifierProxy.parse(value);
                                 return registry.listElementIds()
-                                        .filter(v -> v.location().equals(location))
+                                        .filter(v -> ResourceLocationIdentifierProxy.identifierLocation(v).equals(location))
                                         .map(v -> (T)v)
                                         .findFirst()
                                         .orElseThrow(() -> new IllegalStateException("Missing element " + location + " in " + registry.key()));
