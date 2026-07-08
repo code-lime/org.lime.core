@@ -1,6 +1,7 @@
 package org.lime.core.common.services.memories;
 
 import org.jetbrains.annotations.Nullable;
+import org.lime.core.common.utils.Disposable;
 import org.lime.core.common.utils.execute.Action2;
 import org.lime.core.common.utils.execute.Func1;
 import org.lime.core.common.utils.execute.Func2;
@@ -23,4 +24,6 @@ public interface MemoryStorage<T> {
     void modifyEvery(Func2<UUID, T, @Nullable T> modify);
 
     void every(Action2<UUID, T> action);
+
+    Disposable listenUpdating(Action2<UUID, @Nullable T> callback);
 }

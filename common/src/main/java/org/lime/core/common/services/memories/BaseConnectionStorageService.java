@@ -21,59 +21,107 @@ import java.util.stream.Stream;
 public abstract class BaseConnectionStorageService
         implements Service {
     private record Memory(
-            ConcurrentHashMap<MemoryKey<?>, Object> memory) {
+            UUID uid,
+            ConcurrentHashMap<MemoryKey<?>, Object> memory,
+            ConcurrentHashMap<MemoryKey<?>, ConcurrentHashMap<UUID, MemoryListenUpdating<?>>> listenUpdating)
+            implements Disposable {
         public <T> Optional<T> get(MemoryKey<T> key) {
             return Optional.ofNullable(memory.get(key))
                     .map(key::castOrNull);
         }
         public <T> Optional<T> getOrCreate(MemoryKey<T> key, Supplier<T> supplier) {
-            return key.cast(memory.computeIfAbsent(key, v -> supplier.get()));
+            return key.cast(memory.computeIfAbsent(key, v -> {
+                var value = supplier.get();
+                handleListen(key, value);
+                return value;
+            }));
         }
         public <T> void set(MemoryKey<T> key, @Nullable T value) {
             if (value == null) memory.remove(key);
             else memory.put(key, value);
+            handleListen(key, value);
         }
         public <T> boolean has(MemoryKey<T> key) {
             return memory.containsKey(key);
         }
         public <T> boolean remove(MemoryKey<T> key) {
-            return memory.remove(key) != null;
+            if (memory.remove(key) == null)
+                return false;
+            handleListen(key, null);
+            return true;
         }
 
         public <T> void modify(MemoryKey<T> key, Func1<@Nullable T, @Nullable T> modify) {
-            memory.compute(key, (k,v) -> modify.invoke(key.castOrNull(v)));
+            memory.compute(key, (k,v) -> {
+                var newValue = modify.invoke(key.castOrNull(v));
+                if (v != newValue)
+                    handleListen(key, newValue);
+                return newValue;
+            });
+        }
+
+        private void handleListen(MemoryKey<?> key, @Nullable Object value) {
+            var listeners = listenUpdating.get(key);
+            if (listeners == null || listeners.isEmpty())
+                return;
+            for (var listener : listeners.values())
+                listener.tryHandle(uid, value);
+        }
+
+        @Override
+        public void close() {
+            memory.entrySet().removeIf(v -> {
+                handleListen(v.getKey(), null);
+                return true;
+            });
         }
     }
 
     @Inject ScheduleTaskService taskService;
 
     private final ConcurrentHashMap<UUID, Memory> memories = new ConcurrentHashMap<>();
+    private final ConcurrentHashMap<MemoryKey<?>, ConcurrentHashMap<UUID, MemoryListenUpdating<?>>> listenUpdating = new ConcurrentHashMap<>();
 
     protected abstract Stream<UUID> onlinePlayerIds();
 
     @Override
     public Disposable register() {
-        memories.clear();
+        clearAll();
         onlinePlayerIds().forEach(this::handleLogin);
         return Disposable.combine(
                 taskService.builder()
                         .withCallback(this::syncUpdate)
                         .withLoop(Duration.ofSeconds(2))
                         .execute(),
-                memories::clear
+                this::clearAll
         );
     }
     protected void syncUpdate() {
         var playerIds = onlinePlayerIds().collect(Collectors.toSet());
-        memories.keySet().removeIf(v -> !playerIds.remove(v));
+        memories.entrySet().removeIf(v -> {
+            if (playerIds.remove(v.getKey()))
+                return false;
+            v.getValue().close();
+            return true;
+        });
         playerIds.forEach(this::handleLogin);
+    }
+    private void clearAll() {
+        memories.values().removeIf(v -> {
+            v.close();
+            return true;
+        });
     }
 
     protected void handleLogin(UUID playerId) {
-        memories.put(playerId, new Memory(new ConcurrentHashMap<>()));
+        var memory = memories.put(playerId, new Memory(playerId, new ConcurrentHashMap<>(), listenUpdating));
+        if (memory != null)
+            memory.close();
     }
     protected void handleLogout(UUID playerId) {
-        memories.remove(playerId);
+        var memory = memories.remove(playerId);
+        if (memory != null)
+            memory.close();
     }
 
     public <T> MemoryStorage<T> createStorage(MemoryKey<T> key) {
@@ -107,12 +155,16 @@ public abstract class BaseConnectionStorageService
                 BaseConnectionStorageService.this.modify(key, playerId, modify);
             }
             @Override
-            public void modifyEvery(Func2<UUID, T, T> modify) {
+            public void modifyEvery(Func2<UUID, @Nullable T, @Nullable T> modify) {
                 BaseConnectionStorageService.this.modifyEvery(key, modify);
             }
             @Override
             public void every(Action2<UUID, T> action) {
                 BaseConnectionStorageService.this.every(key, action);
+            }
+            @Override
+            public Disposable listenUpdating(Action2<UUID, @Nullable T> callback) {
+                return BaseConnectionStorageService.this.listenUpdating(key, callback);
             }
         };
     }
@@ -147,10 +199,16 @@ public abstract class BaseConnectionStorageService
     public <T> void modify(MemoryKey<T> key, UUID playerId, Func1<@Nullable T, @Nullable T> modify) {
         Optional.ofNullable(memories.get(playerId)).ifPresent(v -> v.modify(key, modify));
     }
-    private <T> void modifyEvery(MemoryKey<T> key, Func2<UUID, T, T> modify) {
+    private <T> void modifyEvery(MemoryKey<T> key, Func2<UUID, @Nullable T, @Nullable T> modify) {
         memories.forEach((playerId, memory) -> memory.modify(key, v -> modify.invoke(playerId, v)));
     }
     private <T> void every(MemoryKey<T> key, Action2<UUID, T> action) {
         memories.forEach((playerId, memory) -> memory.get(key).ifPresent(v -> action.invoke(playerId, v)));
+    }
+    private <T> Disposable listenUpdating(MemoryKey<T> key, Action2<UUID, @Nullable T> callback) {
+        UUID uid = UUID.randomUUID();
+        var listeners = listenUpdating.computeIfAbsent(key, v -> new ConcurrentHashMap<>());
+        listeners.put(uid, new MemoryListenUpdating<>(key, callback));
+        return () -> listeners.remove(uid);
     }
 }
