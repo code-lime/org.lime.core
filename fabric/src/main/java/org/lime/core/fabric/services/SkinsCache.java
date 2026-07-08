@@ -25,7 +25,7 @@ public class SkinsCache
 
     @Override
     protected Property renameProperty(Property property, String name) {
-        return new Property("textures",
+        return new Property(name,
                 //#switch PROPERTIES.versionMinecraft
                 //#caseofregex 1\.21\.*
                 //OF//                property.value(), property.signature()
