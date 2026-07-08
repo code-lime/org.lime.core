@@ -5,18 +5,18 @@ import org.jetbrains.annotations.Nullable;
 
 import java.util.Optional;
 
-public record MemoryKey<T>(
+public record MemoryKey<Index, T>(
         String key,
-        TypeLiteral<T> type,
-        TypeLiteral<?> indexType,
-        @Nullable Object index) {
-    private enum SingleIndex {
-        INSTANCE
-    }
-    private static final TypeLiteral<?> SINGLE_INDEX_TYPE = TypeLiteral.get(SingleIndex.class);
+        TypeLiteral<Index> indexType,
+        TypeLiteral<T> type) {
+    public enum SingleIndex {
+        KEY,
+        ;
 
-    public MemoryKey(String key, TypeLiteral<T> type) {
-        this(key, type, SINGLE_INDEX_TYPE, SingleIndex.INSTANCE);
+        public static final TypeLiteral<SingleIndex> TYPE = TypeLiteral.get(SingleIndex.class);
+    }
+    public static <T> MemoryKey<SingleIndex, T> single(String key, TypeLiteral<T> type) {
+        return new MemoryKey<>(key, SingleIndex.TYPE, type);
     }
 
     public Optional<T> cast(Object value) {

@@ -1,75 +1,69 @@
 package org.lime.core.common.services.memories;
 
-import com.google.inject.TypeLiteral;
 import org.jetbrains.annotations.Nullable;
 import org.lime.core.common.utils.Disposable;
 import org.lime.core.common.utils.execute.Action2;
+import org.lime.core.common.utils.execute.Action3;
 import org.lime.core.common.utils.execute.Func1;
 import org.lime.core.common.utils.execute.Func2;
 
+import java.util.Iterator;
+import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
 import java.util.function.Supplier;
+import java.util.stream.Stream;
 
 public class IndexedMemoryStorage<Index, T>
-        extends BaseMemoryStorage<T> {
-    private final String key;
-    private final TypeLiteral<Index> indexType;
-    private final TypeLiteral<T> type;
-
-    IndexedMemoryStorage(
+        extends BaseMemoryStorage<Index, T> {
+    public IndexedMemoryStorage(
             BaseConnectionStorageService owner,
-            String key,
-            TypeLiteral<Index> indexType,
-            TypeLiteral<T> type) {
-        super(owner);
-        this.key = key;
-        this.indexType = indexType;
-        this.type = type;
+            MemoryKey<Index, T> key) {
+        super(owner, key);
     }
 
-    public String key() {
-        return key;
+    @Override
+    public Optional<T> get(Index index, UUID playerId) {
+        return super.get(index, playerId);
     }
-    public TypeLiteral<Index> indexType() {
-        return indexType;
+    @Override
+    public Stream<Map.Entry<Index, T>> stream(UUID playerId) {
+        return super.stream(playerId);
     }
-    public TypeLiteral<T> type() {
-        return type;
-    }
-    public MemoryKey<T> key(Index index) {
-        return new MemoryKey<>(key, type, indexType, index);
-    }
-
-    public Optional<T> get(UUID playerId, Index index) {
-        return get(key(index), playerId);
-    }
-    public Optional<T> getOrCreate(UUID playerId, Index index, Supplier<T> supplier) {
-        return getOrCreate(key(index), playerId, supplier);
+    @Override
+    public Optional<T> getOrCreate(Index index, UUID playerId, Supplier<T> supplier) {
+        return super.getOrCreate(index, playerId, supplier);
     }
 
-    public void set(UUID playerId, Index index, @Nullable T value) {
-        set(key(index), playerId, value);
+    @Override
+    public void set(Index index, UUID playerId, @Nullable T value) {
+        super.set(index, playerId, value);
     }
-    public boolean has(UUID playerId, Index index) {
-        return has(key(index), playerId);
+    @Override
+    public boolean has(Index index, UUID playerId) {
+        return super.has(index, playerId);
     }
-    public boolean remove(UUID playerId, Index index) {
-        return remove(key(index), playerId);
+    @Override
+    public boolean remove(Index index, UUID playerId) {
+        return super.remove(index, playerId);
     }
 
-    public void modify(UUID playerId, Index index, Func1<@Nullable T, @Nullable T> modify) {
-        modify(key(index), playerId, modify);
+    @Override
+    public void modify(Index index, UUID playerId, Func1<@Nullable T, @Nullable T> modify) {
+        super.modify(index, playerId, modify);
     }
+    @Override
     public void modifyEvery(Index index, Func2<UUID, @Nullable T, @Nullable T> modify) {
-        modifyEvery(key(index), modify);
+        super.modifyEvery(index, modify);
     }
 
+    @Override
     public void every(Index index, Action2<UUID, T> action) {
-        every(key(index), action);
+        super.every(index, action);
     }
 
-    public Disposable listenUpdating(Index index, Action2<UUID, @Nullable T> callback) {
-        return listenUpdating(key(index), callback);
+    @Override
+    public Disposable listenUpdating(Action3<UUID, Index, @Nullable T> callback) {
+        return super.listenUpdating(callback);
     }
 }
