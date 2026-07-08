@@ -125,48 +125,7 @@ public abstract class BaseConnectionStorageService
     }
 
     public <T> MemoryStorage<T> createStorage(MemoryKey<T> key) {
-        return new MemoryStorage<>() {
-            @Override
-            public MemoryKey<T> key() {
-                return key;
-            }
-            @Override
-            public Optional<T> get(UUID playerId) {
-                return BaseConnectionStorageService.this.get(key, playerId);
-            }
-            @Override
-            public Optional<T> getOrCreate(UUID playerId, Supplier<T> supplier) {
-                return BaseConnectionStorageService.this.getOrCreate(key, playerId, supplier);
-            }
-            @Override
-            public void set(UUID playerId, @Nullable T value) {
-                BaseConnectionStorageService.this.set(key, playerId, value);
-            }
-            @Override
-            public boolean has(UUID playerId) {
-                return BaseConnectionStorageService.this.has(key, playerId);
-            }
-            @Override
-            public boolean remove(UUID playerId) {
-                return BaseConnectionStorageService.this.remove(key, playerId);
-            }
-            @Override
-            public void modify(UUID playerId, Func1<@Nullable T, @Nullable T> modify) {
-                BaseConnectionStorageService.this.modify(key, playerId, modify);
-            }
-            @Override
-            public void modifyEvery(Func2<UUID, @Nullable T, @Nullable T> modify) {
-                BaseConnectionStorageService.this.modifyEvery(key, modify);
-            }
-            @Override
-            public void every(Action2<UUID, T> action) {
-                BaseConnectionStorageService.this.every(key, action);
-            }
-            @Override
-            public Disposable listenUpdating(Action2<UUID, @Nullable T> callback) {
-                return BaseConnectionStorageService.this.listenUpdating(key, callback);
-            }
-        };
+        return new MemoryStorage<>(this, key);
     }
     public <T> MemoryStorage<T> createStorage(
             TypeLiteral<T> type,
@@ -180,11 +139,25 @@ public abstract class BaseConnectionStorageService
             key = "unique#" + UUID.randomUUID();
         return createStorage(new MemoryKey<>(key, type));
     }
+    public <Index, T> IndexedMemoryStorage<Index, T> createIndexedStorage(
+            TypeLiteral<Index> indexType,
+            TypeLiteral<T> type,
+            InjectMemoryConnection key) {
+        return createIndexedStorage(indexType, type, key.key());
+    }
+    public <Index, T> IndexedMemoryStorage<Index, T> createIndexedStorage(
+            TypeLiteral<Index> indexType,
+            TypeLiteral<T> type,
+            String key) {
+        if (InjectMemoryConnection.UNIQUE_KEY.equals(key))
+            key = "unique#" + UUID.randomUUID();
+        return new IndexedMemoryStorage<>(this, key, indexType, type);
+    }
 
     public <T> Optional<T> get(MemoryKey<T> key, UUID playerId) {
         return Optional.ofNullable(memories.get(playerId)).flatMap(v -> v.get(key));
     }
-    private <T> Optional<T> getOrCreate(MemoryKey<T> key, UUID playerId, Supplier<T> supplier) {
+    <T> Optional<T> getOrCreate(MemoryKey<T> key, UUID playerId, Supplier<T> supplier) {
         return Optional.ofNullable(memories.get(playerId)).flatMap(v -> v.getOrCreate(key, supplier));
     }
     public <T> void set(MemoryKey<T> key, UUID playerId, @Nullable T value) {
@@ -199,13 +172,13 @@ public abstract class BaseConnectionStorageService
     public <T> void modify(MemoryKey<T> key, UUID playerId, Func1<@Nullable T, @Nullable T> modify) {
         Optional.ofNullable(memories.get(playerId)).ifPresent(v -> v.modify(key, modify));
     }
-    private <T> void modifyEvery(MemoryKey<T> key, Func2<UUID, @Nullable T, @Nullable T> modify) {
+    <T> void modifyEvery(MemoryKey<T> key, Func2<UUID, @Nullable T, @Nullable T> modify) {
         memories.forEach((playerId, memory) -> memory.modify(key, v -> modify.invoke(playerId, v)));
     }
-    private <T> void every(MemoryKey<T> key, Action2<UUID, T> action) {
+    <T> void every(MemoryKey<T> key, Action2<UUID, T> action) {
         memories.forEach((playerId, memory) -> memory.get(key).ifPresent(v -> action.invoke(playerId, v)));
     }
-    private <T> Disposable listenUpdating(MemoryKey<T> key, Action2<UUID, @Nullable T> callback) {
+    <T> Disposable listenUpdating(MemoryKey<T> key, Action2<UUID, @Nullable T> callback) {
         UUID uid = UUID.randomUUID();
         var listeners = listenUpdating.computeIfAbsent(key, v -> new ConcurrentHashMap<>());
         listeners.put(uid, new MemoryListenUpdating<>(key, callback));
