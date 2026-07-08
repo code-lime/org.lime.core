@@ -52,6 +52,9 @@ public abstract class BaseMemoryStorage<Index, T> {
     protected void every(Index index, Action2<UUID, T> action) {
         owner.every(key, index, action);
     }
+    protected void every(Action3<UUID, Index, T> action) {
+        owner.every(key, action);
+    }
 
     protected Disposable listenUpdating(Action3<UUID, Index, @Nullable T> callback) {
         return owner.listenUpdating(key, callback);

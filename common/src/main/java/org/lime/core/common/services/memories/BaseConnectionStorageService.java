@@ -230,6 +230,10 @@ public abstract class BaseConnectionStorageService
     public <Index, T> void every(MemoryKey<Index, T> key, Index index, Action2<UUID, T> action) {
         memories.forEach((playerId, memory) -> memory.get(key, index).ifPresent(v -> action.invoke(playerId, v)));
     }
+    public <Index, T> void every(MemoryKey<Index, T> key, Action3<UUID, Index, T> action) {
+        memories.forEach((playerId, memory) -> memory.streamIndexed(key)
+                .forEach(v -> action.invoke(playerId, v.getKey(), v.getValue())));
+    }
     public <Index, T> Disposable listenUpdating(MemoryKey<Index, T> key, Action3<UUID, Index, @Nullable T> callback) {
         UUID uid = UUID.randomUUID();
         var listeners = listenUpdating.computeIfAbsent(key, v -> new ConcurrentHashMap<>());

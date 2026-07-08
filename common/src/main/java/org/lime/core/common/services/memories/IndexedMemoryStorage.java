@@ -61,6 +61,10 @@ public class IndexedMemoryStorage<Index, T>
     public void every(Index index, Action2<UUID, T> action) {
         super.every(index, action);
     }
+    @Override
+    public void every(Action3<UUID, Index, T> action) {
+        super.every(action);
+    }
 
     @Override
     public Disposable listenUpdating(Action3<UUID, Index, @Nullable T> callback) {
