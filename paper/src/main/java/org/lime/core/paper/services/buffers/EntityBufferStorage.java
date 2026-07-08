@@ -119,8 +119,12 @@ public class EntityBufferStorage
     }
 
     @Override
-    protected Set<String> getTags(Entity v) {
-        return v.getScoreboardTags();
+    protected Set<String> getTags(Entity entity) {
+        return entity.getScoreboardTags();
+    }
+    @Override
+    protected int getEntityId(Entity entity) {
+        return entity.getEntityId();
     }
     @Override
     protected boolean isValid(Entity entity) {

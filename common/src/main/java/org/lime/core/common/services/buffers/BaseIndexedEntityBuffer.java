@@ -2,8 +2,12 @@ package org.lime.core.common.services.buffers;
 
 import com.google.inject.TypeLiteral;
 import org.jetbrains.annotations.Nullable;
+import org.jetbrains.annotations.Unmodifiable;
 import org.lime.core.common.utils.Disposable;
 import org.lime.core.common.utils.execute.Action2;
+
+import java.util.Collections;
+import java.util.Map;
 
 public abstract class BaseIndexedEntityBuffer<Index, T extends Entity, Entity, Location>
         extends BaseEntityBuffer<Index, T, Entity, Location> {
@@ -29,5 +33,8 @@ public abstract class BaseIndexedEntityBuffer<Index, T extends Entity, Entity, L
     @Override
     public Disposable listenSetup(Action2<Index, T> setupAction) {
         return super.listenSetup(setupAction);
+    }
+    public @Unmodifiable Map<Index, T> indexedEntities() {
+        return Collections.unmodifiableMap(displayBuffer);
     }
 }

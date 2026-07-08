@@ -32,7 +32,8 @@ public abstract class BaseEntityBufferStorage<Entity, Location>
     protected abstract <T extends Entity>T spawn(Location location, Class<T> entityClass, @Nullable Key entityKey, Action1<T> setup);
     protected abstract void remove(Entity entity);
     protected abstract void forEntities(Action1<Entity> entityLoad);
-    protected abstract Set<String> getTags(Entity v);
+    protected abstract Set<String> getTags(Entity entity);
+    protected abstract int getEntityId(Entity entity);
 
     protected abstract boolean isValid(Entity entity);
     protected abstract Location getLocation(Entity entity);

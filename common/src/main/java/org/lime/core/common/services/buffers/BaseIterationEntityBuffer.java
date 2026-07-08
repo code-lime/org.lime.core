@@ -1,6 +1,10 @@
 package org.lime.core.common.services.buffers;
 
 import org.jetbrains.annotations.Nullable;
+import org.jetbrains.annotations.Unmodifiable;
+
+import java.util.Collection;
+import java.util.Collections;
 
 public abstract class BaseIterationEntityBuffer<T extends Entity, Entity, Location>
         extends BaseEntityBuffer<Integer, T, Entity, Location> {
@@ -22,5 +26,8 @@ public abstract class BaseIterationEntityBuffer<T extends Entity, Entity, Locati
         if (usedIndexes == null)
             throw new IllegalArgumentException("Buffer "+this.tag+" not begin");
         return indexedNextBuffer(usedIndexes.size(), location, worldOnly);
+    }
+    public @Unmodifiable Collection<T> entities() {
+        return Collections.unmodifiableCollection(displayBuffer.values());
     }
 }
