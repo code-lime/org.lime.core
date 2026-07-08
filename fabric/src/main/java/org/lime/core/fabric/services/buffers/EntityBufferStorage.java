@@ -89,7 +89,7 @@ public class EntityBufferStorage
                 Optional.of(injectBuffer.entityKey())
                         .filter(v -> !v.isEmpty())
                         .map(Key::key),
-                null,
+                Optional.empty(),
                 trackingDistance < 0 ? OptionalInt.empty() : OptionalInt.of(trackingDistance));
     }
 
