@@ -22,12 +22,28 @@ import org.lime.core.common.services.buffers.InjectBuffer;
 import org.lime.core.common.utils.execute.Action1;
 
 import java.util.*;
+import java.util.concurrent.ConcurrentHashMap;
 
 @BindService
 public class EntityBufferStorage
         extends BaseEntityBufferStorage<Entity, Location>
         implements Listener {
+    private final ConcurrentHashMap<Class<? extends Entity>, Optional<Class<? extends Entity>>> apiEntities = new ConcurrentHashMap<>();
+
     @Inject World defaultWorld;
+
+    private Class<? extends Entity> getApiEntityClass(Class<? extends Entity> entityClass) {
+        return apiEntities.computeIfAbsent(entityClass, v -> {
+            for (var type : EntityType.values()) {
+                var checkClass = type.getEntityClass();
+                if (checkClass == null)
+                    continue;
+                if (checkClass.isAssignableFrom(entityClass))
+                    return Optional.of(checkClass);
+            }
+            return Optional.empty();
+        }).orElseThrow(() -> new IllegalArgumentException("Entity class " + entityClass + " not supported"));
+    }
 
     @EventHandler
     private void on(ChunkLoadEvent e) {
@@ -102,8 +118,7 @@ public class EntityBufferStorage
     protected <T extends Entity> T spawn(Location location, Class<T> entityClass, @Nullable Key entityKey, Action1<T> setup) {
         var world = location.getWorld();
         if (entityKey == null)
-            return world.spawn(location, entityClass, setup);
-
+            return entityClass.cast(world.spawn(location, getApiEntityClass(entityClass), v -> setup.invoke(entityClass.cast(v))));
         var type = Registry.ENTITY_TYPE.get(entityKey);
         if (type == null)
             throw new IllegalArgumentException("Entity " + entityKey.asString() + " not found");
