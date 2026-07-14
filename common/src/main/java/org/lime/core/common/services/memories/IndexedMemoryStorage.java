@@ -30,6 +30,9 @@ public class IndexedMemoryStorage<Index, T>
     public Stream<Map.Entry<Index, T>> stream(UUID playerId) {
         return super.stream(playerId);
     }
+    public Iterator<Map.Entry<Index, T>> iterator(UUID playerId) {
+        return stream(playerId).iterator();
+    }
     @Override
     public Optional<T> getOrCreate(Index index, UUID playerId, Supplier<T> supplier) {
         return super.getOrCreate(index, playerId, supplier);
