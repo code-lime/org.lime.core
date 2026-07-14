@@ -4,6 +4,8 @@ accessible field net/minecraft/server/level/ChunkMap entityMap Lit/unimi/dsi/fas
 accessible class net/minecraft/server/level/ChunkMap$TrackedEntity
 accessible field net/minecraft/server/level/ChunkMap$TrackedEntity seenBy Ljava/util/Set;
 
+accessible method net/minecraft/world/entity/Entity setLevel (Lnet/minecraft/world/level/Level;)V
+
 #<generator name="accesswidener-all.js:getAllClasses('net.minecraft.world.entity.Interaction', ['method'], '^(get|set|create)')">
 accessible method net/minecraft/world/entity/Interaction getDimensions ()Lnet/minecraft/world/entity/EntityDimensions;
 accessible method net/minecraft/world/entity/Interaction getHeight ()F

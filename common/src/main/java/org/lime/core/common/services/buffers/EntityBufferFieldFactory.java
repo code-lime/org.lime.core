@@ -1,6 +1,7 @@
 package org.lime.core.common.services.buffers;
 
 import com.google.inject.Key;
+import com.google.inject.Provider;
 import com.google.inject.TypeLiteral;
 import com.google.inject.spi.TypeEncounter;
 import org.jetbrains.annotations.NotNull;
@@ -40,7 +41,9 @@ public class EntityBufferFieldFactory
         if (!isIndexed && !BaseIterationEntityBuffer.class.isAssignableFrom(rawFieldClass))
             throw new IllegalArgumentException("In field '"+field+"' return type '"+fieldType+"' is not '"+BaseIndexedEntityBuffer.class+"' or '"+BaseIterationEntityBuffer.class+"'");
 
-        var bufferProvider = encounter.getProvider(Key.get(new TypeLiteral<BaseEntityBufferStorage<?,?>>(){}));
+        Provider<? extends BaseEntityBufferStorage<?,?>> bufferProvider = annotation.isPacket()
+                ? encounter.getProvider(Key.get(new TypeLiteral<BasePacketEntityBufferStorage<?,?>>(){}))
+                : encounter.getProvider(Key.get(new TypeLiteral<BaseEntityBufferStorage<?,?>>(){}));
         if (isIndexed) {
             var indexedBufferType = fieldType.getSupertype(BaseIndexedEntityBuffer.class);
             Type[] args;
@@ -53,6 +56,10 @@ public class EntityBufferFieldFactory
                 var buffer = bufferProvider.get();
                 //noinspection rawtypes,unchecked
                 var result = entity(buffer, annotation, indexClass, (Class)entityClass);
+                if (!rawFieldClass.isInstance(result)) {
+                    result.close();
+                    throw new IllegalArgumentException("Buffer type '" + result.getClass() + "' is not assignable to field '" + field + "' of type '" + fieldType + "'");
+                }
                 composite.add(result);
                 //noinspection unchecked
                 return (T)result;
@@ -68,6 +75,10 @@ public class EntityBufferFieldFactory
                 var buffer = bufferProvider.get();
                 //noinspection rawtypes,unchecked
                 var result = entity(buffer, annotation, (Class)entityClass);
+                if (!rawFieldClass.isInstance(result)) {
+                    result.close();
+                    throw new IllegalArgumentException("Buffer type '" + result.getClass() + "' is not assignable to field '" + field + "' of type '" + fieldType + "'");
+                }
                 composite.add(result);
                 //noinspection unchecked
                 return (T)result;

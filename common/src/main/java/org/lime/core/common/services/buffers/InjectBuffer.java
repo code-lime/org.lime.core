@@ -13,4 +13,6 @@ public @interface InjectBuffer {
     String tag();
     @KeyPattern String entityKey() default "";
     int trackingDistance() default -1;
+    /** Uses a detached entity synchronized only through packets. */
+    boolean isPacket() default false;
 }
