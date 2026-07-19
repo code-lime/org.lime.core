@@ -41,7 +41,9 @@ public class CacheLibraryLoader extends LibraryLoader {
     private static URLClassLoader cacheLoader = null;
 
     static {
-        defaultFactory = LibraryLoader.LIBRARY_LOADER_FACTORY;
+        defaultFactory = Objects.requireNonNullElse(
+                LibraryLoader.LIBRARY_LOADER_FACTORY,
+                URLClassLoader::new);
         LibraryLoader.LIBRARY_LOADER_FACTORY = CacheLibraryLoader::cacheLibraryLoader;
 
         GlobalConfigure.configure();
