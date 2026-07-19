@@ -1,7 +1,6 @@
 package org.lime.core.common.services.buffers;
 
 import org.jetbrains.annotations.Nullable;
-import org.jetbrains.annotations.Unmodifiable;
 import org.lime.core.common.utils.Disposable;
 import org.lime.core.common.utils.execute.Action1;
 import org.lime.core.common.utils.execute.Action2;
@@ -14,6 +13,7 @@ public abstract class BaseEntityBuffer<Index, T extends Entity, Entity, Location
     private boolean closed = false;
 
     protected final Map<Index, T> displayBuffer = new ConcurrentHashMap<>();
+    protected final Map<T, Index> entityIndexes = Collections.synchronizedMap(new IdentityHashMap<>());
     protected final BaseEntityBufferStorage<Entity, Location> owner;
     protected final String tag;
     protected final Class<T> tClass;
@@ -38,9 +38,26 @@ public abstract class BaseEntityBuffer<Index, T extends Entity, Entity, Location
         location = orDefault(location);
         return owner.spawn(location, tClass, setup.entityKey().orElse(null), v -> {
             owner.getTags(v).add(this.tag);
-            displayBuffer.put(index, v);
-            setupActions.values().forEach(action -> action.invoke(index, v));
+            bind(index, v);
+            try {
+                setupActions.values().forEach(action -> action.invoke(index, v));
+            } catch (RuntimeException | Error exception) {
+                unbind(index, v);
+                throw exception;
+            }
         });
+    }
+
+    private void bind(Index index, T entity) {
+        T previous = displayBuffer.put(index, entity);
+        if (previous != null && previous != entity)
+            entityIndexes.remove(previous);
+        entityIndexes.put(entity, index);
+    }
+
+    private void unbind(Index index, T entity) {
+        displayBuffer.remove(index, entity);
+        entityIndexes.remove(entity);
     }
 
     protected @Nullable Set<Index> usedIndexes = null;
@@ -74,6 +91,7 @@ public abstract class BaseEntityBuffer<Index, T extends Entity, Entity, Location
                 if (location != null && !owner.isEquals(owner.getLocation(entity), location, worldOnly))
                     owner.teleport(entity, location);
             } else {
+                unbind(index, entity);
                 owner.remove(entity);
                 entity = spawnEntity(index, location);
             }
@@ -97,6 +115,7 @@ public abstract class BaseEntityBuffer<Index, T extends Entity, Entity, Location
         displayBuffer.entrySet().removeIf(kv -> {
             if (usedIndexes.contains(kv.getKey()))
                 return false;
+            entityIndexes.remove(kv.getValue());
             owner.remove(kv.getValue());
             return true;
         });
@@ -113,7 +132,7 @@ public abstract class BaseEntityBuffer<Index, T extends Entity, Entity, Location
             return;
         if (!owner.getTags(entity).contains(this.tag))
             return;
-        if (displayBuffer.containsValue(tClass.cast(entity)))
+        if (entityIndexes.containsKey(tClass.cast(entity)))
             return;
         owner.remove(entity);
     }
@@ -122,7 +141,11 @@ public abstract class BaseEntityBuffer<Index, T extends Entity, Entity, Location
             return false;
         if (!owner.getTags(entity).contains(this.tag))
             return false;
-        return displayBuffer.containsValue(tClass.cast(entity));
+        return entityIndexes.containsKey(tClass.cast(entity));
+    }
+
+    protected final @Nullable Index indexOf(T entity) {
+        return entityIndexes.get(entity);
     }
 
     @Override
@@ -130,9 +153,11 @@ public abstract class BaseEntityBuffer<Index, T extends Entity, Entity, Location
         closed = true;
         owner.buffers.remove(this);
         displayBuffer.values().removeIf(v -> {
+            entityIndexes.remove(v);
             owner.remove(v);
             return true;
         });
+        entityIndexes.clear();
         setupActions.clear();
     }
 }

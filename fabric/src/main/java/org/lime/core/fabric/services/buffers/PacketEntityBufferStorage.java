@@ -3,11 +3,20 @@ package org.lime.core.fabric.services.buffers;
 import com.google.inject.Inject;
 import com.google.inject.TypeLiteral;
 import com.mojang.datafixers.util.Pair;
+import it.unimi.dsi.fastutil.ints.Int2ObjectLinkedOpenHashMap;
+import it.unimi.dsi.fastutil.longs.Long2ObjectOpenHashMap;
+import it.unimi.dsi.fastutil.objects.Reference2ObjectOpenHashMap;
+import it.unimi.dsi.fastutil.objects.ReferenceOpenHashSet;
 import net.fabricmc.fabric.api.networking.v1.PlayerLookup;
 import net.kyori.adventure.key.Key;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.network.protocol.Packet;
+import net.minecraft.network.protocol.game.ClientGamePacketListener;
+import net.minecraft.network.protocol.game.ClientboundBundlePacket;
+import net.minecraft.network.protocol.game.ClientboundSetEntityDataPacket;
 import net.minecraft.network.protocol.game.ClientboundSetEquipmentPacket;
+import net.minecraft.network.syncher.EntityDataAccessor;
+import net.minecraft.network.syncher.SynchedEntityData;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerEntity;
 import net.minecraft.server.level.ServerLevel;
@@ -23,16 +32,20 @@ import org.lime.core.common.services.ScheduleTaskService;
 import org.lime.core.common.services.buffers.BaseEntityBufferSetup;
 import org.lime.core.common.services.buffers.BasePacketEntityBufferStorage;
 import org.lime.core.common.services.buffers.InjectBuffer;
+import org.lime.core.common.services.buffers.PacketEntityViewSource;
+import org.lime.core.common.services.buffers.PacketEntityVisibility;
 import org.lime.core.common.utils.Disposable;
 import org.lime.core.common.utils.ScheduleTask;
 import org.lime.core.common.utils.execute.Action1;
 import org.lime.core.fabric.services.NativeComponent;
 import org.lime.core.fabric.utils.WorldLocation;
+import org.slf4j.Logger;
 
+import java.util.ArrayDeque;
 import java.util.ArrayList;
-import java.util.Collections;
+import java.util.Collection;
 import java.util.EnumMap;
-import java.util.IdentityHashMap;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -41,6 +54,8 @@ import java.util.OptionalInt;
 import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.function.Predicate;
+import java.util.function.Supplier;
 
 @BindService
 public class PacketEntityBufferStorage
@@ -49,9 +64,16 @@ public class PacketEntityBufferStorage
     @Inject NativeComponent nativeComponent;
     @Inject ServerLevel overworld;
     @Inject ScheduleTaskService taskService;
+    @Inject Logger logger;
 
     private final Map<Class<? extends Entity>, EntityType<?>> entityTypes = new ConcurrentHashMap<>();
     private final Map<Entity, PacketTracker> trackers = new ConcurrentHashMap<>();
+    private final Map<Entity, PacketEntityViewSource<
+            ServerPlayer,
+            EntityDataAccessor<?>,
+            SynchedEntityData.DataValue<?>,
+            PacketEntityDataEditor>> pendingViewSources = new ConcurrentHashMap<>();
+    private final TrackingPlayers trackingPlayers = new TrackingPlayers();
     private ScheduleTask tickTask = ScheduleTask.disabled();
 
     @Override
@@ -76,6 +98,8 @@ public class PacketEntityBufferStorage
         tickTask.cancel();
         super.unregister();
         trackers.keySet().forEach(this::remove);
+        pendingViewSources.clear();
+        trackingPlayers.close();
     }
 
     @Override
@@ -159,6 +183,72 @@ public class PacketEntityBufferStorage
         return entity(setup, indexClass, Interaction.class);
     }
 
+    void attachView(
+            Entity entity,
+            PacketEntityViewSource<
+                    ServerPlayer,
+                    EntityDataAccessor<?>,
+                    SynchedEntityData.DataValue<?>,
+                    PacketEntityDataEditor> source) {
+        Objects.requireNonNull(source, "source");
+        runOnServerThread(() -> attachViewOnServerThread(entity, source));
+    }
+
+    private void attachViewOnServerThread(
+            Entity entity,
+            PacketEntityViewSource<
+                    ServerPlayer,
+                    EntityDataAccessor<?>,
+                    SynchedEntityData.DataValue<?>,
+                    PacketEntityDataEditor> source) {
+        var tracker = trackers.get(entity);
+        if (tracker != null) {
+            tracker.attachView(source);
+            return;
+        }
+        if (!entity.isRemoved())
+            pendingViewSources.put(entity, source);
+    }
+
+    void refreshViews(
+            Iterable<? extends Entity> entities,
+            @Nullable EntityDataAccessor<?> trigger,
+            @Nullable ServerPlayer player) {
+        var snapshot = new ArrayList<Entity>();
+        entities.forEach(snapshot::add);
+        runOnServerThread(() -> snapshot.forEach(entity -> {
+            var tracker = trackers.get(entity);
+            if (tracker == null || trigger != null && !tracker.isTriggered(trigger))
+                return;
+            tracker.refreshView(player);
+        }));
+    }
+
+    void refreshTracking(Iterable<? extends Entity> entities) {
+        var snapshot = new ArrayList<Entity>();
+        entities.forEach(snapshot::add);
+        runOnServerThread(() -> {
+            var players = new TrackingPlayers();
+            snapshot.forEach(entity -> {
+                var tracker = trackers.get(entity);
+                if (tracker != null)
+                    tracker.updateViewers(players);
+            });
+        });
+    }
+
+    private void runOnServerThread(Runnable action) {
+        if (server.isSameThread())
+            action.run();
+        else
+            server.execute(action);
+    }
+
+    void requireServerThread() {
+        if (!server.isSameThread())
+            throw new IllegalStateException("Packet entity view API must be used on the server thread");
+    }
+
     @Override
     protected WorldLocation defaultLocation() {
         return new WorldLocation(overworld.dimension(), Vec3.ZERO, Vec2.ZERO);
@@ -187,9 +277,17 @@ public class PacketEntityBufferStorage
             setup.invoke(result);
             var trackingDistance = getTrackingRange(result)
                     .orElseGet(() -> entityType.clientTrackingRange() * 16);
-            trackers.put(result, new PacketTracker(result, level, Math.max(0, trackingDistance)));
+            var tracker = new PacketTracker(
+                    result,
+                    level,
+                    Math.max(0, trackingDistance),
+                    pendingViewSources.remove(result));
+            var previous = trackers.putIfAbsent(result, tracker);
+            if (previous != null)
+                throw new IllegalStateException("Duplicate packet entity id " + result.getId());
             return result;
         } catch (RuntimeException | Error exception) {
+            pendingViewSources.remove(result);
             result.discard();
             throw exception;
         }
@@ -197,6 +295,7 @@ public class PacketEntityBufferStorage
 
     @Override
     protected void remove(Entity entity) {
+        pendingViewSources.remove(entity);
         var tracker = trackers.remove(entity);
         if (tracker != null)
             tracker.close();
@@ -302,23 +401,104 @@ public class PacketEntityBufferStorage
     }
 
     private void tick() {
-        trackers.values().forEach(PacketTracker::tick);
+        trackingPlayers.reset();
+        trackers.values().forEach(tracker -> tracker.tick(trackingPlayers));
+    }
+
+    private static final class TrackingPlayers {
+        private final Reference2ObjectOpenHashMap<
+                ServerLevel,
+                Long2ObjectOpenHashMap<ReferenceOpenHashSet<ServerPlayer>>> values =
+                new Reference2ObjectOpenHashMap<>(4);
+        private final ArrayDeque<Long2ObjectOpenHashMap<ReferenceOpenHashSet<ServerPlayer>>> reusable =
+                new ArrayDeque<>();
+
+        private void reset() {
+            values.values().forEach(chunks -> {
+                chunks.clear();
+                reusable.addLast(chunks);
+            });
+            values.clear();
+        }
+
+        private void close() {
+            values.clear();
+            reusable.clear();
+        }
+
+        private ReferenceOpenHashSet<ServerPlayer> get(
+                ServerLevel level,
+                long chunk,
+                Supplier<Collection<ServerPlayer>> factory) {
+            Long2ObjectOpenHashMap<ReferenceOpenHashSet<ServerPlayer>> chunks = values.get(level);
+            if (chunks == null) {
+                chunks = reusable.pollFirst();
+                if (chunks == null)
+                    chunks = new Long2ObjectOpenHashMap<>();
+                values.put(level, chunks);
+            }
+
+            ReferenceOpenHashSet<ServerPlayer> players = chunks.get(chunk);
+            if (players == null) {
+                Collection<ServerPlayer> source = factory.get();
+                players = new ReferenceOpenHashSet<>(source.size());
+                players.addAll(source);
+                chunks.put(chunk, players);
+            }
+            return players;
+        }
     }
 
     private final class PacketTracker {
         private final Entity entity;
         private final int trackingDistance;
-        private final Set<ServerPlayer> viewers = Collections.newSetFromMap(new IdentityHashMap<>());
+        private final Set<ServerPlayer> viewers = new ReferenceOpenHashSet<>(4);
+        private final Set<ServerPlayer> desiredViewers = new ReferenceOpenHashSet<>(4);
+        private final Map<UUID, Map<Integer, PacketEntityDataEditor.Entry<?>>> viewOverlays = new HashMap<>();
         private final @Nullable EnumMap<EquipmentSlot, ItemStack> equipmentSnapshot;
         private ServerLevel level;
         private ServerEntity serverEntity;
+        private @Nullable PacketEntityViewSource<
+                ServerPlayer,
+                EntityDataAccessor<?>,
+                SynchedEntityData.DataValue<?>,
+                PacketEntityDataEditor> viewSource;
 
-        private PacketTracker(Entity entity, ServerLevel level, int trackingDistance) {
+        private PacketTracker(
+                Entity entity,
+                ServerLevel level,
+                int trackingDistance,
+                @Nullable PacketEntityViewSource<
+                        ServerPlayer,
+                        EntityDataAccessor<?>,
+                        SynchedEntityData.DataValue<?>,
+                        PacketEntityDataEditor> viewSource) {
             this.entity = entity;
             this.trackingDistance = trackingDistance;
             this.level = level;
+            this.viewSource = viewSource;
             this.equipmentSnapshot = createEquipmentSnapshot();
             this.serverEntity = createServerEntity();
+        }
+
+        private void attachView(PacketEntityViewSource<
+                ServerPlayer,
+                EntityDataAccessor<?>,
+                SynchedEntityData.DataValue<?>,
+                PacketEntityDataEditor> viewSource) {
+            this.viewSource = viewSource;
+            updateViewers(new TrackingPlayers());
+            refreshView(null);
+        }
+
+        private boolean isTriggered(EntityDataAccessor<?> trigger) {
+            return viewSource != null && viewSource.isTriggeredProperty(trigger);
+        }
+
+        private PacketEntityVisibility visibility() {
+            return viewSource == null
+                    ? PacketEntityVisibility.all()
+                    : Objects.requireNonNull(viewSource.visibility(), "packet entity visibility");
         }
 
         private @Nullable EnumMap<EquipmentSlot, ItemStack> createEquipmentSnapshot() {
@@ -348,17 +528,169 @@ public class PacketEntityBufferStorage
         }
 
         private void broadcast(Packet<?> packet) {
-            viewers.forEach(player -> player.connection.send(packet));
+            broadcast(packet, player -> true);
         }
 
         private void broadcast(Packet<?> packet, List<UUID> ignoredPlayers) {
+            broadcast(packet, player -> !ignoredPlayers.contains(player.getUUID()));
+        }
+
+        private void broadcast(Packet<?> packet, Predicate<ServerPlayer> sendTo) {
+            var refresh = packet instanceof ClientboundSetEntityDataPacket metadata
+                    && metadata.id() == entity.getId()
+                    && hasDirtyViewTrigger(metadata.packedItems());
             viewers.forEach(player -> {
-                if (!ignoredPlayers.contains(player.getUUID()))
-                    player.connection.send(packet);
+                if (!sendTo.test(player))
+                    return;
+                var previous = viewOverlays.getOrDefault(player.getUUID(), Map.of());
+                var current = refresh ? recomputeView(player, false) : previous;
+                player.connection.send(applyView(packet, previous, current));
             });
         }
 
-        private void tick() {
+        private boolean hasDirtyViewTrigger(List<SynchedEntityData.DataValue<?>> values) {
+            var source = viewSource;
+            return source != null
+                    && source.hasListeners()
+                    && values.stream().anyMatch(source::isTriggeredUpdate);
+        }
+
+        private Packet<?> applyView(
+                Packet<?> packet,
+                Map<Integer, PacketEntityDataEditor.Entry<?>> previous,
+                Map<Integer, PacketEntityDataEditor.Entry<?>> current) {
+            if (!(packet instanceof ClientboundSetEntityDataPacket metadata)
+                    || metadata.id() != entity.getId()) {
+                return packet;
+            }
+
+            if (previous.isEmpty() && current.isEmpty())
+                return packet;
+
+            if (previous.equals(current)) {
+                boolean hasOverriddenValue = false;
+                for (var value : metadata.packedItems()) {
+                    if (current.containsKey(value.id())) {
+                        hasOverriddenValue = true;
+                        break;
+                    }
+                }
+                if (!hasOverriddenValue)
+                    return packet;
+            }
+
+            var values = new Int2ObjectLinkedOpenHashMap<SynchedEntityData.DataValue<?>>(
+                    metadata.packedItems().size() + previous.size() + current.size());
+            metadata.packedItems().forEach(value -> values.put(value.id(), value));
+            previous.forEach((id, value) -> {
+                if (!current.containsKey(id))
+                    values.put(id.intValue(), canonicalValue(value));
+            });
+            current.forEach((id, value) -> values.put(id.intValue(), value.value()));
+            return new ClientboundSetEntityDataPacket(metadata.id(), List.copyOf(values.values()));
+        }
+
+        private void refreshView(@Nullable ServerPlayer player) {
+            if (player == null) {
+                viewers.forEach(viewer -> recomputeView(viewer, true));
+            } else if (viewers.contains(player)) {
+                recomputeView(player, true);
+            }
+        }
+
+        private Map<Integer, PacketEntityDataEditor.Entry<?>> recomputeView(
+                ServerPlayer player,
+                boolean sendDelta) {
+            var playerId = player.getUUID();
+            var previous = viewOverlays.getOrDefault(playerId, Map.of());
+            var source = viewSource;
+            if (source == null || !source.hasListeners()) {
+                if (previous.isEmpty())
+                    return previous;
+                viewOverlays.remove(playerId);
+                if (sendDelta)
+                    sendViewDelta(player, previous, Map.of());
+                return Map.of();
+            }
+
+            var editor = new PacketEntityDataEditor(entity.getEntityData());
+            try {
+                source.edit(player, editor);
+            } catch (Throwable exception) {
+                logger.error(
+                        "Unable to build packet entity metadata view for entity {} and player {}",
+                        entity.getId(),
+                        playerId,
+                        exception);
+                return previous;
+            }
+
+            var current = editor.snapshot();
+            if (previous.equals(current))
+                return previous;
+
+            if (current.isEmpty())
+                viewOverlays.remove(playerId);
+            else
+                viewOverlays.put(playerId, current);
+
+            if (sendDelta)
+                sendViewDelta(player, previous, current);
+            return current;
+        }
+
+        private void sendViewDelta(
+                ServerPlayer player,
+                Map<Integer, PacketEntityDataEditor.Entry<?>> previous,
+                Map<Integer, PacketEntityDataEditor.Entry<?>> current) {
+            var delta = new Int2ObjectLinkedOpenHashMap<SynchedEntityData.DataValue<?>>(
+                    previous.size() + current.size());
+            previous.forEach((id, oldValue) -> {
+                var newValue = current.get(id);
+                if (newValue == null)
+                    delta.put(id.intValue(), canonicalValue(oldValue));
+                else if (!oldValue.value().equals(newValue.value()))
+                    delta.put(id.intValue(), newValue.value());
+            });
+            current.forEach((id, newValue) -> {
+                if (!previous.containsKey(id))
+                    delta.put(id.intValue(), newValue.value());
+            });
+
+            if (!delta.isEmpty()) {
+                player.connection.send(new ClientboundSetEntityDataPacket(
+                        entity.getId(),
+                        List.copyOf(delta.values())));
+            }
+        }
+
+        private <Value> SynchedEntityData.DataValue<Value> canonicalValue(
+                PacketEntityDataEditor.Entry<Value> entry) {
+            var property = entry.property();
+            return SynchedEntityData.DataValue.create(property, entity.getEntityData().get(property));
+        }
+
+        private void addPairing(ServerPlayer player) {
+            var overlay = recomputeView(player, false);
+            //#switch PROPERTIES.versionMinecraft
+            //#caseof 1.20.1
+            var packets = new ArrayList<Packet<ClientGamePacketListener>>();
+            //#default
+            //OF// var packets = new ArrayList<Packet<? super ClientGamePacketListener>>();
+            //#endswitch
+            serverEntity.sendPairingData(player, packets::add);
+            if (!overlay.isEmpty()) {
+                var metadata = new ArrayList<SynchedEntityData.DataValue<?>>();
+                overlay.values().forEach(value -> metadata.add(value.value()));
+                packets.add(new ClientboundSetEntityDataPacket(
+                        entity.getId(),
+                        metadata));
+            }
+            player.connection.send(new ClientboundBundlePacket(packets));
+            entity.startSeenByPlayer(player);
+        }
+
+        private void tick(TrackingPlayers trackingPlayers) {
             if (entity.isRemoved()) {
                 trackers.remove(entity, this);
                 close();
@@ -377,33 +709,73 @@ public class PacketEntityBufferStorage
                 serverEntity = createServerEntity();
             }
 
-            var candidates = Collections.newSetFromMap(new IdentityHashMap<ServerPlayer, Boolean>());
-            var chunkPos = new ChunkPos(entity.blockPosition());
+            updateViewers(trackingPlayers);
+            sendEquipmentChanges();
+            serverEntity.sendChanges();
+        }
+
+        private void updateViewers(TrackingPlayers trackingPlayers) {
+            desiredViewers.clear();
+            var visibility = visibility();
+            if (!visibility.defaultVisible() && visibility.exceptions().isEmpty()) {
+                reconcileViewers();
+                return;
+            }
+
             var playerRange = server.getScaledTrackingDistance(trackingDistance);
+            if (playerRange <= 0) {
+                reconcileViewers();
+                return;
+            }
+
+            var chunkPos = new ChunkPos(entity.blockPosition());
+            var trackedPlayers = trackingPlayers.get(
+                    level,
+                    chunkPos.toLong(),
+                    () -> PlayerLookup.tracking(level, chunkPos));
             var maxDistanceSquared = (double) playerRange * playerRange;
-            for (var player : PlayerLookup.tracking(level, chunkPos)) {
-                var dx = entity.getX() - player.getX();
-                var dz = entity.getZ() - player.getZ();
-                if (player.level() == level
-                        && !player.isRemoved()
-                        && entity.broadcastToPlayer(player)
-                        && dx * dx + dz * dz <= maxDistanceSquared) {
-                    candidates.add(player);
+
+            if (visibility.defaultVisible()) {
+                for (var player : trackedPlayers) {
+                    if (visibility.isVisible(player.getUUID())
+                            && isTrackingCandidate(player, maxDistanceSquared))
+                        desiredViewers.add(player);
+                }
+            } else {
+                for (var playerId : visibility.exceptions()) {
+                    var player = server.getPlayerList().getPlayer(playerId);
+                    if (player != null
+                            && trackedPlayers.contains(player)
+                            && isTrackingCandidate(player, maxDistanceSquared))
+                        desiredViewers.add(player);
                 }
             }
 
+            reconcileViewers();
+        }
+
+        private boolean isTrackingCandidate(ServerPlayer player, double maxDistanceSquared) {
+            var dx = entity.getX() - player.getX();
+            var dz = entity.getZ() - player.getZ();
+            return player.level() == level
+                    && !player.isRemoved()
+                    && dx * dx + dz * dz <= maxDistanceSquared
+                    && entity.broadcastToPlayer(player);
+        }
+
+        private void reconcileViewers() {
             viewers.removeIf(player -> {
-                if (candidates.remove(player))
+                if (desiredViewers.remove(player))
                     return false;
                 serverEntity.removePairing(player);
+                viewOverlays.remove(player.getUUID());
                 return true;
             });
-            candidates.forEach(player -> {
-                serverEntity.addPairing(player);
+            desiredViewers.forEach(player -> {
+                addPairing(player);
                 viewers.add(player);
             });
-            sendEquipmentChanges();
-            serverEntity.sendChanges();
+            desiredViewers.clear();
         }
 
         private void sendEquipmentChanges() {
@@ -436,10 +808,13 @@ public class PacketEntityBufferStorage
         private void clearViewers() {
             viewers.forEach(serverEntity::removePairing);
             viewers.clear();
+            desiredViewers.clear();
+            viewOverlays.clear();
         }
 
         private void close() {
             clearViewers();
+            viewOverlays.clear();
         }
     }
 }
