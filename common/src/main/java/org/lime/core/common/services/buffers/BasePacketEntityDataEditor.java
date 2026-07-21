@@ -1,82 +1,87 @@
 package org.lime.core.common.services.buffers;
 
+import org.jetbrains.annotations.NotNull;
+import org.jetbrains.annotations.Nullable;
 import org.lime.core.common.reflection.ReflectionField;
 
-import java.util.Collections;
 import java.util.LinkedHashMap;
-import java.util.Map;
-import java.util.Objects;
 import java.util.concurrent.ConcurrentHashMap;
 
 /**
  * Platform-neutral storage and lifecycle for a per-viewer entity-data overlay.
- * Platform implementations only provide access to their metadata property,
- * serializer and packed-value types.
+ * Platform implementations expose each metadata property through an immutable,
+ * reusable {@link PropertyAccess}.
  */
-public abstract class BasePacketEntityDataEditor<Property, Entry> {
+public abstract class BasePacketEntityDataEditor<Data, Entry> {
     private static final ConcurrentHashMap<PropertyKey, Object> PROPERTY_CACHE = new ConcurrentHashMap<>();
 
-    private final LinkedHashMap<Integer, Entry> values = new LinkedHashMap<>();
+    final Data data;
+    final LinkedHashMap<PropertyAccess<?, Data, Entry>, Entry> overrides = new LinkedHashMap<>();
 
-    protected abstract int propertyId(Property property);
-    protected abstract Object canonicalValue(Property property);
-    protected abstract Object entryValue(Property property, Entry entry);
-    protected abstract Object copyValue(Property property, Object value);
-    protected abstract Entry createEntry(Property property, Object value);
-
-    @SuppressWarnings("unchecked")
-    protected final <Value> Value getValue(Property property) {
-        Objects.requireNonNull(property, "property");
-        Entry entry = values.get(propertyId(property));
-        Object value = entry == null ? canonicalValue(property) : entryValue(property, entry);
-        return (Value)copyValue(property, value);
+    protected BasePacketEntityDataEditor(@NotNull Data data) {
+        this.data = data;
     }
 
-    protected final <Value> void setValue(Property property, Value value) {
-        Objects.requireNonNull(property, "property");
-        canonicalValue(property);
-        values.put(propertyId(property), createEntry(property, value));
+    protected final <Value> @NotNull Value getValue(@NotNull PropertyAccess<Value, Data, Entry> access) {
+        Entry current = overrides.get(access);
+        if (current == null)
+            return access.read(data);
+        return access.decode(current);
     }
 
-    protected final void clearValue(Property property) {
-        Objects.requireNonNull(property, "property");
-        canonicalValue(property);
-        values.remove(propertyId(property));
+    protected final <Value> void setValue(@NotNull PropertyAccess<Value, Data, Entry> access, @NotNull Value value) {
+        Entry entry = access.encode(value);
+        overrides.remove(access);
+        overrides.put(access, entry);
     }
 
-    protected final void clearValues() {
-        values.clear();
+    protected final void clearValue(@NotNull PropertyAccess<?, Data, Entry> access) {
+        overrides.remove(access);
     }
 
-    protected final Map<Integer, Entry> snapshotValues() {
-        return values.isEmpty()
-                ? Map.of()
-                : Collections.unmodifiableMap(new LinkedHashMap<>(values));
+    protected final void clearAllValues() {
+        overrides.clear();
     }
 
-    protected static <Property> Property resolveProperty(
-            Class<?> ownerClass,
-            String mojangField,
-            Class<Property> propertyClass) {
-        Objects.requireNonNull(ownerClass, "ownerClass");
-        Objects.requireNonNull(mojangField, "mojangField");
-        Objects.requireNonNull(propertyClass, "propertyClass");
+    /** Immutable typed descriptor of one heterogeneous metadata property. */
+    public abstract static class PropertyAccess<Value, Data, Entry> {
+        private final int id;
 
+        protected PropertyAccess(int id) {
+            this.id = id;
+        }
+
+        protected abstract @NotNull Value read(@NotNull Data data);
+        protected abstract @NotNull Value decode(@NotNull Entry entry);
+        protected abstract @NotNull Entry encode(@NotNull Value value);
+
+        public final int id() {
+            return id;
+        }
+
+        final @NotNull Entry reset(@NotNull Data data) {
+            return encode(read(data));
+        }
+
+        @Override
+        public final boolean equals(@Nullable Object value) {
+            return this == value || value instanceof PropertyAccess<?, ?, ?> access && id == access.id;
+        }
+
+        @Override
+        public final int hashCode() {
+            return id;
+        }
+    }
+
+    protected static <Property> @NotNull Property resolveProperty(@NotNull Class<?> ownerClass, @NotNull String mojangField, @NotNull Class<Property> propertyClass) {
         PropertyKey key = new PropertyKey(ownerClass, mojangField, propertyClass);
         return propertyClass.cast(PROPERTY_CACHE.computeIfAbsent(key, PropertyKey::resolve));
     }
 
-    private record PropertyKey(
-            Class<?> ownerClass,
-            String mojangField,
-            Class<?> propertyClass) {
-        private Object resolve() {
-            Object value = ReflectionField.ofMojang(ownerClass, mojangField).get(null);
-            if (!propertyClass.isInstance(value)) {
-                throw new IllegalArgumentException(
-                        ownerClass.getName() + "." + mojangField + " is not " + propertyClass.getName());
-            }
-            return value;
+    private record PropertyKey(@NotNull Class<?> ownerClass, @NotNull String mojangField, @NotNull Class<?> propertyClass) {
+        private @NotNull Object resolve() {
+            return ReflectionField.ofMojang(ownerClass, mojangField).get(null);
         }
     }
 }

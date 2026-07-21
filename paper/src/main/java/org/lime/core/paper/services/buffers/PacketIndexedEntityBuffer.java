@@ -2,120 +2,93 @@ package org.lime.core.paper.services.buffers;
 
 import com.google.inject.TypeLiteral;
 import it.unimi.dsi.fastutil.objects.Object2ObjectOpenHashMap;
-import net.minecraft.network.syncher.EntityDataAccessor;
+import net.minecraft.network.protocol.Packet;
+import net.minecraft.network.protocol.game.ClientGamePacketListener;
 import net.minecraft.network.syncher.SynchedEntityData;
+import net.minecraft.server.level.ServerPlayer;
+import org.jetbrains.annotations.NotNull;
 import org.bukkit.Location;
 import org.bukkit.entity.Entity;
 import org.bukkit.entity.Player;
 import org.lime.core.common.services.buffers.BaseEntityBufferSetup;
-import org.lime.core.common.services.buffers.PacketEntityViewState;
+import org.lime.core.common.services.buffers.PacketEntityBufferState;
+import org.lime.core.common.services.buffers.PacketEntityInteraction;
 import org.lime.core.common.services.buffers.PacketEntityVisibility;
 import org.lime.core.common.utils.Disposable;
+import org.lime.core.common.utils.execute.Action1;
 import org.lime.core.common.utils.execute.Action4;
-
-import java.util.List;
-import java.util.Map;
-import java.util.Objects;
+import org.lime.core.common.utils.execute.Action5;
 
 public class PacketIndexedEntityBuffer<Index, T extends Entity>
         extends IndexedEntityBuffer<Index, T> {
-    private final PacketEntityBufferStorage packetOwner;
-    private final PacketEntityViewState<
+    private final PacketEntityBufferState<
             Index,
             T,
-            Player,
-            EntityDataAccessor<?>,
+            ServerPlayer,
+            PacketEntityDataEditor.PropertyAccess<?>,
             SynchedEntityData.DataValue<?>,
-            PacketEntityDataEditor> viewState;
+            PacketEntityDataEditor,
+            Packet<? super ClientGamePacketListener>> packetState;
 
-    protected PacketIndexedEntityBuffer(
-            PacketEntityBufferStorage owner,
-            BaseEntityBufferSetup<Location> setup,
-            TypeLiteral<Index> indexClass,
-            Class<T> tClass) {
+    protected PacketIndexedEntityBuffer(@NotNull PacketEntityBufferStorage owner, @NotNull BaseEntityBufferSetup<Location> setup, @NotNull TypeLiteral<Index> indexClass, @NotNull Class<T> tClass) {
         super(owner, setup, indexClass, tClass);
-        this.packetOwner = owner;
-        this.viewState = new PacketEntityViewState<>(
-                new Object2ObjectOpenHashMap<>(),
-                owner::requireServerThread,
-                this::refreshAll,
-                PacketEntityDataEditor::matches,
-                PacketEntityDataEditor::matches);
-        listenSetup((index, entity) -> owner.attachView(entity, viewState.source(index, entity)));
+        this.packetState = owner.packetState(displayBuffer, new Object2ObjectOpenHashMap<>());
+        listenSetup(packetState::attach);
     }
 
-    public void setDefaultVisibility(PacketEntityVisibility visibility) {
-        if (!viewState.setDefaultVisibility(visibility))
-            return;
-        packetOwner.refreshTracking(displayBuffer.entrySet().stream()
-                .filter(entry -> !viewState.hasVisibilityOverride(entry.getKey()))
-                .map(Map.Entry::getValue)
-                .toList());
+    public void setDefaultVisibility(@NotNull PacketEntityVisibility visibility) {
+        packetState.setDefaultVisibility(visibility);
     }
 
-    public void setVisibility(Index index, PacketEntityVisibility visibility) {
-        packetOwner.requireServerThread();
-        Objects.requireNonNull(index, "index");
-        Objects.requireNonNull(visibility, "visibility");
-        T entity = requireEntity(index);
-        if (viewState.setVisibility(index, visibility))
-            packetOwner.refreshTracking(List.of(entity));
+    public void setVisibility(@NotNull Index index, @NotNull PacketEntityVisibility visibility) {
+        packetState.setVisibility(index, visibility);
     }
 
-    public void clearVisibility(Index index) {
-        packetOwner.requireServerThread();
-        Objects.requireNonNull(index, "index");
-        T entity = requireEntity(index);
-        if (viewState.clearVisibility(index))
-            packetOwner.refreshTracking(List.of(entity));
+    public void clearVisibility(@NotNull Index index) {
+        packetState.clearVisibility(index);
     }
 
     /**
-     * Recomputes a per-player metadata overlay when {@code trigger} changes.
-     * Listeners run in registration order and share one editor.
+     * Registers a setup-time view listener. Future pairing and matching metadata
+     * updates run listeners in registration order and share one callback-scoped editor.
+     * Disposing the listener does not refresh already paired players. Listener
+     * registration must remain unchanged while callbacks are running.
      */
-    public Disposable listenView(
-            EntityDataAccessor<?> trigger,
-            Action4<Index, T, Player, PacketEntityDataEditor> listener) {
-        return viewState.listen(trigger, listener);
+    public @NotNull Disposable listenView(@NotNull PacketEntityDataEditor.PropertyAccess<?> trigger, @NotNull Action4<Index, T, Player, PacketEntityDataEditor> listener) {
+        return packetState.listenView(trigger, (index, entity, player, editor) -> listener.invoke(index, entity, player.getBukkitEntity(), editor));
     }
 
-    /** Recomputes all visible entities whose listeners use {@code trigger}. */
-    public void refreshView(EntityDataAccessor<?> trigger) {
-        packetOwner.requireServerThread();
-        Objects.requireNonNull(trigger, "trigger");
-        packetOwner.refreshViews(displayBuffer.values(), trigger, null);
+    /**
+     * Receives every matching client interaction packet for a registered packet entity.
+     * Visibility, world, distance and reach are not validated; the caller is responsible
+     * for deciding whether the client packet should be trusted. Register listeners during
+     * setup and do not change their registration while callbacks are running.
+     */
+    public @NotNull Disposable listenInteract(@NotNull Action4<Index, T, Player, PacketEntityInteraction> listener) {
+        return packetState.listenInteract((index, entity, player, interaction) -> listener.invoke(index, entity, player.getBukkitEntity(), interaction));
     }
 
-    /** Recomputes one player's view for listeners using {@code trigger}. */
-    public void refreshView(EntityDataAccessor<?> trigger, Player player) {
-        packetOwner.requireServerThread();
-        Objects.requireNonNull(trigger, "trigger");
-        Objects.requireNonNull(player, "player");
-        packetOwner.refreshViews(displayBuffer.values(), trigger, player);
+    /**
+     * Registers a setup-time listener for future tracking transitions. The packet
+     * sink is valid only during the callback. Listener registration must not change
+     * while callbacks are being dispatched.
+     */
+    public @NotNull Disposable listenTracking(@NotNull Action5<Index, T, Player, Boolean, Action1<Packet<? super ClientGamePacketListener>>> listener) {
+        return packetState.listenTracking((index, entity, player, added, packets) -> listener.invoke(index, entity, player.getBukkitEntity(), added, packets));
+    }
+
+    @Override
+    public void beginBuffer() {
+        packetState.begin(super::beginBuffer);
     }
 
     @Override
     public void endBuffer() {
-        packetOwner.requireServerThread();
-        super.endBuffer();
-        viewState.retainVisibilityKeys(displayBuffer::containsKey);
+        packetState.end(super::endBuffer);
     }
 
     @Override
     public void close() {
-        viewState.close();
-        super.close();
-    }
-
-    private void refreshAll() {
-        packetOwner.refreshViews(displayBuffer.values(), null, null);
-    }
-
-    private T requireEntity(Index index) {
-        T entity = displayBuffer.get(index);
-        if (entity == null)
-            throw new IllegalArgumentException("Unknown packet entity index " + index);
-        return entity;
+        packetState.close(super::close);
     }
 }

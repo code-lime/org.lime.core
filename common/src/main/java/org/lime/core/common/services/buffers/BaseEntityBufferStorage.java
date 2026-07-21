@@ -2,24 +2,33 @@ package org.lime.core.common.services.buffers;
 
 import com.google.inject.TypeLiteral;
 import net.kyori.adventure.key.Key;
+import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 import org.lime.core.common.api.Service;
+import org.lime.core.common.utils.Disposable;
 import org.lime.core.common.utils.execute.Action1;
 
+import java.util.LinkedHashSet;
 import java.util.OptionalInt;
 import java.util.Set;
-import java.util.concurrent.ConcurrentHashMap;
 
 public abstract class BaseEntityBufferStorage<Entity, Location>
         implements Service {
-    final Set<BaseEntityBuffer<?, ? extends Entity, Entity, Location>> buffers = ConcurrentHashMap.newKeySet();
+    private final Set<BaseEntityBuffer<?, ? extends Entity, Entity, Location>> buffers = new LinkedHashSet<>();
+    private boolean closed;
 
     @Override
     public void unregister() {
-        buffers.removeIf(v -> {
-            v.close();
-            return true;
-        });
+        closed = true;
+        while (!buffers.isEmpty())
+            buffers.iterator().next().close();
+    }
+
+    final @NotNull Disposable registerBuffer(@NotNull BaseEntityBuffer<?, ? extends Entity, Entity, Location> buffer) {
+        if (closed)
+            throw new IllegalStateException("Entity buffer storage is closed");
+        buffers.add(buffer);
+        return () -> buffers.remove(buffer);
     }
 
     public abstract <T extends Entity> BaseIterationEntityBuffer<T, Entity, Location> entity(BaseEntityBufferSetup<Location> setup, Class<T> tClass);

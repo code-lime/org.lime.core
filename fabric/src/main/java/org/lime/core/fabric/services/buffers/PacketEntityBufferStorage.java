@@ -3,19 +3,16 @@ package org.lime.core.fabric.services.buffers;
 import com.google.inject.Inject;
 import com.google.inject.TypeLiteral;
 import com.mojang.datafixers.util.Pair;
-import it.unimi.dsi.fastutil.ints.Int2ObjectLinkedOpenHashMap;
-import it.unimi.dsi.fastutil.longs.Long2ObjectOpenHashMap;
-import it.unimi.dsi.fastutil.objects.Reference2ObjectOpenHashMap;
-import it.unimi.dsi.fastutil.objects.ReferenceOpenHashSet;
-import net.fabricmc.fabric.api.networking.v1.PlayerLookup;
+import it.unimi.dsi.fastutil.objects.Object2ObjectOpenHashMap;
 import net.kyori.adventure.key.Key;
 import net.minecraft.core.registries.BuiltInRegistries;
+import net.minecraft.network.protocol.BundlerInfo;
 import net.minecraft.network.protocol.Packet;
-import net.minecraft.network.protocol.game.ClientGamePacketListener;
 import net.minecraft.network.protocol.game.ClientboundBundlePacket;
+import net.minecraft.network.protocol.game.ClientboundRemoveEntitiesPacket;
 import net.minecraft.network.protocol.game.ClientboundSetEntityDataPacket;
 import net.minecraft.network.protocol.game.ClientboundSetEquipmentPacket;
-import net.minecraft.network.syncher.EntityDataAccessor;
+import net.minecraft.network.protocol.game.ServerboundInteractPacket;
 import net.minecraft.network.syncher.SynchedEntityData;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerEntity;
@@ -26,26 +23,28 @@ import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.ChunkPos;
 import net.minecraft.world.phys.Vec2;
 import net.minecraft.world.phys.Vec3;
+import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 import org.lime.core.common.api.BindService;
-import org.lime.core.common.services.ScheduleTaskService;
 import org.lime.core.common.services.buffers.BaseEntityBufferSetup;
 import org.lime.core.common.services.buffers.BasePacketEntityBufferStorage;
 import org.lime.core.common.services.buffers.InjectBuffer;
-import org.lime.core.common.services.buffers.PacketEntityViewSource;
+import org.lime.core.common.services.buffers.PacketEntityBatch;
+import org.lime.core.common.services.buffers.PacketEntityBufferState;
+import org.lime.core.common.services.buffers.PacketEntityMetadataState;
+import org.lime.core.common.services.buffers.PacketEntityStorage;
+import org.lime.core.common.services.buffers.PacketEntityTracker;
+import org.lime.core.common.services.buffers.PacketEntityTrackingCache;
 import org.lime.core.common.services.buffers.PacketEntityVisibility;
 import org.lime.core.common.utils.Disposable;
-import org.lime.core.common.utils.ScheduleTask;
 import org.lime.core.common.utils.execute.Action1;
+import org.lime.core.fabric.hooks.PacketEntityInteractionHook;
+import org.lime.core.fabric.hooks.PacketEntitySendHook;
 import org.lime.core.fabric.services.NativeComponent;
 import org.lime.core.fabric.utils.WorldLocation;
-import org.slf4j.Logger;
 
-import java.util.ArrayDeque;
 import java.util.ArrayList;
-import java.util.Collection;
 import java.util.EnumMap;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -54,33 +53,42 @@ import java.util.OptionalInt;
 import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.function.Predicate;
-import java.util.function.Supplier;
 
 @BindService
 public class PacketEntityBufferStorage
         extends BasePacketEntityBufferStorage<Entity, WorldLocation> {
+    private static final EquipmentSlot[] EQUIPMENT_SLOTS = EquipmentSlot.values();
+
+    private record PendingEntityContext(@NotNull PacketEntityBufferState.EntitySource<ServerPlayer, SynchedEntityData.DataValue<?>, PacketEntityDataEditor, Packet<?>> source, @NotNull PacketEntityBatch<ServerPlayer, Packet<?>> batch) {}
+
+    @SuppressWarnings({"rawtypes", "unchecked"})
+    private static void sendBundle(@NotNull ServerPlayer player, @NotNull List<Packet<?>> packets) {
+        player.connection.send(new ClientboundBundlePacket((Iterable)packets));
+    }
+
     @Inject MinecraftServer server;
     @Inject NativeComponent nativeComponent;
     @Inject ServerLevel overworld;
-    @Inject ScheduleTaskService taskService;
-    @Inject Logger logger;
 
     private final Map<Class<? extends Entity>, EntityType<?>> entityTypes = new ConcurrentHashMap<>();
-    private final Map<Entity, PacketTracker> trackers = new ConcurrentHashMap<>();
-    private final Map<Entity, PacketEntityViewSource<
-            ServerPlayer,
-            EntityDataAccessor<?>,
-            SynchedEntityData.DataValue<?>,
-            PacketEntityDataEditor>> pendingViewSources = new ConcurrentHashMap<>();
-    private final TrackingPlayers trackingPlayers = new TrackingPlayers();
-    private ScheduleTask tickTask = ScheduleTask.disabled();
+    private final BufferBackend bufferBackend = new BufferBackend();
+    private final PacketEntityStorage<
+            Entity,
+            PendingEntityContext,
+            PacketEntityTrackingCache<ServerLevel, ChunkPos, ServerPlayer>,
+            PacketTracker> entityStorage = new PacketEntityStorage<>(
+                    bufferBackend::checkAccess,
+                    Entity::getId,
+                    this::createTracker,
+                    Entity::discard,
+                    PacketEntityBufferStorage::createTrackingCache);
+    private Disposable interactionRegistration = Disposable.empty();
 
     @Override
-    public Disposable register() {
+    public @NotNull Disposable register() {
         initializeEntityTypes();
-        tickTask = taskService.runLoop(this::tick, true, 1);
-        return tickTask;
+        interactionRegistration = PacketEntityInteractionHook.register(this::interact);
+        return interactionRegistration;
     }
 
     private synchronized void initializeEntityTypes() {
@@ -95,171 +103,125 @@ public class PacketEntityBufferStorage
 
     @Override
     public void unregister() {
-        tickTask.cancel();
-        super.unregister();
-        trackers.keySet().forEach(this::remove);
-        pendingViewSources.clear();
-        trackingPlayers.close();
+        Disposable registration = interactionRegistration;
+        interactionRegistration = Disposable.empty();
+        var storage = entityStorage;
+        try (storage) {
+            try {
+                registration.close();
+            } finally {
+                super.unregister();
+            }
+        }
     }
 
     @Override
-    public <T extends Entity> PacketIterationEntityBuffer<T> entity(
-            BaseEntityBufferSetup<WorldLocation> setup,
-            Class<T> tClass) {
+    public <T extends Entity> @NotNull PacketIterationEntityBuffer<T> entity(@NotNull BaseEntityBufferSetup<WorldLocation> setup, @NotNull Class<T> tClass) {
         return new PacketIterationEntityBuffer<>(this, setup, tClass);
     }
 
     @Override
-    public <Index, T extends Entity> PacketIndexedEntityBuffer<Index, T> entity(
-            BaseEntityBufferSetup<WorldLocation> setup,
-            Class<Index> indexClass,
-            Class<T> tClass) {
+    public <Index, T extends Entity> @NotNull PacketIndexedEntityBuffer<Index, T> entity(@NotNull BaseEntityBufferSetup<WorldLocation> setup, @NotNull Class<Index> indexClass, @NotNull Class<T> tClass) {
         return entity(setup, TypeLiteral.get(indexClass), tClass);
     }
 
     @Override
-    public <Index, T extends Entity> PacketIndexedEntityBuffer<Index, T> entity(
-            BaseEntityBufferSetup<WorldLocation> setup,
-            TypeLiteral<Index> indexClass,
-            Class<T> tClass) {
+    public <Index, T extends Entity> @NotNull PacketIndexedEntityBuffer<Index, T> entity(@NotNull BaseEntityBufferSetup<WorldLocation> setup, @NotNull TypeLiteral<Index> indexClass, @NotNull Class<T> tClass) {
         return new PacketIndexedEntityBuffer<>(this, setup, indexClass, tClass);
     }
 
     @Override
-    public BaseEntityBufferSetup<WorldLocation> createSetup(InjectBuffer injectBuffer) {
-        return createSetup(
-                injectBuffer.tag(),
-                injectBuffer.entityKey(),
-                injectBuffer.trackingDistance());
+    public @NotNull BaseEntityBufferSetup<WorldLocation> createSetup(@NotNull InjectBuffer injectBuffer) {
+        return createSetup(injectBuffer.tag(), injectBuffer.entityKey(), injectBuffer.trackingDistance());
     }
 
-    private EntityBufferSetup createSetup(String tag, String entityKey, int trackingDistance) {
-        return new EntityBufferSetup(
-                tag,
-                Optional.of(entityKey)
-                        .filter(value -> !value.isEmpty())
-                        .map(Key::key),
-                Optional.empty(),
-                trackingDistance < 0 ? OptionalInt.empty() : OptionalInt.of(trackingDistance));
+    private @NotNull EntityBufferSetup createSetup(@NotNull String tag, @NotNull String entityKey, int trackingDistance) {
+        return new EntityBufferSetup(tag, Optional.of(entityKey).filter(value -> !value.isEmpty()).map(Key::key), Optional.empty(), trackingDistance < 0 ? OptionalInt.empty() : OptionalInt.of(trackingDistance));
     }
 
-    public PacketIterationEntityBuffer<Display.TextDisplay> text(EntityBufferSetup setup) {
+    public @NotNull PacketIterationEntityBuffer<Display.TextDisplay> text(@NotNull EntityBufferSetup setup) {
         return entity(setup, Display.TextDisplay.class);
     }
 
-    public PacketIterationEntityBuffer<Display.ItemDisplay> item(EntityBufferSetup setup) {
+    public @NotNull PacketIterationEntityBuffer<Display.ItemDisplay> item(@NotNull EntityBufferSetup setup) {
         return entity(setup, Display.ItemDisplay.class);
     }
 
-    public PacketIterationEntityBuffer<Display.BlockDisplay> block(EntityBufferSetup setup) {
+    public @NotNull PacketIterationEntityBuffer<Display.BlockDisplay> block(@NotNull EntityBufferSetup setup) {
         return entity(setup, Display.BlockDisplay.class);
     }
 
-    public PacketIterationEntityBuffer<Interaction> interact(EntityBufferSetup setup) {
+    public @NotNull PacketIterationEntityBuffer<Interaction> interact(@NotNull EntityBufferSetup setup) {
         return entity(setup, Interaction.class);
     }
 
-    public <Index> PacketIndexedEntityBuffer<Index, Display.TextDisplay> text(
-            EntityBufferSetup setup,
-            Class<Index> indexClass) {
+    public <Index> @NotNull PacketIndexedEntityBuffer<Index, Display.TextDisplay> text(@NotNull EntityBufferSetup setup, @NotNull Class<Index> indexClass) {
         return entity(setup, indexClass, Display.TextDisplay.class);
     }
 
-    public <Index> PacketIndexedEntityBuffer<Index, Display.ItemDisplay> item(
-            EntityBufferSetup setup,
-            Class<Index> indexClass) {
+    public <Index> @NotNull PacketIndexedEntityBuffer<Index, Display.ItemDisplay> item(@NotNull EntityBufferSetup setup, @NotNull Class<Index> indexClass) {
         return entity(setup, indexClass, Display.ItemDisplay.class);
     }
 
-    public <Index> PacketIndexedEntityBuffer<Index, Display.BlockDisplay> block(
-            EntityBufferSetup setup,
-            Class<Index> indexClass) {
+    public <Index> @NotNull PacketIndexedEntityBuffer<Index, Display.BlockDisplay> block(@NotNull EntityBufferSetup setup, @NotNull Class<Index> indexClass) {
         return entity(setup, indexClass, Display.BlockDisplay.class);
     }
 
-    public <Index> PacketIndexedEntityBuffer<Index, Interaction> interact(
-            EntityBufferSetup setup,
-            Class<Index> indexClass) {
+    public <Index> @NotNull PacketIndexedEntityBuffer<Index, Interaction> interact(@NotNull EntityBufferSetup setup, @NotNull Class<Index> indexClass) {
         return entity(setup, indexClass, Interaction.class);
     }
 
-    void attachView(
-            Entity entity,
-            PacketEntityViewSource<
-                    ServerPlayer,
-                    EntityDataAccessor<?>,
-                    SynchedEntityData.DataValue<?>,
-                    PacketEntityDataEditor> source) {
-        Objects.requireNonNull(source, "source");
-        runOnServerThread(() -> attachViewOnServerThread(entity, source));
+    <Index, Type extends Entity> @NotNull PacketEntityBufferState<
+            Index,
+            Type,
+            ServerPlayer,
+            PacketEntityDataEditor.PropertyAccess<?>,
+            SynchedEntityData.DataValue<?>,
+            PacketEntityDataEditor,
+            Packet<?>> packetState(@NotNull Map<Index, Type> bufferEntities, @NotNull Map<Index, PacketEntityVisibility> visibility) {
+        return new PacketEntityBufferState<>(bufferBackend, bufferEntities, visibility, PacketEntityDataEditor.PropertyAccess::matches);
     }
 
-    private void attachViewOnServerThread(
-            Entity entity,
-            PacketEntityViewSource<
-                    ServerPlayer,
-                    EntityDataAccessor<?>,
-                    SynchedEntityData.DataValue<?>,
-                    PacketEntityDataEditor> source) {
-        var tracker = trackers.get(entity);
-        if (tracker != null) {
-            tracker.attachView(source);
-            return;
+    private boolean interact(@NotNull ServerPlayer player, int entityId, @NotNull ServerboundInteractPacket packet) {
+        PacketTracker tracker = entityStorage.tracker(entityId);
+        return tracker != null && tracker.interact(player, packet);
+    }
+
+    private final class BufferBackend implements PacketEntityBufferState.Backend<
+            Entity,
+            ServerPlayer,
+            SynchedEntityData.DataValue<?>,
+            PacketEntityDataEditor,
+            Packet<?>> {
+        @Override
+        public void checkAccess() {
+            if (!server.isSameThread())
+                throw new IllegalStateException("Packet entity view API must be used on the server thread");
         }
-        if (!entity.isRemoved())
-            pendingViewSources.put(entity, source);
-    }
 
-    void refreshViews(
-            Iterable<? extends Entity> entities,
-            @Nullable EntityDataAccessor<?> trigger,
-            @Nullable ServerPlayer player) {
-        var snapshot = new ArrayList<Entity>();
-        entities.forEach(snapshot::add);
-        runOnServerThread(() -> snapshot.forEach(entity -> {
-            var tracker = trackers.get(entity);
-            if (tracker == null || trigger != null && !tracker.isTriggered(trigger))
-                return;
-            tracker.refreshView(player);
-        }));
-    }
+        @Override
+        public @NotNull PacketEntityBatch<ServerPlayer, Packet<?>> createBatch() {
+            return new PacketEntityBatch<>(BundlerInfo.BUNDLE_SIZE_LIMIT, PacketEntityBufferStorage::sendBundle, packet -> packet instanceof ClientboundBundlePacket bundle ? bundle.subPackets() : null);
+        }
 
-    void refreshTracking(Iterable<? extends Entity> entities) {
-        var snapshot = new ArrayList<Entity>();
-        entities.forEach(snapshot::add);
-        runOnServerThread(() -> {
-            var players = new TrackingPlayers();
-            snapshot.forEach(entity -> {
-                var tracker = trackers.get(entity);
-                if (tracker != null)
-                    tracker.updateViewers(players);
-            });
-        });
-    }
+        @Override
+        public void attach(@NotNull Entity entity, @NotNull PacketEntityBufferState.EntitySource<ServerPlayer, SynchedEntityData.DataValue<?>, PacketEntityDataEditor, Packet<?>> source, @NotNull PacketEntityBatch<ServerPlayer, Packet<?>> batch) {
+            entityStorage.attach(entity, new PendingEntityContext(source, batch));
+        }
 
-    private void runOnServerThread(Runnable action) {
-        if (server.isSameThread())
-            action.run();
-        else
-            server.execute(action);
-    }
-
-    void requireServerThread() {
-        if (!server.isSameThread())
-            throw new IllegalStateException("Packet entity view API must be used on the server thread");
+        @Override
+        public void synchronize(@NotNull Iterable<? extends Entity> bufferEntities) {
+            entityStorage.synchronize(bufferEntities);
+        }
     }
 
     @Override
-    protected WorldLocation defaultLocation() {
+    protected @NotNull WorldLocation defaultLocation() {
         return new WorldLocation(overworld.dimension(), Vec3.ZERO, Vec2.ZERO);
     }
 
     @Override
-    protected <T extends Entity> T spawn(
-            WorldLocation location,
-            Class<T> entityClass,
-            @Nullable Key entityKey,
-            Action1<T> setup) {
+    protected <T extends Entity> @NotNull T spawn(@NotNull WorldLocation location, @NotNull Class<T> entityClass, @Nullable Key entityKey, @NotNull Action1<T> setup) {
         var level = requireLevel(location);
         var entityType = getEntityType(entityClass, entityKey);
         var entity = create(entityType, level);
@@ -267,69 +229,44 @@ public class PacketEntityBufferStorage
             throw new IllegalArgumentException("Entity type " + entityType + " cannot be created");
         if (!entityClass.isInstance(entity)) {
             entity.discard();
-            throw new IllegalArgumentException(
-                    "Entity type " + entityType + " creates " + entity.getClass() + ", not " + entityClass);
+            throw new IllegalArgumentException("Entity type " + entityType + " creates " + entity.getClass() + ", not " + entityClass);
         }
 
         var result = entityClass.cast(entity);
-        move(result, location);
-        try {
+        return entityStorage.registerSpawn(result, () -> {
+            move(result, location);
             setup.invoke(result);
-            var trackingDistance = getTrackingRange(result)
-                    .orElseGet(() -> entityType.clientTrackingRange() * 16);
-            var tracker = new PacketTracker(
-                    result,
-                    level,
-                    Math.max(0, trackingDistance),
-                    pendingViewSources.remove(result));
-            var previous = trackers.putIfAbsent(result, tracker);
-            if (previous != null)
-                throw new IllegalStateException("Duplicate packet entity id " + result.getId());
-            return result;
-        } catch (RuntimeException | Error exception) {
-            pendingViewSources.remove(result);
-            result.discard();
-            throw exception;
-        }
+        });
     }
 
     @Override
-    protected void remove(Entity entity) {
-        pendingViewSources.remove(entity);
-        var tracker = trackers.remove(entity);
-        if (tracker != null)
-            tracker.close();
-        entity.discard();
+    protected void remove(@NotNull Entity entity) {
+        entityStorage.remove(entity);
     }
 
     @Override
-    protected void forEntities(Action1<Entity> consumer) {
-        trackers.keySet().forEach(consumer);
-    }
-
-    @Override
-    protected Set<String> getTags(Entity entity) {
+    protected @NotNull Set<String> getTags(@NotNull Entity entity) {
         return entity.getTags();
     }
 
     @Override
-    protected int getEntityId(Entity entity) {
+    protected int getEntityId(@NotNull Entity entity) {
         return entity.getId();
     }
 
     @Override
-    protected boolean isValid(Entity entity) {
-        return entity.isAlive() && trackers.containsKey(entity);
+    protected boolean isValid(@NotNull Entity entity) {
+        return entity.isAlive() && entityStorage.tracker(entity) != null;
     }
 
     @Override
-    protected WorldLocation getLocation(Entity entity) {
+    protected @NotNull WorldLocation getLocation(@NotNull Entity entity) {
         return WorldLocation.of(entity);
     }
 
     @Override
-    protected void teleport(Entity entity, WorldLocation location) {
-        var tracker = trackers.get(entity);
+    protected void teleport(@NotNull Entity entity, @NotNull WorldLocation location) {
+        var tracker = entityStorage.tracker(entity);
         if (tracker == null)
             return;
 
@@ -342,10 +279,7 @@ public class PacketEntityBufferStorage
     }
 
     @Override
-    protected boolean isEquals(
-            @Nullable WorldLocation a,
-            @Nullable WorldLocation b,
-            boolean worldOnly) {
+    protected boolean isEquals(@Nullable WorldLocation a, @Nullable WorldLocation b, boolean worldOnly) {
         return a == null
                 ? b == null
                 : b != null && (worldOnly
@@ -354,9 +288,7 @@ public class PacketEntityBufferStorage
     }
 
     @SuppressWarnings("unchecked")
-    private <T extends Entity> EntityType<T> getEntityType(
-            Class<T> entityClass,
-            @Nullable Key entityKey) {
+    private <T extends Entity> @NotNull EntityType<T> getEntityType(@NotNull Class<T> entityClass, @Nullable Key entityKey) {
         EntityType<?> result;
         if (entityKey == null) {
             result = entityTypes.get(entityClass);
@@ -368,19 +300,20 @@ public class PacketEntityBufferStorage
                 throw new IllegalArgumentException("Entity class " + entityClass + " not supported");
         } else {
             result = BuiltInRegistries.ENTITY_TYPE.getOptional(nativeComponent.convert(entityKey))
-                    .orElseThrow(() -> new IllegalArgumentException(
-                            "Entity " + entityKey.asString() + " not found"));
+                    .orElseThrow(() -> new IllegalArgumentException("Entity " + entityKey.asString() + " not found"));
         }
         return (EntityType<T>) result;
     }
 
-    private ServerLevel requireLevel(WorldLocation location) {
-        return Objects.requireNonNull(
-                location.level(server),
-                () -> "Level " + location.levelKey().location() + " is not loaded");
+    private @NotNull ServerLevel requireLevel(@NotNull WorldLocation location) {
+        ServerLevel level = location.level(server);
+        if (level == null) {
+            throw new IllegalArgumentException("Level " + location.levelKey().location() + " is not loaded");
+        }
+        return level;
     }
 
-    private static <T extends Entity> @Nullable T create(EntityType<T> entityType, ServerLevel level) {
+    private static <T extends Entity> @Nullable T create(@NotNull EntityType<T> entityType, @NotNull ServerLevel level) {
         return entityType.create(level
                 //#switch PROPERTIES.versionMinecraft
                 //#caseofregex 1\.21\.[4-8]
@@ -390,7 +323,7 @@ public class PacketEntityBufferStorage
         );
     }
 
-    private static void move(Entity entity, WorldLocation location) {
+    private static void move(@NotNull Entity entity, @NotNull WorldLocation location) {
         var position = location.position();
         //#switch PROPERTIES.versionMinecraft
         //#caseof 1.21.8
@@ -400,123 +333,128 @@ public class PacketEntityBufferStorage
         //#endswitch
     }
 
-    private void tick() {
-        trackingPlayers.reset();
-        trackers.values().forEach(tracker -> tracker.tick(trackingPlayers));
+    private static @NotNull PacketEntityTrackingCache<ServerLevel, ChunkPos, ServerPlayer> createTrackingCache() {
+        return new PacketEntityTrackingCache<>(Object2ObjectOpenHashMap::new);
     }
 
-    private static final class TrackingPlayers {
-        private final Reference2ObjectOpenHashMap<
-                ServerLevel,
-                Long2ObjectOpenHashMap<ReferenceOpenHashSet<ServerPlayer>>> values =
-                new Reference2ObjectOpenHashMap<>(4);
-        private final ArrayDeque<Long2ObjectOpenHashMap<ReferenceOpenHashSet<ServerPlayer>>> reusable =
-                new ArrayDeque<>();
-
-        private void reset() {
-            values.values().forEach(chunks -> {
-                chunks.clear();
-                reusable.addLast(chunks);
-            });
-            values.clear();
-        }
-
-        private void close() {
-            values.clear();
-            reusable.clear();
-        }
-
-        private ReferenceOpenHashSet<ServerPlayer> get(
-                ServerLevel level,
-                long chunk,
-                Supplier<Collection<ServerPlayer>> factory) {
-            Long2ObjectOpenHashMap<ReferenceOpenHashSet<ServerPlayer>> chunks = values.get(level);
-            if (chunks == null) {
-                chunks = reusable.pollFirst();
-                if (chunks == null)
-                    chunks = new Long2ObjectOpenHashMap<>();
-                values.put(level, chunks);
-            }
-
-            ReferenceOpenHashSet<ServerPlayer> players = chunks.get(chunk);
-            if (players == null) {
-                Collection<ServerPlayer> source = factory.get();
-                players = new ReferenceOpenHashSet<>(source.size());
-                players.addAll(source);
-                chunks.put(chunk, players);
-            }
-            return players;
-        }
+    private @NotNull PacketTracker createTracker(@NotNull Entity entity, @NotNull PendingEntityContext context) {
+        int trackingDistance = getTrackingRange(entity)
+                .orElseGet(() -> entity.getType().clientTrackingRange() * 16);
+        return new PacketTracker(entity, (ServerLevel)entity.level(), Math.max(0, trackingDistance), context);
     }
 
-    private final class PacketTracker {
+    private final class PacketTracker
+            implements PacketEntityStorage.Tracker<
+                    PacketEntityTrackingCache<ServerLevel, ChunkPos, ServerPlayer>>,
+                    PacketEntityTracker.Driver<ServerPlayer, Packet<?>> {
         private final Entity entity;
         private final int trackingDistance;
-        private final Set<ServerPlayer> viewers = new ReferenceOpenHashSet<>(4);
-        private final Set<ServerPlayer> desiredViewers = new ReferenceOpenHashSet<>(4);
-        private final Map<UUID, Map<Integer, PacketEntityDataEditor.Entry<?>>> viewOverlays = new HashMap<>();
+        private final PacketEntityMetadataState<
+                ServerPlayer,
+                SynchedEntityData,
+                SynchedEntityData.DataValue<?>,
+                PacketEntityDataEditor,
+                Packet<?>> metadataState;
         private final @Nullable EnumMap<EquipmentSlot, ItemStack> equipmentSnapshot;
+        private final PacketEntityBufferState.EntitySource<ServerPlayer, SynchedEntityData.DataValue<?>, PacketEntityDataEditor, Packet<?>> source;
+        private final PacketEntityBatch<ServerPlayer, Packet<?>> packetBatch;
+        private final PacketEntityTracker<ServerPlayer, Packet<?>> tracker;
         private ServerLevel level;
         private ServerEntity serverEntity;
-        private @Nullable PacketEntityViewSource<
-                ServerPlayer,
-                EntityDataAccessor<?>,
-                SynchedEntityData.DataValue<?>,
-                PacketEntityDataEditor> viewSource;
+        private boolean pendingRebind;
 
-        private PacketTracker(
-                Entity entity,
-                ServerLevel level,
-                int trackingDistance,
-                @Nullable PacketEntityViewSource<
-                        ServerPlayer,
-                        EntityDataAccessor<?>,
-                        SynchedEntityData.DataValue<?>,
-                        PacketEntityDataEditor> viewSource) {
+        private PacketTracker(@NotNull Entity entity, @NotNull ServerLevel level, int trackingDistance, @NotNull PendingEntityContext context) {
             this.entity = entity;
             this.trackingDistance = trackingDistance;
             this.level = level;
-            this.viewSource = viewSource;
+            this.source = context.source();
+            this.metadataState = new PacketEntityMetadataState<>(source, createMetadataCodec());
             this.equipmentSnapshot = createEquipmentSnapshot();
+            this.packetBatch = context.batch();
+            this.tracker = new PacketEntityTracker<>(this, packetBatch, source);
             this.serverEntity = createServerEntity();
         }
 
-        private void attachView(PacketEntityViewSource<
-                ServerPlayer,
-                EntityDataAccessor<?>,
-                SynchedEntityData.DataValue<?>,
-                PacketEntityDataEditor> viewSource) {
-            this.viewSource = viewSource;
-            updateViewers(new TrackingPlayers());
-            refreshView(null);
+        @Override
+        public void synchronize(@NotNull PacketEntityTrackingCache<ServerLevel, ChunkPos, ServerPlayer> cache) {
+            if (!prepareLevel())
+                return;
+
+            int range = server.getScaledTrackingDistance(trackingDistance);
+            ChunkPos chunk = entity.chunkPosition();
+            List<ServerPlayer> players = range > 0
+                    ? cache.get(level, chunk, () -> level.getChunkSource().chunkMap.getPlayers(chunk, false))
+                    : List.of();
+            tracker.synchronize(players, range);
         }
 
-        private boolean isTriggered(EntityDataAccessor<?> trigger) {
-            return viewSource != null && viewSource.isTriggeredProperty(trigger);
+        @Override
+        public void close() {
+            tracker.close();
         }
 
-        private PacketEntityVisibility visibility() {
-            return viewSource == null
-                    ? PacketEntityVisibility.all()
-                    : Objects.requireNonNull(viewSource.visibility(), "packet entity visibility");
+        private boolean prepareLevel() {
+            if (entity.isRemoved()) {
+                entityStorage.detach(entity, this);
+                tracker.close();
+                return false;
+            }
+
+            ServerLevel currentLevel = level;
+            ServerLevel loadedLevel = server.getLevel(currentLevel.dimension());
+            if (loadedLevel == null) {
+                tracker.clearAudience();
+                return false;
+            }
+            if (loadedLevel != currentLevel || pendingRebind) {
+                tracker.clearAudience();
+                if (loadedLevel != currentLevel) {
+                    level = loadedLevel;
+                    entity.setLevel(loadedLevel);
+                    serverEntity = createServerEntity();
+                }
+                pendingRebind = false;
+            }
+            return true;
+        }
+
+        private boolean interact(@NotNull ServerPlayer player, @NotNull ServerboundInteractPacket packet) {
+            if (!source.hasInteractionListeners())
+                return false;
+            source.interact(player, PacketEntityInteractionHook.decode(packet));
+            return true;
         }
 
         private @Nullable EnumMap<EquipmentSlot, ItemStack> createEquipmentSnapshot() {
             if (!(entity instanceof LivingEntity livingEntity))
                 return null;
-
-            var snapshot = new EnumMap<EquipmentSlot, ItemStack>(EquipmentSlot.class);
-            for (var slot : EquipmentSlot.values())
-                snapshot.put(slot, livingEntity.getItemBySlot(slot).copy());
-            return snapshot;
+            EnumMap<EquipmentSlot, ItemStack> result = new EnumMap<>(EquipmentSlot.class);
+            for (EquipmentSlot slot : EQUIPMENT_SLOTS)
+                result.put(slot, livingEntity.getItemBySlot(slot).copy());
+            return result;
         }
 
-        private ServerEntity createServerEntity() {
+        private @NotNull PacketEntityMetadataState.Codec<
+                SynchedEntityData,
+                SynchedEntityData.DataValue<?>,
+                PacketEntityDataEditor,
+                Packet<?>> createMetadataCodec() {
+            return new PacketEntityMetadataState.Codec<>(
+                    () -> new PacketEntityDataEditor(entity.getEntityData()),
+                    SynchedEntityData.DataValue::id,
+                    entries -> new ClientboundSetEntityDataPacket(entity.getId(), entries),
+                    packet -> packet instanceof ClientboundSetEntityDataPacket metadata
+                            && metadata.id() == entity.getId()
+                            ? metadata.packedItems()
+                            : null);
+        }
+
+        private @NotNull ServerEntity createServerEntity() {
             var type = entity.getType();
-            return new ServerEntity(
+            ServerEntity result = new ServerEntity(
                     level,
                     entity,
-                    type.updateInterval(),
+                    1,
                     type.trackDeltas(),
                     this::broadcast
                     //#switch PROPERTIES.versionMinecraft
@@ -525,296 +463,81 @@ public class PacketEntityBufferStorage
                     //#default
                     //#endswitch
             );
+            PacketEntitySendHook.mark(result);
+            return result;
         }
 
-        private void broadcast(Packet<?> packet) {
-            broadcast(packet, player -> true);
+        private void broadcast(@NotNull Packet<?> packet) {
+            tracker.broadcast(packet);
         }
 
-        private void broadcast(Packet<?> packet, List<UUID> ignoredPlayers) {
-            broadcast(packet, player -> !ignoredPlayers.contains(player.getUUID()));
+        private void broadcast(@NotNull Packet<?> packet, @NotNull List<UUID> ignoredPlayers) {
+            tracker.broadcast(packet, player -> !ignoredPlayers.contains(player.getUUID()));
         }
 
-        private void broadcast(Packet<?> packet, Predicate<ServerPlayer> sendTo) {
-            var refresh = packet instanceof ClientboundSetEntityDataPacket metadata
-                    && metadata.id() == entity.getId()
-                    && hasDirtyViewTrigger(metadata.packedItems());
-            viewers.forEach(player -> {
-                if (!sendTo.test(player))
-                    return;
-                var previous = viewOverlays.getOrDefault(player.getUUID(), Map.of());
-                var current = refresh ? recomputeView(player, false) : previous;
-                player.connection.send(applyView(packet, previous, current));
-            });
-        }
-
-        private boolean hasDirtyViewTrigger(List<SynchedEntityData.DataValue<?>> values) {
-            var source = viewSource;
-            return source != null
-                    && source.hasListeners()
-                    && values.stream().anyMatch(source::isTriggeredUpdate);
-        }
-
-        private Packet<?> applyView(
-                Packet<?> packet,
-                Map<Integer, PacketEntityDataEditor.Entry<?>> previous,
-                Map<Integer, PacketEntityDataEditor.Entry<?>> current) {
-            if (!(packet instanceof ClientboundSetEntityDataPacket metadata)
-                    || metadata.id() != entity.getId()) {
-                return packet;
-            }
-
-            if (previous.isEmpty() && current.isEmpty())
-                return packet;
-
-            if (previous.equals(current)) {
-                boolean hasOverriddenValue = false;
-                for (var value : metadata.packedItems()) {
-                    if (current.containsKey(value.id())) {
-                        hasOverriddenValue = true;
-                        break;
-                    }
-                }
-                if (!hasOverriddenValue)
-                    return packet;
-            }
-
-            var values = new Int2ObjectLinkedOpenHashMap<SynchedEntityData.DataValue<?>>(
-                    metadata.packedItems().size() + previous.size() + current.size());
-            metadata.packedItems().forEach(value -> values.put(value.id(), value));
-            previous.forEach((id, value) -> {
-                if (!current.containsKey(id))
-                    values.put(id.intValue(), canonicalValue(value));
-            });
-            current.forEach((id, value) -> values.put(id.intValue(), value.value()));
-            return new ClientboundSetEntityDataPacket(metadata.id(), List.copyOf(values.values()));
-        }
-
-        private void refreshView(@Nullable ServerPlayer player) {
-            if (player == null) {
-                viewers.forEach(viewer -> recomputeView(viewer, true));
-            } else if (viewers.contains(player)) {
-                recomputeView(player, true);
-            }
-        }
-
-        private Map<Integer, PacketEntityDataEditor.Entry<?>> recomputeView(
-                ServerPlayer player,
-                boolean sendDelta) {
-            var playerId = player.getUUID();
-            var previous = viewOverlays.getOrDefault(playerId, Map.of());
-            var source = viewSource;
-            if (source == null || !source.hasListeners()) {
-                if (previous.isEmpty())
-                    return previous;
-                viewOverlays.remove(playerId);
-                if (sendDelta)
-                    sendViewDelta(player, previous, Map.of());
-                return Map.of();
-            }
-
-            var editor = new PacketEntityDataEditor(entity.getEntityData());
-            try {
-                source.edit(player, editor);
-            } catch (Throwable exception) {
-                logger.error(
-                        "Unable to build packet entity metadata view for entity {} and player {}",
-                        entity.getId(),
-                        playerId,
-                        exception);
-                return previous;
-            }
-
-            var current = editor.snapshot();
-            if (previous.equals(current))
-                return previous;
-
-            if (current.isEmpty())
-                viewOverlays.remove(playerId);
-            else
-                viewOverlays.put(playerId, current);
-
-            if (sendDelta)
-                sendViewDelta(player, previous, current);
-            return current;
-        }
-
-        private void sendViewDelta(
-                ServerPlayer player,
-                Map<Integer, PacketEntityDataEditor.Entry<?>> previous,
-                Map<Integer, PacketEntityDataEditor.Entry<?>> current) {
-            var delta = new Int2ObjectLinkedOpenHashMap<SynchedEntityData.DataValue<?>>(
-                    previous.size() + current.size());
-            previous.forEach((id, oldValue) -> {
-                var newValue = current.get(id);
-                if (newValue == null)
-                    delta.put(id.intValue(), canonicalValue(oldValue));
-                else if (!oldValue.value().equals(newValue.value()))
-                    delta.put(id.intValue(), newValue.value());
-            });
-            current.forEach((id, newValue) -> {
-                if (!previous.containsKey(id))
-                    delta.put(id.intValue(), newValue.value());
-            });
-
-            if (!delta.isEmpty()) {
-                player.connection.send(new ClientboundSetEntityDataPacket(
-                        entity.getId(),
-                        List.copyOf(delta.values())));
-            }
-        }
-
-        private <Value> SynchedEntityData.DataValue<Value> canonicalValue(
-                PacketEntityDataEditor.Entry<Value> entry) {
-            var property = entry.property();
-            return SynchedEntityData.DataValue.create(property, entity.getEntityData().get(property));
-        }
-
-        private void addPairing(ServerPlayer player) {
-            var overlay = recomputeView(player, false);
-            //#switch PROPERTIES.versionMinecraft
-            //#caseof 1.20.1
-            var packets = new ArrayList<Packet<ClientGamePacketListener>>();
-            //#default
-            //OF// var packets = new ArrayList<Packet<? super ClientGamePacketListener>>();
-            //#endswitch
-            serverEntity.sendPairingData(player, packets::add);
-            if (!overlay.isEmpty()) {
-                var metadata = new ArrayList<SynchedEntityData.DataValue<?>>();
-                overlay.values().forEach(value -> metadata.add(value.value()));
-                packets.add(new ClientboundSetEntityDataPacket(
-                        entity.getId(),
-                        metadata));
-            }
-            player.connection.send(new ClientboundBundlePacket(packets));
-            entity.startSeenByPlayer(player);
-        }
-
-        private void tick(TrackingPlayers trackingPlayers) {
-            if (entity.isRemoved()) {
-                trackers.remove(entity, this);
-                close();
-                return;
-            }
-
-            var loadedLevel = server.getLevel(level.dimension());
-            if (loadedLevel == null) {
-                clearViewers();
-                return;
-            }
-            if (loadedLevel != level) {
-                clearViewers();
-                level = loadedLevel;
-                entity.setLevel(loadedLevel);
-                serverEntity = createServerEntity();
-            }
-
-            updateViewers(trackingPlayers);
-            sendEquipmentChanges();
-            serverEntity.sendChanges();
-        }
-
-        private void updateViewers(TrackingPlayers trackingPlayers) {
-            desiredViewers.clear();
-            var visibility = visibility();
-            if (!visibility.defaultVisible() && visibility.exceptions().isEmpty()) {
-                reconcileViewers();
-                return;
-            }
-
-            var playerRange = server.getScaledTrackingDistance(trackingDistance);
-            if (playerRange <= 0) {
-                reconcileViewers();
-                return;
-            }
-
-            var chunkPos = new ChunkPos(entity.blockPosition());
-            var trackedPlayers = trackingPlayers.get(
-                    level,
-                    chunkPos.toLong(),
-                    () -> PlayerLookup.tracking(level, chunkPos));
-            var maxDistanceSquared = (double) playerRange * playerRange;
-
-            if (visibility.defaultVisible()) {
-                for (var player : trackedPlayers) {
-                    if (visibility.isVisible(player.getUUID())
-                            && isTrackingCandidate(player, maxDistanceSquared))
-                        desiredViewers.add(player);
-                }
-            } else {
-                for (var playerId : visibility.exceptions()) {
-                    var player = server.getPlayerList().getPlayer(playerId);
-                    if (player != null
-                            && trackedPlayers.contains(player)
-                            && isTrackingCandidate(player, maxDistanceSquared))
-                        desiredViewers.add(player);
-                }
-            }
-
-            reconcileViewers();
-        }
-
-        private boolean isTrackingCandidate(ServerPlayer player, double maxDistanceSquared) {
-            var dx = entity.getX() - player.getX();
-            var dz = entity.getZ() - player.getZ();
-            return player.level() == level
-                    && !player.isRemoved()
-                    && dx * dx + dz * dz <= maxDistanceSquared
-                    && entity.broadcastToPlayer(player);
-        }
-
-        private void reconcileViewers() {
-            viewers.removeIf(player -> {
-                if (desiredViewers.remove(player))
-                    return false;
-                serverEntity.removePairing(player);
-                viewOverlays.remove(player.getUUID());
-                return true;
-            });
-            desiredViewers.forEach(player -> {
-                addPairing(player);
-                viewers.add(player);
-            });
-            desiredViewers.clear();
-        }
-
-        private void sendEquipmentChanges() {
-            if (equipmentSnapshot == null || !(entity instanceof LivingEntity livingEntity))
-                return;
-
-            var changes = new ArrayList<Pair<EquipmentSlot, ItemStack>>();
-            for (var slot : EquipmentSlot.values()) {
-                var current = livingEntity.getItemBySlot(slot);
-                if (ItemStack.matches(equipmentSnapshot.get(slot), current))
-                    continue;
-
-                var snapshot = current.copy();
-                equipmentSnapshot.put(slot, snapshot);
-                changes.add(Pair.of(slot, snapshot));
-            }
-
-            if (!changes.isEmpty())
-                broadcast(new ClientboundSetEquipmentPacket(entity.getId(), changes));
-        }
-
-        private void changeLevel(ServerLevel newLevel, WorldLocation location) {
-            clearViewers();
+        private void changeLevel(@NotNull ServerLevel newLevel, @NotNull WorldLocation location) {
             level = newLevel;
             entity.setLevel(newLevel);
             move(entity, location);
             serverEntity = createServerEntity();
+            pendingRebind = true;
         }
 
-        private void clearViewers() {
-            viewers.forEach(serverEntity::removePairing);
-            viewers.clear();
-            desiredViewers.clear();
-            viewOverlays.clear();
+        @Override
+        public boolean canTrack(@NotNull ServerPlayer player, int trackingRange) {
+            if (!source.isVisible(player.getUUID()) || player.level() != level || player.isRemoved())
+                return false;
+            var dx = entity.getX() - player.getX();
+            var dz = entity.getZ() - player.getZ();
+            var maxDistanceSquared = (double)trackingRange * trackingRange;
+            return dx * dx + dz * dz <= maxDistanceSquared
+                    && entity.broadcastToPlayer(player);
         }
 
-        private void close() {
-            clearViewers();
-            viewOverlays.clear();
+        @Override
+        public void addPairing(@NotNull ServerPlayer player) {
+            ArrayList<Packet<?>> packets = new ArrayList<>();
+            serverEntity.sendPairingData(player, packets::add);
+            packets = packetBatch.flatten(packets);
+            metadataState.pairing(player, packets);
+            packetBatch.sendLeaves(player, packets);
+        }
+
+        @Override
+        public void removePairing(@NotNull ServerPlayer player) {
+            packetBatch.send(player, new ClientboundRemoveEntitiesPacket(entity.getId()));
+            metadataState.forget(player);
+        }
+
+        @Override
+        public @NotNull Packet<?> personalize(@NotNull ServerPlayer player, @NotNull Packet<?> packet) {
+            return metadataState.personalize(player, packet);
+        }
+
+        @Override
+        public void collectStatePackets() {
+            if (equipmentSnapshot != null) {
+                LivingEntity livingEntity = (LivingEntity)entity;
+                ArrayList<Pair<EquipmentSlot, ItemStack>> changes = null;
+                for (EquipmentSlot slot : EQUIPMENT_SLOTS) {
+                    ItemStack current = livingEntity.getItemBySlot(slot);
+                    if (ItemStack.matches(equipmentSnapshot.get(slot), current))
+                        continue;
+                    ItemStack copy = current.copy();
+                    equipmentSnapshot.put(slot, copy);
+                    if (changes == null)
+                        changes = new ArrayList<>();
+                    changes.add(Pair.of(slot, copy));
+                }
+                if (changes != null)
+                    tracker.broadcast(new ClientboundSetEquipmentPacket(entity.getId(), changes));
+            }
+            serverEntity.sendChanges();
+        }
+
+        @Override
+        public void onClose() {
+            entity.discard();
         }
     }
 }
