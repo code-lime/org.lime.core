@@ -17,6 +17,7 @@ public final class ClassPatcher<T> {
     private final List<Tuple5<Integer, String, String, String, Object>> appendFields = new ArrayList<>();
     private final List<Tuple6<MethodPatcher, Integer, String, String, String, String[]>> appendMethods = new ArrayList<>();
     private final Map<MethodFilter<T>, MethodPatcher> patchMethods = new HashMap<>();
+    private boolean allowNoChanges = false;
 
     public ClassPatcher(JarArchive archive, Class<T> tClass) {
         this.archive = archive;
@@ -41,6 +42,10 @@ public final class ClassPatcher<T> {
     }
     public ClassPatcher<T> patchMethod(MethodFilter<T> filter, MethodPatcher patcher) {
         patchMethods.put(filter, patcher);
+        return this;
+    }
+    public ClassPatcher<T> allowNoChanges() {
+        allowNoChanges = true;
         return this;
     }
 
@@ -119,7 +124,7 @@ public final class ClassPatcher<T> {
                 }
                 return super.visitMethod(access, name, descriptor, signature, exceptions);
             }
-        }, exceptions);
+        }, exceptions, allowNoChanges);
         throwProgressCheck();
         exceptions.forEach(exception -> {
             throw exception;

@@ -34,6 +34,14 @@ public class JarArchiveAuto implements JarArchiveBase {
         archive(filter.tClass()).patchMethod(filter, patcher);
         return this;
     }
+    public <T> JarArchiveAuto patchMethodAllowNoChanges(MethodFilter<T> filter, MethodPatcher patcher) {
+        archive(filter.tClass())
+                .of(filter.tClass())
+                .patchMethod(filter, patcher)
+                .allowNoChanges()
+                .patch();
+        return this;
+    }
     @Override
     public <T> JarArchiveBase patchMethod(List<MethodFilter<T>> filters, MethodPatcher patcher) {
         filters.forEach(filter -> patchMethod(filter, patcher));

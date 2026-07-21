@@ -40,8 +40,8 @@ public class MutatePatcher extends BasePluginPatcher {
         super(CorePaperPlugin.class);
     }
 
-    @Override public void patch(JarArchiveAuto archive) {
-        var mutateCacheLibraryLoader = MethodPatcher.mutate(v -> new ProgressMethodVisitor(v, v) {
+    private static MethodPatcher mutateCacheLibraryLoader(boolean allowAlreadyPatched) {
+        return MethodPatcher.mutate(v -> new ProgressMethodVisitor(v, v) {
             @Override protected List<String> createProgressList() {
                 return List.of("Replace.Type", "Replace.Method");
             }
@@ -49,11 +49,18 @@ public class MutatePatcher extends BasePluginPatcher {
             private final String from = Type.getInternalName(LibraryLoader.class);
             private final String to = Type.getInternalName(CacheLibraryLoader.class);
 
+            private void markAlreadyPatched(String name, String value) {
+                if (allowAlreadyPatched && value.equals(to))
+                    setProgressDuplicate(name);
+            }
+
             @Override public void visitTypeInsn(int opcode, String type) {
                 if (type.equals(from)) {
                     Native.log("Replace '" + from + "' to '" + to + "' by " + OpcodesNames.getName(opcode));
                     type = to;
                     setProgressDuplicate("Replace.Type");
+                } else {
+                    markAlreadyPatched("Replace.Type", type);
                 }
                 super.visitTypeInsn(opcode, type);
             }
@@ -62,16 +69,21 @@ public class MutatePatcher extends BasePluginPatcher {
                     Native.log("Replace '" + from + "' to '" + to + "' in method " + owner + "." + name + descriptor);
                     owner = to;
                     setProgressDuplicate("Replace.Method");
+                } else {
+                    markAlreadyPatched("Replace.Method", owner);
                 }
                 super.visitMethodInsn(opcode, owner, name, descriptor, isInterface);
             }
         });
+    }
 
+    @Override public void patch(JarArchiveAuto archive) {
+
+        archive.patchMethod(MethodFilter.of(SpigotPluginProvider.class, MethodInfo.STATIC_CONSTRUCTOR, false),
+                mutateCacheLibraryLoader(false));
         archive
-                .patchMethod(MethodFilter.of(SpigotPluginProvider.class, MethodInfo.STATIC_CONSTRUCTOR, false),
-                        mutateCacheLibraryLoader)
-                .patchMethod(MethodFilter.of(org.bukkit.plugin.java.JavaPluginLoader.class, MethodInfo.OBJECT_CONSTRUCTOR, false),
-                        mutateCacheLibraryLoader)
+                .patchMethodAllowNoChanges(MethodFilter.of(org.bukkit.plugin.java.JavaPluginLoader.class, MethodInfo.OBJECT_CONSTRUCTOR, false),
+                        mutateCacheLibraryLoader(true))
                 .patchMethod(MethodFilter.of(Execute.actionEx(Main::main)),
                         MethodPatcher.mutate(v -> new ProgressMethodVisitor(v, v) {
                             @Override protected List<String> createProgressList() {

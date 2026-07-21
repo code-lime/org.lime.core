@@ -75,6 +75,9 @@ public class JarArchive implements JarArchiveBase {
         return archive;
     }
     public <T>JarArchive patch(Class<T> tClass, Func2<JarArchive, ClassWriter, ClassVisitor> visitor, List<PatchException> exceptions) {
+        return patch(tClass, visitor, exceptions, false);
+    }
+    public <T>JarArchive patch(Class<T> tClass, Func2<JarArchive, ClassWriter, ClassVisitor> visitor, List<PatchException> exceptions, boolean allowNoChanges) {
         String className = Native.classFile(tClass);
         Optional.ofNullable(this.entries.get(className))
                 .ifPresentOrElse(bytes -> {
@@ -85,7 +88,7 @@ public class JarArchive implements JarArchiveBase {
                         reader.accept(visitor.invoke(this, writer), 0);
                         byte[] newBytes = writer.toByteArray();
                         this.entries.put(className, newBytes);
-                        if (Arrays.compare(bytes, newBytes) == 0) {
+                        if (!allowNoChanges && Arrays.compare(bytes, newBytes) == 0) {
                             exceptions.add(new PatchException("Patch '"+className+"' is not change any!", this, className));
                         }
                     });
