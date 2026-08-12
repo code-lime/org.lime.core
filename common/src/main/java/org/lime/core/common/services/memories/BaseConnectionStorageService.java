@@ -10,6 +10,7 @@ import org.lime.core.common.utils.execute.Action2;
 import org.lime.core.common.utils.execute.Action3;
 import org.lime.core.common.utils.execute.Func1;
 import org.lime.core.common.utils.execute.Func2;
+import org.slf4j.Logger;
 
 import java.time.Duration;
 import java.util.AbstractMap;
@@ -27,7 +28,8 @@ public abstract class BaseConnectionStorageService
     private record Memory(
             UUID uid,
             ConcurrentHashMap<MemoryKey<?, ?>, ConcurrentHashMap<Object, Object>> memory,
-            ConcurrentHashMap<MemoryKey<?, ?>, ConcurrentHashMap<UUID, MemoryListenUpdating<?, ?>>> listenUpdating)
+            ConcurrentHashMap<MemoryKey<?, ?>, ConcurrentHashMap<UUID, MemoryListenUpdating<?, ?>>> listenUpdating,
+            Logger logger)
             implements Disposable {
         public <Index, T> Optional<T> get(MemoryKey<Index, T> key, Index index) {
             Objects.requireNonNull(index, "Memory index");
@@ -55,7 +57,7 @@ public abstract class BaseConnectionStorageService
             var values = memory.computeIfAbsent(key, v -> new ConcurrentHashMap<>());
             var value = values.computeIfAbsent(index, v -> {
                 var newValue = supplier.get();
-                handleListen(key, index, newValue);
+                handleListen(key, index, null, newValue);
                 return newValue;
             });
             if (value == null && values.isEmpty())
@@ -64,13 +66,14 @@ public abstract class BaseConnectionStorageService
         }
         public <Index, T> void set(MemoryKey<Index, T> key, Index index, @Nullable T value) {
             Objects.requireNonNull(index, "Memory index");
+            Object previous;
             if (value == null) {
-                removeValue(key, index);
+                previous = removeValue(key, index);
             } else {
-                memory.computeIfAbsent(key, v -> new ConcurrentHashMap<>())
+                previous = memory.computeIfAbsent(key, v -> new ConcurrentHashMap<>())
                         .put(index, value);
             }
-            handleListen(key, index, value);
+            handleListen(key, index, previous, value);
         }
         public <Index, T> boolean has(MemoryKey<Index, T> key, Index index) {
             Objects.requireNonNull(index, "Memory index");
@@ -79,10 +82,25 @@ public abstract class BaseConnectionStorageService
         }
         public <Index, T> boolean remove(MemoryKey<Index, T> key, Index index) {
             Objects.requireNonNull(index, "Memory index");
-            if (!removeValue(key, index))
+            var previous = removeValue(key, index);
+            if (previous == null)
                 return false;
-            handleListen(key, index, null);
+            handleListen(key, index, previous, null);
             return true;
+        }
+        public void clear(MemoryKey<?, ?> key) {
+            var values = memory.remove(key);
+            if (values == null)
+                return;
+            try {
+                values.forEach((index, value) -> {
+                    if (values.remove(index, value))
+                        handleListen(key, index, value, null);
+                });
+            } finally {
+                values.forEach((index, value) -> dispose(key, index, value));
+                values.clear();
+            }
         }
 
         public <Index, T> void modify(MemoryKey<Index, T> key, Index index, Func1<@Nullable T, @Nullable T> modify) {
@@ -94,44 +112,76 @@ public abstract class BaseConnectionStorageService
                         return null;
                     values = new ConcurrentHashMap<>();
                     values.put(index, newValue);
-                    handleListen(key, index, newValue);
+                    handleListen(key, index, null, newValue);
                     return values;
                 }
 
                 values.compute(index, (i, v) -> {
                     var newValue = modify.invoke(key.castOrNull(v));
                     if (v != newValue)
-                        handleListen(key, index, newValue);
+                        handleListen(key, index, v, newValue);
                     return newValue;
                 });
                 return values.isEmpty() ? null : values;
             });
         }
 
-        private <Index, T> boolean removeValue(MemoryKey<Index, T> key, Index index) {
+        private <Index, T> @Nullable Object removeValue(MemoryKey<Index, T> key, Index index) {
             var values = memory.get(key);
-            if (values == null || values.remove(index) == null)
-                return false;
+            if (values == null)
+                return null;
+            var previous = values.remove(index);
             if (values.isEmpty())
                 memory.remove(key, values);
-            return true;
+            return previous;
         }
-        private void handleListen(MemoryKey<?, ?> key, Object index, @Nullable Object value) {
-            var listeners = listenUpdating.get(key);
-            if (listeners == null || listeners.isEmpty())
+        private void handleListen(
+                MemoryKey<?, ?> key,
+                Object index,
+                @Nullable Object previous,
+                @Nullable Object current) {
+            try {
+                var listeners = listenUpdating.get(key);
+                if (listeners == null || listeners.isEmpty())
+                    return;
+                for (var listener : listeners.values())
+                    listener.tryHandle(uid, index, current);
+            } finally {
+                if (previous != current)
+                    dispose(key, index, previous);
+            }
+        }
+        private void dispose(MemoryKey<?, ?> key, Object index, @Nullable Object value) {
+            if (!(value instanceof Disposable disposable))
                 return;
-            for (var listener : listeners.values())
-                listener.tryHandle(uid, index, value);
+            try {
+                disposable.close();
+            } catch (Throwable throwable) {
+                logger.error(
+                        "Unable to dispose connection memory value for player {}, key {}, index {}, type {}",
+                        uid,
+                        key.key(),
+                        index,
+                        value.getClass().getName(),
+                        throwable);
+            }
         }
-
         @Override
         public void close() {
-            memory.forEach((key, values) -> values.keySet().forEach(index -> handleListen(key, index, null)));
-            memory.clear();
+            try {
+                memory.forEach((key, values) -> values.forEach((index, value) -> {
+                    if (values.remove(index, value))
+                        handleListen(key, index, value, null);
+                }));
+            } finally {
+                memory.forEach((key, values) -> values.forEach((index, value) -> dispose(key, index, value)));
+                memory.clear();
+            }
         }
     }
 
     @Inject ScheduleTaskService taskService;
+    @Inject Logger logger;
 
     private final ConcurrentHashMap<UUID, Memory> memories = new ConcurrentHashMap<>();
     private final ConcurrentHashMap<MemoryKey<?, ?>, ConcurrentHashMap<UUID, MemoryListenUpdating<?, ?>>> listenUpdating = new ConcurrentHashMap<>();
@@ -168,7 +218,7 @@ public abstract class BaseConnectionStorageService
     }
 
     protected void handleLogin(UUID playerId) {
-        var memory = memories.put(playerId, new Memory(playerId, new ConcurrentHashMap<>(), listenUpdating));
+        var memory = memories.put(playerId, new Memory(playerId, new ConcurrentHashMap<>(), listenUpdating, logger));
         if (memory != null)
             memory.close();
     }
@@ -233,6 +283,9 @@ public abstract class BaseConnectionStorageService
     public <Index, T> void every(MemoryKey<Index, T> key, Action3<UUID, Index, T> action) {
         memories.forEach((playerId, memory) -> memory.streamIndexed(key)
                 .forEach(v -> action.invoke(playerId, v.getKey(), v.getValue())));
+    }
+    public void clear(MemoryKey<?, ?> key) {
+        memories.values().forEach(memory -> memory.clear(key));
     }
     public <Index, T> Disposable listenUpdating(MemoryKey<Index, T> key, Action3<UUID, Index, @Nullable T> callback) {
         UUID uid = UUID.randomUUID();
