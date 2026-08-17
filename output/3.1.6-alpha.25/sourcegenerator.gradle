@@ -1,0 +1,790 @@
+buildscript {
+    repositories {
+        mavenCentral()
+    }
+    dependencies {
+        def versionGraalVm = "24.1.1"
+        classpath "org.graalvm.js:js:${versionGraalVm}"
+        classpath "org.graalvm.js:js-scriptengine:${versionGraalVm}"
+        classpath "org.graalvm.truffle:truffle-api:${versionGraalVm}"
+        classpath "org.graalvm.polyglot:polyglot:${versionGraalVm}"
+    }
+}
+
+import com.oracle.truffle.js.scriptengine.*
+import org.graalvm.polyglot.*
+
+import javax.script.ScriptEngine
+import java.nio.charset.Charset
+import java.nio.file.Paths
+import java.util.function.Function
+import java.util.function.Supplier
+import java.util.regex.Matcher
+import java.util.regex.Pattern
+import javax.script.ScriptEngine
+import java.nio.file.Path
+import java.nio.file.Files
+import java.nio.charset.StandardCharsets
+import java.util.stream.Collectors
+import java.util.stream.Stream
+
+interface ScriptEngineProvider {
+    ScriptEngine engine();
+}
+interface PreProcessor {
+    boolean test(String text)
+    List<String> modify(Path file, List<String> lines, ScriptEngineProvider engine)
+}
+
+class PreProcessorContext {
+    public String commentType
+    public Map<String, String> links = new HashMap<>()
+
+    public PreProcessorContext(String commentType) {
+        this.commentType = commentType
+    }
+}
+
+abstract class BasePreProcessor implements PreProcessor {
+    public final PreProcessorContext context
+    public BasePreProcessor(PreProcessorContext context) {
+        this.context = context
+    }
+
+    protected String loadJsText(Path dir, String fileSpec) {
+        if (fileSpec == null || fileSpec.isEmpty()) return ""
+        String[] parts = fileSpec.split(':', 2)
+        def link = context.links.get(parts[0])
+        String text;
+        if (link == null) {
+            text = dir.resolve(parts[0]).text
+        } else {
+            text = link
+        }
+        if (parts.length > 1) {
+            return text + "\n" + parts[1]
+        } else {
+            return text;
+        }
+    }
+
+    protected String evalJs(ScriptEngineProvider engine, String js) {
+        def res = engine.engine().eval(js)
+        return "${res}"
+    }
+    protected boolean evalCondition(ScriptEngineProvider engine, String js) {
+        switch (evalJs(engine, js).toLowerCase()) {
+            case "true": return true
+            case "yes": return true
+            case "1": return true
+            default: return false
+        }
+    }
+    protected String extractNameAttribute(String header) {
+        if (header == null) return null
+        String t = header.trim()
+        int idx = t.indexOf('name="')
+        if (idx < 0) return null
+        int start = idx + 6
+        int end = t.indexOf("\">", start)
+        if (end < 0) return null
+        return t.substring(start, end)
+    }
+
+    protected List<String> toLines(String text) {
+        if (text == null) return Collections.emptyList()
+        return Arrays.asList(text.replace("\r","").split("\n", -1))
+    }
+    protected void assertState(boolean cond, Path file, String message) {
+        if (!cond) throw new IllegalArgumentException("${file}: ${message}")
+    }
+    protected int countLeadingSpacesOrTabsRegex(String s) {
+        if (s == null || s.isEmpty()) return 0;
+        Matcher m = Pattern.compile("^[ \\t]+").matcher(s)
+        return m.find() ? m.group().length() : 0
+    }
+
+
+    public static class TrimResult {
+        public final String trimmed
+        public final String removedLeading;
+
+        public TrimResult(String trimmed, String removedLeading) {
+            this.trimmed = trimmed;
+            this.removedLeading = removedLeading
+        }
+    }
+
+    protected TrimResult trimWithRemovedLeadingOnly(String s) {
+        if (s == null) {
+            return new TrimResult(null, "");
+        }
+        int len = s.length();
+        int start = 0;
+
+        while (start < len && Character.isWhitespace(s.charAt(start))) {
+            start++;
+        }
+
+        String trimmed = s.substring(start, len);
+        String removedLeading = s.substring(0, start);
+
+        return new TrimResult(trimmed, removedLeading);
+    }
+}
+class InlineGeneratorPreProcessor extends BasePreProcessor {
+    private static final String START = "/*<g"
+    private static final String END_CODE = "*/"
+    private static final String END_GENERATOR = "/*</g>*/"
+
+    public InlineGeneratorPreProcessor(PreProcessorContext context) {
+        super(context)
+    }
+
+    @Override
+    boolean test(String text) {
+        return text != null && text.contains(START)
+    }
+
+    @Override
+    List<String> modify(Path file, List<String> lines, ScriptEngineProvider engine) {
+        boolean edited = false
+        List<String> out = new ArrayList<>(lines.size())
+
+        for (int i = 0; i < lines.size(); i++) {
+            String rawLine = lines.get(i)
+            String line = rawLine
+            int startIdx = line.indexOf(START)
+            if (startIdx >= 0) {
+                int endCodeIdx = line.indexOf(END_CODE, startIdx)
+                int endGenIdx = (endCodeIdx >= 0) ? line.indexOf(END_GENERATOR, endCodeIdx) : -1
+                if (endCodeIdx >= 0 && endGenIdx >= 0) {
+                    String header = line.substring(startIdx + START.length(), endCodeIdx)
+                    String pre = line.substring(0, startIdx)
+                    String post = line.substring(endGenIdx + END_GENERATOR.length())
+
+                    String nameAttr = extractNameAttribute(header)
+                    if (nameAttr != null) {
+                        String jsText = loadJsText(file.parent, nameAttr)
+                        String result = evalJs(engine, jsText)
+                        out.add(pre + "*/" + result + post)
+                        edited = true
+                        continue
+                    }
+
+                    String code = line.substring(startIdx + START.length(), endCodeIdx)
+                    if (code.startsWith(">")) code = code.substring(1)
+                    String result = evalJs(engine, code)
+                    out.add(pre + "*/" + result + post)
+                    edited = true
+                    continue
+                }
+            }
+            out.add(rawLine)
+        }
+
+        return edited ? out : null
+    }
+}
+class LineGeneratorPreProcessor extends BasePreProcessor {
+    private final String COMMENT
+
+    private final String BEGIN
+    private final String END
+    private final String SINGLE_PREFIX
+
+    public LineGeneratorPreProcessor(PreProcessorContext context) {
+        super(context)
+        COMMENT = context.commentType
+        BEGIN = "$COMMENT<generator>"
+        END = "$COMMENT</generator>"
+        SINGLE_PREFIX = "$COMMENT<generator name=\""
+    }
+
+    @Override
+    boolean test(String text) {
+        return text != null && (text.contains(BEGIN) || text.contains(SINGLE_PREFIX))
+    }
+
+    @Override
+    List<String> modify(Path file, List<String> lines, ScriptEngineProvider engine) {
+        boolean edited = false
+        List<String> out = new ArrayList<>(lines.size())
+        List<String> buffer = null
+        int state = 0
+
+        for (int i = 0; i < lines.size(); i++) {
+            String line = lines.get(i)
+            String trim = line.trim()
+
+            if (!trim.startsWith(COMMENT)) {
+                if (buffer != null) continue
+                out.add(line)
+                continue
+            }
+
+            if (trim.equals(BEGIN) || trim.equals("<generator>")) {
+                state = 1
+                assertState(buffer == null, file, "<generator> in line " + (i + 1))
+                buffer = new ArrayList<>()
+                out.add(line)
+                continue
+            }
+
+            if (trim.equals(END) || trim.equals("</generator>")) {
+                state = 0
+                assertState(buffer != null, file, "</generator> in line " + (i + 1))
+                String js = String.join("\n", buffer)
+                String result = evalJs(engine, js)
+                toLines(result).forEach { out.add(it) }
+                out.add(line)
+                buffer = null
+                edited = true
+                continue
+            }
+
+            if (trim.startsWith(SINGLE_PREFIX)) {
+                state = 2
+                assertState(buffer == null, file, "Single-line generator inside open block at line " + (i + 1))
+                int idxEnd = trim.indexOf("\">", SINGLE_PREFIX.length())
+                assertState(idxEnd >= 0, file, "Bad generator name syntax at line " + (i + 1))
+                String fileSpec = trim.substring(SINGLE_PREFIX.length(), idxEnd)
+                buffer = new ArrayList<String>()
+
+                buffer.add(loadJsText(file.parent, fileSpec))
+
+                out.add(line)
+                edited = true
+                continue
+            }
+
+            if (state != 2) {
+                if (buffer != null) {
+                    if (trim.startsWith(COMMENT)) buffer.add(trim.substring(COMMENT.length()))
+                    else buffer.add(line)
+                } else {
+                    out.add(line)
+                }
+            }
+        }
+
+        assertState(buffer == null, file, "Unclosed <generator> block at EOF")
+        return edited ? out : null
+    }
+}
+class IfPreProcessor extends BasePreProcessor {
+    class IfState {
+        boolean parentEnabled
+        boolean branchTaken
+        boolean currentEnabled
+        String prefix
+
+        IfState(boolean parentEnabled, boolean branchTaken, boolean currentEnabled, String prefix) {
+            this.parentEnabled = parentEnabled
+            this.branchTaken = branchTaken
+            this.currentEnabled = currentEnabled
+            this.prefix = prefix
+        }
+    }
+
+    private final String COMMENT
+
+    private final String START
+    private final String ELIF
+    private final String ELSE
+    private final String ENDIF
+
+    private final String DISABLED
+
+    public IfPreProcessor(PreProcessorContext context) {
+        super(context)
+        COMMENT = context.commentType
+        START = "$COMMENT#if "
+        ELIF = "$COMMENT#elif "
+        ELSE = "$COMMENT#else"
+        ENDIF = "$COMMENT#endif"
+        DISABLED = "${COMMENT}IF$COMMENT"
+    }
+
+    @Override
+    boolean test(String text) {
+        return text.contains(START)
+    }
+    @Override
+    List<String> modify(Path file, List<String> lines, ScriptEngineProvider engine) {
+        Deque<IfState> stack = new ArrayDeque<>()
+        stack.push(new IfState(true, false, true, ""))
+
+        List<String> out = new ArrayList<>(lines.size())
+
+        for (int i = 0; i < lines.size(); i++) {
+            String line = lines.get(i)
+            TrimResult trimResult = trimWithRemovedLeadingOnly(line)
+            String trimmed = trimResult.trimmed
+
+            if (trimmed.startsWith(START)) {
+                out.add(line)
+                String expr = trimmed.substring(START.length()).trim()
+                boolean parentEnabled = stack.peek().currentEnabled
+                boolean cond
+                if (parentEnabled) {
+                    cond = evalCondition(engine, expr)
+                } else {
+                    cond = false
+                }
+                IfState newState = new IfState(parentEnabled, cond, cond && parentEnabled, trimResult.removedLeading)
+                stack.push(newState)
+                continue
+            }
+            if (trimmed.startsWith(ELIF)) {
+                out.add(line)
+                assertState(stack.size() > 1, file, "Unexpected $ELIF at line ${i+1}")
+                IfState top = stack.pop()
+                if (!top.parentEnabled) {
+                    stack.push(new IfState(top.parentEnabled, top.branchTaken, false, trimResult.removedLeading))
+                } else {
+                    if (top.branchTaken) {
+                        stack.push(new IfState(top.parentEnabled, true, false, trimResult.removedLeading))
+                    } else {
+                        String expr = trimmed.substring(ELIF.length()).trim()
+                        boolean cond = evalCondition(engine, expr)
+                        stack.push(new IfState(top.parentEnabled, cond, cond, trimResult.removedLeading))
+                    }
+                }
+                continue
+            }
+            if (trimmed == ELSE) {
+                out.add(line)
+                assertState(stack.size() > 1, file, "Unexpected $ELSE at line ${i+1}")
+                IfState top = stack.pop()
+                if (!top.parentEnabled) {
+                    stack.push(new IfState(top.parentEnabled, top.branchTaken, false, trimResult.removedLeading))
+                } else {
+                    boolean take = !top.branchTaken
+                    stack.push(new IfState(top.parentEnabled, top.branchTaken || take, take, trimResult.removedLeading))
+                }
+                continue
+            }
+            if (trimmed == ENDIF) {
+                out.add(line)
+                assertState(stack.size() > 1, file, "Unexpected $ENDIF at line ${i+1}")
+                stack.pop()
+                continue
+            }
+
+            if (stack.peek().currentEnabled) {
+                if (trimmed.startsWith(DISABLED)) {
+                    out.add(line.replaceFirst("^[\t ]+${Pattern.quote(DISABLED)}", ""))
+                } else {
+                    out.add(line)
+                }
+            } else {
+                if (trimmed.startsWith(DISABLED)) {
+                    out.add(line)
+                } else {
+                    line = "${stack.peek().prefix}${DISABLED}${line}"
+                    out.add(line)
+                }
+            }
+        }
+
+        assertState(stack.size() <= 1, file, "Unclosed $START block(s) detected")
+
+        return out
+    }
+}
+class SwitchPreProcessor extends BasePreProcessor {
+    class SwitchState {
+        String value
+        boolean enable
+        boolean selected
+        String prefix
+
+        SwitchState(String value, boolean enable, boolean selected, String prefix) {
+            this.value = value
+            this.enable = enable
+            this.selected = selected
+            this.prefix = prefix
+        }
+    }
+
+    private final String COMMENT
+
+    private final String START
+    private final String CASE
+    private final String CASEOF
+    private final String CASEOFREGEX
+    private final String CASEJS
+    private final String DEFAULT
+    private final String ENDSWITCH
+
+    private final String DISABLED
+
+    public SwitchPreProcessor(PreProcessorContext context) {
+        super(context)
+        COMMENT = context.commentType
+        START = "$COMMENT#switch "
+        CASE = "$COMMENT#case "
+        CASEOF = "$COMMENT#caseof "
+        CASEOFREGEX = "$COMMENT#caseofregex "
+        CASEJS = "$COMMENT#casejs "
+        DEFAULT = "$COMMENT#default"
+        ENDSWITCH = "$COMMENT#endswitch"
+        DISABLED = "${COMMENT}OF$COMMENT"
+    }
+
+    @Override
+    boolean test(String text) {
+        return text.contains(START)
+    }
+    @Override
+    List<String> modify(Path file, List<String> lines, ScriptEngineProvider engine) {
+        SwitchState state = null
+        List<String> out = new ArrayList<>(lines.size())
+
+        for (int i = 0; i < lines.size(); i++) {
+            String line = lines.get(i)
+            TrimResult trimResult = trimWithRemovedLeadingOnly(line)
+            String trimmed = trimResult.trimmed
+
+            if (trimmed.startsWith(START)) {
+                assertState(state == null, file, "Unexpected $START at line ${i+1}")
+
+                out.add(line)
+                String expr = trimmed.substring(START.length()).trim()
+                String value = evalJs(engine, expr)
+                state = new SwitchState(value, false, false, trimResult.removedLeading)
+                continue
+            }
+            if (trimmed.startsWith(CASE)) {
+                assertState(state != null, file, "Unexpected $CASE at line ${i+1}")
+                out.add(line)
+                state.prefix = trimResult.removedLeading
+                if (state.selected) {
+                    state.enable = false
+                } else {
+                    String value = trimmed.substring(CASE.length()).trim()
+                    if (state.value == value) {
+                        state.selected = true
+                        state.enable = true
+                    } else {
+                        state.enable = false
+                    }
+                }
+                continue
+            }
+            if (trimmed.startsWith(CASEOF)) {
+                assertState(state != null, file, "Unexpected $CASEOF at line ${i+1}")
+                out.add(line)
+                state.prefix = trimResult.removedLeading
+                if (state.selected) {
+                    state.enable = false
+                } else {
+                    String[] values = trimmed.substring(CASEOF.length()).trim().split(';')
+                    if (values.contains(state.value)) {
+                        state.selected = true
+                        state.enable = true
+                    } else {
+                        state.enable = false
+                    }
+                }
+                continue
+            }
+            if (trimmed.startsWith(CASEOFREGEX)) {
+                assertState(state != null, file, "Unexpected $CASEOFREGEX at line ${i+1}")
+                out.add(line)
+                state.prefix = trimResult.removedLeading
+                if (state.selected) {
+                    state.enable = false
+                } else {
+                    Pattern regex = Pattern.compile(trimmed.substring(CASEOFREGEX.length()).trim())
+                    if (regex.matcher(state.value).find()) {
+                        state.selected = true
+                        state.enable = true
+                    } else {
+                        state.enable = false
+                    }
+                }
+                continue
+            }
+            if (trimmed.startsWith(CASEJS)) {
+                assertState(state != null, file, "Unexpected $CASEJS at line ${i+1}")
+                out.add(line)
+                state.prefix = trimResult.removedLeading
+                if (state.selected) {
+                    state.enable = false
+                } else {
+                    String js = trimmed.substring(CASEJS.length()).trim()
+                    String value = evalJs(engine, js)
+                    if (state.value == value) {
+                        state.selected = true
+                        state.enable = true
+                    } else {
+                        state.enable = false
+                    }
+                }
+                continue
+            }
+            if (trimmed == DEFAULT) {
+                assertState(state != null, file, "Unexpected $DEFAULT at line ${i+1}")
+                out.add(line)
+                state.prefix = trimResult.removedLeading
+                if (state.selected) {
+                    state.enable = false
+                } else {
+                    state.selected = true
+                    state.enable = true
+                }
+                continue
+            }
+            if (trimmed == ENDSWITCH) {
+                assertState(state != null, file, "Unexpected $ENDSWITCH at line ${i+1}")
+                out.add(line)
+                state = null;
+                continue
+            }
+
+            if (state == null || state.enable) {
+                if (trimmed.startsWith(DISABLED)) {
+                    out.add(line.replaceFirst("^[\t ]*${Pattern.quote(DISABLED)}", ""))
+                } else {
+                    out.add(line)
+                }
+            } else {
+                if (trimmed.startsWith(DISABLED)) {
+                    out.add(line)
+                } else {
+                    line = "${state.prefix}${DISABLED}${line}"
+                    out.add(line)
+                }
+            }
+        }
+
+        assertState(state == null, file, "Unclosed $START block(s) detected")
+
+        return out
+    }
+}
+class RemoteFileLinkPreProcessor implements PreProcessor {
+    private final String COMMENT
+
+    private final String PREFIX
+
+    private final Pattern LINK_PATTERN
+
+    private final Map<String, String> links
+
+    public RemoteFileLinkPreProcessor(PreProcessorContext context) {
+        links = context.links
+        COMMENT = context.commentType
+        PREFIX = "$COMMENT<link "
+        LINK_PATTERN = Pattern.compile("^\\s*${Pattern.compile(PREFIX)}name=(?<name>[\\w_\\-.]+)>(?<url>.*)</link>\$")
+    }
+
+    @Override
+    boolean test(String text) {
+        return text.contains(PREFIX)
+    }
+    @Override
+    List<String> modify(Path file, List<String> lines, ScriptEngineProvider engine) {
+        lines.forEach {
+            var matcher = LINK_PATTERN.matcher(it)
+            if (matcher.matches()) {
+                def name = matcher.group("name")
+                def url = matcher.group("url")
+
+                println("LINK $name BY $url. Downloading...")
+                def text = URI.create(url).toURL().text
+                println(" - Total length: ${text.length()}")
+                links.put(name, text)
+            }
+        }
+        return null
+    }
+}
+
+class CombinedClassLoader extends ClassLoader {
+    private final Iterable<ClassLoader> delegates
+
+    public CombinedClassLoader(ClassLoader root, Iterable<ClassLoader> delegates) {
+        super(root)
+        this.delegates = delegates
+    }
+
+    @Override
+    protected Class<?> findClass(String name) throws ClassNotFoundException {
+        System.out.println("LOAD $name")
+        for (ClassLoader loader : delegates) {
+            try {
+                return loader.findClass(name)
+            } catch (ClassNotFoundException ignored) {}
+        }
+        throw new ClassNotFoundException(name)
+    }
+}
+
+class SourceGenerator {
+    class PackageName {
+        PackageName parent
+        String fullName
+        PackageName(String[] args) {
+            int length = args.length
+            if (length == 0)
+                throw new Throwable("NOT SUPPORT ZERO LENGTH")
+            fullName = String.join(".", args)
+            parent = length > 1 ? new PackageName(Arrays.copyOf(args, length - 1)) : null
+        }
+
+        PackageName parent() {
+            return parent
+        }
+        @Override
+        String toString() {
+            return fullName
+        }
+    }
+
+    final Project project
+    final List<Function<PreProcessorContext, PreProcessor>> preprocessors = new ArrayList<>()
+    final Map<String, Pattern> commentsValidations = Stream.of(List.of("//","/*"),List.of("#"))
+            .collect(Collectors.<List<String>, String, Pattern>toMap(v -> v.first(), v -> Pattern.compile("^\\s*(${v.collect {Pattern.quote(it)}.join('|')})", Pattern.MULTILINE)))
+
+    SourceGenerator(Project project) {
+        this.project = project
+
+        preprocessors.add(RemoteFileLinkPreProcessor::new)
+        preprocessors.add(s -> new InlineGeneratorPreProcessor())
+        preprocessors.add(LineGeneratorPreProcessor::new)
+        preprocessors.add(IfPreProcessor::new)
+        preprocessors.add(SwitchPreProcessor::new)
+    }
+
+    private ScriptEngine createEngine(String packageName) {
+        ScriptEngine engine = GraalJSScriptEngine.create(
+                Engine.newBuilder()
+                        .option("engine.WarnInterpreterOnly", "false")
+                        .build(),
+                Context.newBuilder("js")
+                        .allowHostAccess(HostAccess.ALL)
+                        .allowHostClassLookup(v -> true))
+        engine.put("PACKAGE", new PackageName(packageName.split("\\.")))
+        engine.put("PROJECT", project)
+        engine.put("LOADER", new CombinedClassLoader(this.class.classLoader, project.plugins.collect{it.class.classLoader}))
+        engine.put("PROPERTIES", project.getProperties())
+        return engine;
+    }
+    private String executeJs(String packageName, String js) {
+        return "${createEngine(packageName).eval(js) ?: "null"}"
+    }
+    private static String getFileExtension(File file) {
+        String name = file.getName()
+        int lastIndexOf = name.lastIndexOf(".")
+        return lastIndexOf == -1 ? "" : name.substring(lastIndexOf)
+    }
+    private HashMap<String, String> generateJavas(String packageName, File dir, String text) {
+        HashMap<String, String> outputFiles = new HashMap<>()
+        for (def line in text.replaceAll("\r", "").split("\n")) {
+            def data = line.split(":", 2)
+
+            println('Execute folder function: ' + data[0] + " : " + data[1])
+
+            def js = Paths.get(dir.absolutePath, data[0]).toFile().text + "\n" + data[1]
+            def _raw = executeJs(packageName, js)
+
+            def raw = _raw.split('\r')
+            def filesLength = raw.length / 2
+            for (def i = 0; i < filesLength; i++) {
+                def index = i * 2
+                def fileName = raw[index]
+                def fileText = raw[index + 1]
+                outputFiles.put(fileName, fileText.replaceAll('\n','\r\n'))
+            }
+        }
+        return outputFiles
+    }
+
+    private void writeIfChanged(File file, List<String> lines) {
+        List<String> oldLines = Collections.emptyList()
+        if (file.exists())
+            oldLines = List.of(file.text.replace("\r", "").split('\n'))
+        if (oldLines != lines) {
+            println "EDITED: ${file.absolutePath}"
+            Files.write(file.toPath(), lines);
+        }
+    }
+    void executeGenerator(String packageName, File file) {
+        String ext = getFileExtension(file)
+        if (ext == ".javas") {
+            HashMap<String, String> _files = generateJavas(packageName, file.parentFile, file.text)
+            for (Map.Entry<String, String> _kv : _files.entrySet()) {
+                String _text = _kv.getValue()
+                var _filePath = Paths.get(file.parentFile.absolutePath, _kv.getKey()).toAbsolutePath()
+                var _file = _filePath.toFile()
+                if (!_file.exists())
+                    _file.createNewFile()
+                if (_file.text == _text) {
+                    //System.out.println("EQUALS EDITED: " + filePath);
+                } else {
+                    System.out.println("EDITED: " + _filePath)
+                    _file.text = _text
+                }
+            }
+        } else {
+            def text = file.text
+            String commentType = commentsValidations.find {it.value.matcher(text).find()}?.key
+            if (commentType == null)
+                return
+
+            List<String> lines = null
+            boolean edited = false
+
+            PreProcessorContext context = new PreProcessorContext(commentType);
+
+            for (Function<PreProcessorContext, PreProcessor> factory : preprocessors) {
+                def p = factory.apply(context)
+                if (p.test(text)) {
+                    if (lines == null) {
+                        lines = List.of(text.replace("\r", "").split('\n'))
+                    }
+                    List<String> newLines = p.modify(file.toPath(), lines, () -> createEngine(packageName))
+                    if (newLines != null) {
+                        lines = newLines
+                        edited = true
+                    }
+                }
+            }
+
+            if (edited)
+                writeIfChanged(file, lines)
+        }
+    }
+}
+
+def generator = tasks.register('generator') {
+    doLast {
+        if (!project.plugins.hasPlugin('java')) {
+            logger.lifecycle("Java plugin is not applied — skipping 'generator' task.")
+            return
+        }
+        final SourceGenerator instance = new SourceGenerator(project)
+        project.sourceSets.forEach {
+            it.allSource.sourceDirectories.files.forEach { root ->
+                fileTree(root).files.forEach {
+                    String packageName = root.relativePath(it).replaceAll("\\.(\\w+)+\$", "").replaceAll("/(\\w|\\.)+\$", "").replaceAll("[/\\\\]", ".")
+                    try {
+                        instance.executeGenerator(packageName, it)
+                    } catch (err) {
+                        err.printStackTrace(System.err)
+                        throw err
+                    }
+                }
+            }
+        }
+    }
+}
+
+if (tasks.findByName('compileJava') != null) {
+    compileJava {
+        dependsOn generator
+    }
+}
