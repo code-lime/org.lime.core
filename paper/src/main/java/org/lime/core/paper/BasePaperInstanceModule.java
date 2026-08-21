@@ -7,6 +7,7 @@ import io.papermc.paper.datapack.PaperDatapackManager;
 import io.papermc.paper.registry.PaperRegistryAccess;
 import net.kyori.adventure.text.minimessage.MiniMessage;
 import net.minecraft.commands.Commands;
+import net.minecraft.core.Registry;
 import net.minecraft.core.RegistryAccess;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.ServerAdvancementManager;
@@ -19,7 +20,9 @@ import net.minecraft.world.item.crafting.RecipeManager;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.levelgen.structure.templatesystem.StructureTemplateManager;
 import net.minecraft.world.scores.Scoreboard;
+import org.apache.commons.lang3.reflect.TypeUtils;
 import org.bukkit.Bukkit;
+import org.bukkit.Keyed;
 import org.bukkit.Server;
 import org.bukkit.ServerTickManager;
 import org.bukkit.World;
@@ -54,6 +57,7 @@ import org.lime.core.paper.services.buffers.EntityBufferStorage;
 import org.lime.core.paper.services.buffers.PacketEntityBufferStorage;
 import org.lime.core.paper.services.debug.DebugService;
 import org.lime.core.paper.tasks.BukkitScheduleTaskService;
+import org.lime.core.paper.utils.RegistryUtils;
 import org.lime.core.paper.utils.adapters.PaperGsonTypeAdapters;
 import patch.Patcher;
 
@@ -138,6 +142,16 @@ public class BasePaperInstanceModule<Instance extends BasePaperInstance<Instance
         bindMapped(ServerTickManager.class, CraftServer.class, CraftServer::getServerTickManager);
         bind(PaperRegistryAccess.class).toInstance(PaperRegistryAccess.instance());
         bindCast(io.papermc.paper.registry.RegistryAccess.class, PaperRegistryAccess.class);
+        RegistryUtils.nmsRegistries(MinecraftServer.getServer().registryAccess()).forEach(registry -> {
+            @SuppressWarnings({"unchecked", "rawtypes"})
+            TypeLiteral<Registry<?>> type = (TypeLiteral)TypeLiteral.get(TypeUtils.parameterize(Registry.class, registry.type().getType()));
+            bind(type).toInstance(registry.registry());
+        });
+        RegistryUtils.paperRegistries(PaperRegistryAccess.instance()).forEach(registry -> {
+            @SuppressWarnings({"unchecked", "rawtypes"})
+            TypeLiteral<org.bukkit.Registry<?>> type = (TypeLiteral)TypeLiteral.get(TypeUtils.parameterize(org.bukkit.Registry.class, registry.type().getType()));
+            bind(type).toInstance(registry.registry());
+        });
 
         bind(PluginManager.class).toInstance(Bukkit.getPluginManager());
 

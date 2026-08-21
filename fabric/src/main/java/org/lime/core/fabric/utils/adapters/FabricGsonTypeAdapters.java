@@ -12,18 +12,15 @@ import net.minecraft.core.BlockPos;
 import net.minecraft.core.HolderLookup;
 import net.minecraft.core.Registry;
 import net.minecraft.core.RegistryAccess;
-import net.minecraft.core.registries.Registries;
 import net.minecraft.resources.ResourceKey;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.world.phys.Vec3;
-import org.lime.core.common.reflection.ReflectionField;
 import org.lime.core.common.utils.adapters.CommonGsonTypeAdapters;
 import org.lime.core.common.utils.adapters.StringTypeAdapter;
+import org.lime.core.fabric.utils.RegistryUtils;
 
 import java.io.IOException;
-import java.lang.reflect.Modifier;
-import java.lang.reflect.ParameterizedType;
 import java.util.*;
 import java.util.stream.Stream;
 
@@ -107,58 +104,31 @@ public class FabricGsonTypeAdapters
                     }
                 });
     }
-    protected TypeAdapterFactory resourceKeyAuto(
-            RegistryAccess registryAccess) {
-        Map<TypeToken<? extends ResourceKey<?>>, List<ResourceKey<Registry<?>>>> collected = new HashMap<>();
-        Stream.of(Registries.class.getDeclaredFields())
-                .map(ReflectionField::of)
-                .filter(v -> v.is(Modifier.PUBLIC, Modifier.STATIC, Modifier.FINAL))
-                .filter(v -> ResourceKey.class.isAssignableFrom(v.target().getType()))
-                .forEach(v -> {
-                    if (!(v.target().getGenericType() instanceof ParameterizedType resourceKeyType))
-                        return;
-                    if (!ResourceKey.class.equals(resourceKeyType.getRawType()))
-                        return;
-                    if (!(resourceKeyType.getActualTypeArguments()[0] instanceof ParameterizedType registryType))
-                        return;
-                    if (!Registry.class.equals(registryType.getRawType()))
-                        return;
-                    var type = registryType.getActualTypeArguments()[0];
-                    if (type.getTypeName().startsWith("java"))
-                        return;
-                    var typeToken = (TypeToken<? extends ResourceKey<?>>)TypeToken.getParameterized(ResourceKey.class, type);
-                    ResourceKey<Registry<?>> resourceKey = (ResourceKey<Registry<?>>)v.get(null);
-                    collected.computeIfAbsent(typeToken, vv -> new ArrayList<>()).add(resourceKey);
-                });
-        Map<TypeToken<? extends ResourceKey<?>>, ResourceKey<Registry<?>>> registries = new HashMap<>();
-        collected.forEach((type, list) -> {
-            if (list.size() == 1)
-                registries.put(type, list.get(0));
-        });
+    protected TypeAdapterFactory resourceKeyAuto(RegistryAccess registryAccess) {
+        Map<TypeToken<?>, Registry<?>> registries = new HashMap<>();
+        RegistryUtils.nmsRegistries(registryAccess).forEach(v -> registries.put(TypeToken.getParameterized(ResourceKey.class, v.type().getType()), v.registry()));
         return new TypeAdapterFactory() {
             @Override
             public <T> TypeAdapter<T> create(Gson gson, TypeToken<T> type) {
-                ResourceKey<Registry<?>> registryKey = registries.get(type);
-                if (registryKey == null)
+                Registry<?> registry = registries.get(type);
+                if (registry == null)
                     return null;
-                return registryAccess.lookup(registryKey)
-                        .map(registry -> new StringTypeAdapter<T>() {
-                            @Override
-                            public String write(T value) throws IOException {
-                                return ((ResourceKey<?>)value).location().toString();
-                            }
-                            @SuppressWarnings("unchecked")
-                            @Override
-                            public T read(String value) throws IOException {
-                                ResourceLocation location = Objects.requireNonNull(ResourceLocation.tryParse(value), "Invalid resource key: " + value);
-                                return registry.listElementIds()
-                                        .filter(v -> v.location().equals(location))
-                                        .map(v -> (T)v)
-                                        .findFirst()
-                                        .orElseThrow(() -> new IllegalStateException("Missing element " + location + " in " + registry.key()));
-                            }
-                        })
-                        .orElse(null);
+                return new StringTypeAdapter<>() {
+                    @Override
+                    public String write(T value) throws IOException {
+                        return ((ResourceKey<?>)value).location().toString();
+                    }
+                    @SuppressWarnings("unchecked")
+                    @Override
+                    public T read(String value) throws IOException {
+                        ResourceLocation location = Objects.requireNonNull(ResourceLocation.tryParse(value), "Invalid resource key: " + value);
+                        return registry.keySet().stream()
+                                .filter(location::equals)
+                                .map(v -> (T)ResourceKey.create(registry.key(), v))
+                                .findFirst()
+                                .orElseThrow(() -> new IllegalStateException("Missing element " + location + " in " + registry.key()));
+                    }
+                };
             }
         };
     }

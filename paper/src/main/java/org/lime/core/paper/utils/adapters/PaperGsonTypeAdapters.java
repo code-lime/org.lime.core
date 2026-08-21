@@ -1,6 +1,5 @@
 package org.lime.core.paper.utils.adapters;
 
-import com.google.common.base.CaseFormat;
 import com.google.common.collect.Iterables;
 import com.google.common.collect.Streams;
 import com.google.gson.Gson;
@@ -12,32 +11,25 @@ import com.google.inject.Inject;
 import io.papermc.paper.math.BlockPosition;
 import io.papermc.paper.math.FinePosition;
 import io.papermc.paper.math.Position;
-import io.papermc.paper.registry.RegistryKey;
 import net.kyori.adventure.key.Key;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.HolderLookup;
 import net.minecraft.core.Registry;
 import net.minecraft.core.RegistryAccess;
-import net.minecraft.core.registries.Registries;
 import net.minecraft.resources.ResourceKey;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.world.phys.Vec3;
-import org.apache.commons.lang3.reflect.TypeUtils;
 import org.bukkit.*;
 import org.bukkit.configuration.serialization.ConfigurationSerializable;
 import org.bukkit.inventory.ItemStack;
-import org.jetbrains.annotations.NotNull;
 import org.lime.core.common.reflection.HierarchyMap;
-import org.lime.core.common.reflection.ReflectionField;
 import org.lime.core.common.utils.adapters.CommonGsonTypeAdapters;
 import org.lime.core.common.utils.adapters.StringTypeAdapter;
+import org.lime.core.paper.utils.RegistryUtils;
 import org.slf4j.Logger;
 
 import java.io.IOException;
-import java.lang.reflect.Modifier;
-import java.lang.reflect.ParameterizedType;
 import java.util.*;
-import java.util.concurrent.ConcurrentHashMap;
 import java.util.stream.Stream;
 
 public class PaperGsonTypeAdapters
@@ -122,58 +114,31 @@ public class PaperGsonTypeAdapters
                     }
                 });
     }
-    protected TypeAdapterFactory resourceKeyAuto(
-            RegistryAccess registryAccess) {
-        Map<TypeToken<? extends ResourceKey<?>>, List<ResourceKey<Registry<?>>>> collected = new HashMap<>();
-        Stream.of(Registries.class.getDeclaredFields())
-                .map(ReflectionField::of)
-                .filter(v -> v.is(Modifier.PUBLIC, Modifier.STATIC, Modifier.FINAL))
-                .filter(v -> ResourceKey.class.isAssignableFrom(v.target().getType()))
-                .forEach(v -> {
-                    if (!(v.target().getGenericType() instanceof ParameterizedType resourceKeyType))
-                        return;
-                    if (!ResourceKey.class.equals(resourceKeyType.getRawType()))
-                        return;
-                    if (!(resourceKeyType.getActualTypeArguments()[0] instanceof ParameterizedType registryType))
-                        return;
-                    if (!Registry.class.equals(registryType.getRawType()))
-                        return;
-                    var type = registryType.getActualTypeArguments()[0];
-                    if (type.getTypeName().startsWith("java"))
-                        return;
-                    var typeToken = (TypeToken<? extends ResourceKey<?>>)TypeToken.getParameterized(ResourceKey.class, type);
-                    ResourceKey<Registry<?>> resourceKey = (ResourceKey<Registry<?>>)v.get(null);
-                    collected.computeIfAbsent(typeToken, vv -> new ArrayList<>()).add(resourceKey);
-                });
-        Map<TypeToken<? extends ResourceKey<?>>, ResourceKey<Registry<?>>> registries = new HashMap<>();
-        collected.forEach((type, list) -> {
-            if (list.size() == 1)
-                registries.put(type, list.get(0));
-        });
+    protected TypeAdapterFactory resourceKeyAuto(RegistryAccess registryAccess) {
+        Map<TypeToken<?>, Registry<?>> registries = new HashMap<>();
+        RegistryUtils.nmsRegistries(registryAccess).forEach(v -> registries.put(TypeToken.getParameterized(ResourceKey.class, v.type().getType()), v.registry()));
         return new TypeAdapterFactory() {
             @Override
             public <T> TypeAdapter<T> create(Gson gson, TypeToken<T> type) {
-                ResourceKey<Registry<?>> registryKey = registries.get(type);
-                if (registryKey == null)
+                Registry<?> registry = registries.get(type);
+                if (registry == null)
                     return null;
-                return registryAccess.lookup(registryKey)
-                        .map(registry -> new StringTypeAdapter<T>() {
-                            @Override
-                            public String write(T value) throws IOException {
-                                return ResourceLocationIdentifierProxy.identifierLocation((ResourceKey<?>)value).toString();
-                            }
-                            @SuppressWarnings("unchecked")
-                            @Override
-                            public T read(String value) throws IOException {
-                                ResourceLocationIdentifierProxy location = ResourceLocationIdentifierProxy.parse(value);
-                                return registry.listElementIds()
-                                        .filter(v -> ResourceLocationIdentifierProxy.identifierLocation(v).equals(location))
-                                        .map(v -> (T)v)
-                                        .findFirst()
-                                        .orElseThrow(() -> new IllegalStateException("Missing element " + location + " in " + registry.key()));
-                            }
-                        })
-                        .orElse(null);
+                return new StringTypeAdapter<>() {
+                    @Override
+                    public String write(T value) throws IOException {
+                        return ResourceLocationIdentifierProxy.identifierLocation((ResourceKey<?>)value).toString();
+                    }
+                    @SuppressWarnings("unchecked")
+                    @Override
+                    public T read(String value) throws IOException {
+                        ResourceLocationIdentifierProxy location = ResourceLocationIdentifierProxy.parse(value);
+                        return registry.listElementIds()
+                                .filter(v -> ResourceLocationIdentifierProxy.identifierLocation(v).equals(location))
+                                .map(v -> (T)v)
+                                .findFirst()
+                                .orElseThrow(() -> new IllegalStateException("Missing element " + location + " in " + registry.key()));
+                    }
+                };
             }
         };
     }
@@ -194,62 +159,18 @@ public class PaperGsonTypeAdapters
                 TypeAdapters.newTypeHierarchyFactory(BlockPosition.class, new PositionTypeAdapters.BlockTypeAdapter()),
                 TypeAdapters.newTypeHierarchyFactory(Position.class, new PositionTypeAdapters.BaseTypeAdapter()));
     }
-    protected TypeAdapterFactory registryKeyAuto(
-            io.papermc.paper.registry.RegistryAccess registryAccess) {
-        Map<TypeToken<?>, List<Map.Entry<org.bukkit.Registry<?>, Key>>> collected = new HashMap<>();
-        Stream.of(RegistryKey.class.getDeclaredFields())
-                .map(ReflectionField::of)
-                .filter(v -> v.is(Modifier.PUBLIC, Modifier.STATIC, Modifier.FINAL))
-                .filter(v -> RegistryKey.class.isAssignableFrom(v.target().getType()))
-                .forEach(v -> {
-                    if (!(v.target().getGenericType() instanceof ParameterizedType registryKeyType))
-                        return;
-                    if (!RegistryKey.class.equals(registryKeyType.getRawType()))
-                        return;
-                    var itemType = registryKeyType.getActualTypeArguments()[0];
-                    var itemTypeClass = TypeUtils.getRawType(itemType, null);
-                    if (itemTypeClass == null || !Keyed.class.isAssignableFrom(itemTypeClass))
-                        return;
-                    var typeToken = TypeToken.get(itemType);
-                    @SuppressWarnings("unchecked")
-                    var registryKey = (RegistryKey<? extends @NotNull Keyed>)v.get(null);
-                    org.bukkit.Registry<?> registry = registryAccess.getRegistry(registryKey);
-                    collected.computeIfAbsent(typeToken, vv -> new ArrayList<>()).add(Map.entry(registry, registryKey.key()));
-                });
-        Stream.of(org.bukkit.Registry.class.getDeclaredFields())
-                .map(ReflectionField::of)
-                .filter(v -> v.is(Modifier.PUBLIC, Modifier.STATIC, Modifier.FINAL))
-                .filter(v -> org.bukkit.Registry.class.isAssignableFrom(v.target().getType()))
-                .forEach(v -> {
-                    if (!(v.target().getGenericType() instanceof ParameterizedType registryKeyType))
-                        return;
-                    if (!org.bukkit.Registry.class.equals(registryKeyType.getRawType()))
-                        return;
-                    var itemType = registryKeyType.getActualTypeArguments()[0];
-                    var itemTypeClass = TypeUtils.getRawType(itemType, null);
-                    if (itemTypeClass == null || !Keyed.class.isAssignableFrom(itemTypeClass))
-                        return;
-                    var typeToken = TypeToken.get(itemType);
-                    org.bukkit.Registry<?> registry = (org.bukkit.Registry<?>)v.get(null);
-                    var list = collected.computeIfAbsent(typeToken, vv -> new ArrayList<>());
-                    if (list.isEmpty())
-                        list.add(Map.entry(registry, Key.key(Key.MINECRAFT_NAMESPACE, CaseFormat.UPPER_UNDERSCORE.to(CaseFormat.LOWER_UNDERSCORE, v.target().getName()))));
-                });
-        Map<TypeToken<?>, Map.Entry<org.bukkit.Registry<?>, Key>> registries = new ConcurrentHashMap<>();
-        collected.forEach((type, list) -> {
-            if (list.size() == 1)
-                registries.put(type, list.getFirst());
-        });
-
+    protected TypeAdapterFactory registryKeyAuto(io.papermc.paper.registry.RegistryAccess registryAccess) {
+        Map<TypeToken<?>, RegistryUtils.PaperRegistry<?>> registries = new HashMap<>();
+        RegistryUtils.paperRegistries(registryAccess).forEach(v -> registries.put(v.type(), v));
         return new TypeAdapterFactory() {
-            final Map<TypeToken<?>, Map.Entry<org.bukkit.Registry<?>, Key>> hierarchy = HierarchyMap.ofToken(registries);
+            final Map<TypeToken<?>, RegistryUtils.PaperRegistry<?>> hierarchy = HierarchyMap.ofToken(registries);
             @Override
             public <T> TypeAdapter<T> create(Gson gson, TypeToken<T> type) {
-                Map.Entry<org.bukkit.Registry<?>, Key> registryEntry = hierarchy.get(type);
+                RegistryUtils.PaperRegistry<?> registryEntry = hierarchy.get(type);
                 if (registryEntry == null)
                     return null;
-                var registry = registryEntry.getKey();
-                logger.info("Created registry adapter for {} by {}", type, registryEntry.getValue().asString());
+                var registry = registryEntry.registry();
+                logger.info("Created registry adapter for {} by {}", type, registryEntry.registryKey().asString());
                 return new StringTypeAdapter<>() {
                     @Override
                     public String write(T value) throws IOException {

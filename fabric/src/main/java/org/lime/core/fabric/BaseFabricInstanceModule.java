@@ -11,6 +11,7 @@ import net.kyori.adventure.platform.fabric.FabricServerAudiences;
 import com.google.inject.TypeLiteral;
 import net.kyori.adventure.platform.AudienceProvider;
 import net.minecraft.commands.Commands;
+import net.minecraft.core.Registry;
 import net.minecraft.core.RegistryAccess;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.ServerAdvancementManager;
@@ -22,6 +23,7 @@ import net.minecraft.world.item.crafting.RecipeManager;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.levelgen.structure.templatesystem.StructureTemplateManager;
 import net.minecraft.world.scores.Scoreboard;
+import org.apache.commons.lang3.reflect.TypeUtils;
 import org.lime.core.common.BaseInstanceModule;
 import org.lime.core.common.services.InstancesUtility;
 import org.lime.core.common.services.ScheduleTaskService;
@@ -36,6 +38,7 @@ import org.lime.core.fabric.services.ConnectionStorageService;
 import org.lime.core.fabric.services.SkinsCache;
 import org.lime.core.fabric.services.buffers.EntityBufferStorage;
 import org.lime.core.fabric.services.buffers.PacketEntityBufferStorage;
+import org.lime.core.fabric.utils.RegistryUtils;
 import org.lime.core.fabric.utils.adapters.FabricGsonTypeAdapters;
 
 public class BaseFabricInstanceModule
@@ -85,6 +88,11 @@ public class BaseFabricInstanceModule
         bindMappedCast(ServerLevel.class, Level.class, MinecraftServer.class, MinecraftServer::overworld);
         bindMappedCast(ServerScoreboard.class, Scoreboard.class, MinecraftServer.class, MinecraftServer::getScoreboard);
         bindMapped(RegistryAccess.class, MinecraftServer.class, MinecraftServer::registryAccess);
+        RegistryUtils.nmsRegistries(instance.server.registryAccess()).forEach(registry -> {
+            @SuppressWarnings({"unchecked", "rawtypes"})
+            TypeLiteral<Registry<?>> type = (TypeLiteral)TypeLiteral.get(TypeUtils.parameterize(Registry.class, registry.type().getType()));
+            bind(type).toInstance(registry.registry());
+        });
         bindMapped(Commands.class, MinecraftServer.class, MinecraftServer::getCommands);
         bindMapped(ServerAdvancementManager.class, MinecraftServer.class, MinecraftServer::getAdvancements);
         bindMapped(RecipeManager.class, MinecraftServer.class, MinecraftServer::getRecipeManager);
