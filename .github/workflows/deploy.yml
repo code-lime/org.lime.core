@@ -198,7 +198,7 @@ jobs:
         run: |
           set -euo pipefail
 
-          scripts=(global.gradle version.gradle remote.gradle sourcegenerator.gradle)
+          scripts=(global.gradle version.gradle remote.gradle sourcegenerator.gradle ghcr.gradle)
           mkdir -p "$RUNNER_TEMP/gradle-scripts"
 
           for script in "${scripts[@]}"; do
@@ -239,7 +239,7 @@ jobs:
         run: |
           set -euo pipefail
 
-          scripts=(global.gradle version.gradle remote.gradle sourcegenerator.gradle)
+          scripts=(global.gradle version.gradle remote.gradle sourcegenerator.gradle ghcr.gradle)
           sourceDir="$RUNNER_TEMP/gradle-scripts"
           targetDir="output/$VERSION"
 
