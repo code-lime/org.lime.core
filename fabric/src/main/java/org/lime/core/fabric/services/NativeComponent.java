@@ -7,11 +7,12 @@ package org.lime.core.fabric.services;
 import net.kyori.adventure.platform.fabric.FabricAudiences;
 //#endswitch
 
-//#if PROPERTIES.versionMinecraft == '1.21.11'
-//IF//import net.minecraft.resources.Identifier;
-//#else
+//#switch PROPERTIES.versionMinecraft
+//#caseofregex 1\.21\.11
+//OF//import net.minecraft.resources.Identifier;
+//#default
 import net.minecraft.resources.ResourceLocation;
-//#endif
+//#endswitch
 
 import com.google.inject.Inject;
 import com.google.inject.Singleton;
