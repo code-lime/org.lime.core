@@ -1,13 +1,11 @@
 package org.lime.core.common.utils.adapters;
 
-import com.google.gson.Gson;
-import com.google.gson.JsonParseException;
-import com.google.gson.TypeAdapter;
-import com.google.gson.TypeAdapterFactory;
+import com.google.gson.*;
 import com.google.gson.reflect.TypeToken;
 import com.google.gson.stream.JsonReader;
 import com.google.gson.stream.JsonWriter;
 import com.google.inject.TypeLiteral;
+import org.lime.core.common.api.commands.brigadier.arguments.JsonInput;
 import org.lime.core.common.reflection.Reflection;
 import org.lime.core.common.reflection.ReflectionConstructor;
 import org.lime.core.common.reflection.ReflectionMethod;
@@ -48,7 +46,7 @@ public class JsonRecordSingleTypeAdapterFactory
 
         TypeAdapter<V> parameterAdapter = gson.getAdapter(parameterType);
 
-        return new TypeAdapter<>() {
+        class Adapter extends TypeAdapter<T> implements JsonInput.Provider {
             @Override
             public void write(JsonWriter out, T value) throws IOException {
                 parameterAdapter.write(out, accessor.invoke(value));
@@ -57,6 +55,11 @@ public class JsonRecordSingleTypeAdapterFactory
             public T read(JsonReader in) throws IOException {
                 return constructor.invoke(parameterAdapter.read(in));
             }
-        };
+            @Override
+            public JsonInput.Node input(JsonInput.Context context) {
+                return context.input(parameterType);
+            }
+        }
+        return new Adapter();
     }
 }

@@ -1,5 +1,6 @@
 package org.lime.core.common.api.commands;
 
+import com.google.gson.*;
 import com.mojang.brigadier.Message;
 import com.mojang.brigadier.arguments.ArgumentType;
 import com.mojang.brigadier.builder.ArgumentBuilder;
@@ -12,6 +13,7 @@ import net.kyori.adventure.audience.Audience;
 import net.kyori.adventure.text.Component;
 import org.jetbrains.annotations.Range;
 import org.lime.core.common.api.commands.brigadier.arguments.BaseMappedArgument;
+import org.lime.core.common.api.commands.brigadier.arguments.JsonInput;
 import org.lime.core.common.api.commands.brigadier.arguments.RepeatableArgumentBuilder;
 import org.lime.core.common.api.commands.brigadier.exceptions.SyntaxPredicate;
 import org.lime.core.common.utils.Disposable;
@@ -58,6 +60,9 @@ public interface NativeCommandConsumer<Sender, Register extends NativeCommandCon
 
         Message message(Component component);
         <T, N> ArgumentType<T> argument(BaseMappedArgument<T, N> mappedArgument);
+        default <T> ArgumentType<T> json(JsonInput input, TypeAdapter<T> adapter) {
+            throw new UnsupportedOperationException("JSON arguments are not supported on this platform");
+        }
 
         Predicate<Sender> operator();
         default LiteralArgumentBuilder<Sender> literal(String literal) {

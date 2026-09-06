@@ -1,17 +1,11 @@
 package org.lime.core.common.utils.adapters;
 
 import com.google.errorprone.annotations.CanIgnoreReturnValue;
-import com.google.gson.Gson;
-import com.google.gson.JsonElement;
-import com.google.gson.JsonObject;
-import com.google.gson.JsonParseException;
-import com.google.gson.JsonPrimitive;
-import com.google.gson.TypeAdapter;
-import com.google.gson.TypeAdapterFactory;
+import com.google.gson.*;
 import com.google.gson.reflect.TypeToken;
-import com.google.gson.stream.JsonReader;
-import com.google.gson.stream.JsonWriter;
+import com.google.gson.stream.*;
 import org.jetbrains.annotations.Nullable;
+import org.lime.core.common.api.commands.brigadier.arguments.JsonInput;
 import org.lime.core.common.utils.AnnotationUtils;
 
 import java.io.IOException;
@@ -288,9 +282,13 @@ public final class RuntimeTypeAdapterFactory<T>
             subtypeToDelegate.put(entry.getValue(), delegate);
         }
 
-        return new TypeAdapter<R>() {
+        class Adapter extends TypeAdapter<R> implements JsonInput.Provider {
             @Override
             public R read(JsonReader in) throws IOException {
+                if (in.peek() == JsonToken.NULL) {
+                    in.nextNull();
+                    return null;
+                }
                 JsonElement jsonElement = jsonElementAdapter.read(in);
                 JsonElement labelJsonElement;
                 if (maintainType) {
@@ -319,6 +317,10 @@ public final class RuntimeTypeAdapterFactory<T>
 
             @Override
             public void write(JsonWriter out, R value) throws IOException {
+                if (value == null) {
+                    out.nullValue();
+                    return;
+                }
                 Class<?> srcType = value.getClass();
                 String label = subtypeToLabel.get(srcType);
                 @SuppressWarnings("unchecked") // registration requires that subtype extends T
@@ -350,7 +352,19 @@ public final class RuntimeTypeAdapterFactory<T>
                 }
                 jsonElementAdapter.write(out, clone);
             }
-        }.nullSafe();
+            @Override
+            public JsonInput.Node input(JsonInput.Context context) {
+                List<JsonInput.Node> variants = new ArrayList<>();
+                labelToSubtype.forEach((label, subtype) -> {
+                    JsonInput.Node value = JsonInput.scalar(JsonInput.Type.STRING, List.of(new JsonPrimitive(label)));
+                    Set<String> required = defaultTypeValue == null ? Set.of(typeFieldName) : Set.of();
+                    JsonInput.Node discriminator = JsonInput.object(Map.of(typeFieldName, value), JsonInput.any(), required);
+                    variants.add(JsonInput.all(List.of(discriminator, context.input(TypeToken.get(subtype)))));
+                });
+                return JsonInput.choice(variants);
+            }
+        }
+        return new Adapter();
     }
 
     public static final TypeAdapterFactory AUTO = new TypeAdapterFactory() {

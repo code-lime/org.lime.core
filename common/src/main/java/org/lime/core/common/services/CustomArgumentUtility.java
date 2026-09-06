@@ -1,5 +1,7 @@
 package org.lime.core.common.services;
 
+import com.google.gson.*;
+import com.google.gson.reflect.TypeToken;
 import com.google.inject.Inject;
 import com.google.inject.Singleton;
 import com.mojang.brigadier.LiteralMessage;
@@ -17,6 +19,7 @@ import org.jetbrains.annotations.NotNull;
 import org.lime.core.common.api.commands.NativeCommandConsumer;
 import org.lime.core.common.api.commands.brigadier.arguments.BaseMappedArgument;
 import org.lime.core.common.api.commands.brigadier.arguments.CustomArgumentBuilder;
+import org.lime.core.common.api.commands.brigadier.arguments.JsonInput;
 import org.lime.core.common.api.commands.brigadier.exceptions.CommandExceptions;
 import org.lime.core.common.api.commands.brigadier.exceptions.Generic2CommandExceptionType;
 import org.lime.core.common.utils.DurationUtils;
@@ -31,6 +34,7 @@ import java.util.stream.Stream;
 @Singleton
 public class CustomArgumentUtility {
     @Inject NativeCommandConsumer.Factory<?, ?> factory;
+    @Inject Gson gson;
 
     private final Generic2CommandExceptionType<String, Stream<Component>> INCORRECT = CommandExceptions.of((expected, data) -> factory.message(Component.empty()
             .append(Component.text("Expected "))
@@ -117,5 +121,14 @@ public class CustomArgumentUtility {
                 return builder.buildFuture();
             }
         });
+    }
+
+    /** Parses one vanilla SNBT value and returns its Gson representation. */
+    public ArgumentType<JsonElement> json() {
+        return factory.json(JsonInput.raw(), gson.getAdapter(JsonElement.class));
+    }
+    /** Parses one vanilla SNBT value through the configured project Gson. */
+    public <T> ArgumentType<T> json(TypeToken<T> type) {
+        return factory.json(JsonInput.of(gson, type), gson.getAdapter(type));
     }
 }

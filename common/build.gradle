@@ -39,6 +39,10 @@ dependencies {
     compileOnly 'org.slf4j:slf4j-api:2.0.1'
     compileOnly "com.google.guava:guava:31.1-jre"
     compileOnly "com.google.code.gson:gson:2.10"
+    testImplementation "org.junit.jupiter:junit-jupiter:5.11.4"
+    testRuntimeOnly "org.junit.platform:junit-platform-launcher:1.11.4"
+    testImplementation "com.mojang:brigadier:${versionBrigadierApi}"
+    testImplementation "com.google.code.gson:gson:2.10"
 }
 dependencies {
     implementation "net.bytebuddy:byte-buddy-agent:${versionByteBuddy}"
@@ -47,6 +51,10 @@ dependencies {
     implementation "org.graalvm.js:js-scriptengine:${versionGraalVm}"
     implementation "org.graalvm.truffle:truffle-api:${versionGraalVm}"
     implementation "com.google.inject:guice:${versionGuice}"
+}
+
+test {
+    useJUnitPlatform()
 }
 
 //<editor-fold desc="Settings: Maven">

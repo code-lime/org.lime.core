@@ -1,10 +1,12 @@
 package org.lime.core.fabric.commands;
 
+import com.google.gson.*;
 import com.mojang.brigadier.CommandDispatcher;
 import com.mojang.brigadier.Message;
 import com.mojang.brigadier.arguments.ArgumentType;
 import com.mojang.brigadier.builder.LiteralArgumentBuilder;
 import com.mojang.brigadier.tree.CommandNode;
+import com.mojang.serialization.JsonOps;
 import net.kyori.adventure.audience.Audience;
 import net.minecraft.server.MinecraftServer;
 //#switch PROPERTIES.versionAdventurePlatform
@@ -17,8 +19,12 @@ import net.kyori.adventure.platform.fabric.FabricServerAudiences;
 import net.kyori.adventure.text.Component;
 import net.minecraft.commands.CommandSourceStack;
 import net.minecraft.commands.Commands;
+import net.minecraft.commands.arguments.NbtTagArgument;
+import net.minecraft.nbt.*;
 import org.lime.core.common.api.commands.NativeCommandConsumer;
 import org.lime.core.common.api.commands.brigadier.arguments.BaseMappedArgument;
+import org.lime.core.common.api.commands.brigadier.arguments.JsonInput;
+import org.lime.core.common.api.commands.brigadier.arguments.SnbtJsonArgument;
 import org.lime.core.common.services.ScheduleTaskService;
 import org.lime.core.common.utils.Disposable;
 import org.lime.core.common.utils.execute.Action1;
@@ -92,6 +98,11 @@ public class NativeCommandConsumerFactory
     @Override
     public <T, N> ArgumentType<T> argument(BaseMappedArgument<T, N> mappedArgument) {
         return new CustomArgumentType<>(mappedArgument);
+    }
+    @Override
+    public <T> ArgumentType<T> json(JsonInput input, TypeAdapter<T> adapter) {
+        ArgumentType<Tag> nativeType = NbtTagArgument.nbtTag();
+        return argument(new SnbtJsonArgument<>(nativeType, value -> NbtOps.INSTANCE.convertTo(JsonOps.INSTANCE, value), input, adapter));
     }
 
     @Override

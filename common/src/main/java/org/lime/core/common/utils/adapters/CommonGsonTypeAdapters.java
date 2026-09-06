@@ -7,6 +7,7 @@ import com.google.gson.stream.JsonReader;
 import com.google.gson.stream.JsonWriter;
 import com.google.inject.Inject;
 import com.google.inject.Provider;
+import org.lime.core.common.api.commands.brigadier.arguments.JsonInput;
 import net.kyori.adventure.key.Key;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.format.TextColor;
@@ -21,6 +22,7 @@ import org.lime.core.common.utils.execute.FuncEx1;
 import java.io.IOException;
 import java.lang.reflect.Type;
 import java.time.Duration;
+import java.util.*;
 import java.util.stream.Stream;
 
 public abstract class CommonGsonTypeAdapters
@@ -108,11 +110,19 @@ public abstract class CommonGsonTypeAdapters
 
     protected <T extends Comparable<T>, R extends Range<T>>TypeAdapterFactory range(
             Range.Factory<R, T> factory,
+            String type,
             FuncEx1<JsonReader, T> readElement,
             ActionEx2<JsonWriter, T> writeElement) {
+        abstract class Adapter extends TypeAdapter<R> implements JsonInput.Provider {
+            @Override
+            public JsonInput.Node input(JsonInput.Context context) {
+                JsonInput.Node element = JsonInput.scalar(JsonInput.Type.valueOf(type.toUpperCase(Locale.ROOT)));
+                return JsonInput.tuple(List.of(element, element));
+            }
+        }
         return TypeAdapters.newFactory(
                 factory.rangeClass(),
-                new TypeAdapter<>() {
+                new Adapter() {
                     @Override
                     public void write(JsonWriter out, R value) throws IOException {
                         try {
@@ -144,13 +154,13 @@ public abstract class CommonGsonTypeAdapters
     }
     protected TypeAdapterFactory range() {
         return combine(
-                range(DurationRange.FACTORY, v -> DurationUtils.read(v.nextString()), (w,v) -> w.value(DurationUtils.write(v))),
-                range(ByteRange.FACTORY, v -> (byte)v.nextInt(), JsonWriter::value),
-                range(FloatRange.FACTORY, v -> (float)v.nextDouble(), JsonWriter::value),
-                range(IntegerRange.FACTORY, JsonReader::nextInt, JsonWriter::value),
-                range(DoubleRange.FACTORY, JsonReader::nextDouble, JsonWriter::value),
-                range(LongRange.FACTORY, JsonReader::nextLong, JsonWriter::value),
-                range(ShortRange.FACTORY, v -> (short)v.nextInt(), JsonWriter::value));
+                range(DurationRange.FACTORY, "string", v -> DurationUtils.read(v.nextString()), (w,v) -> w.value(DurationUtils.write(v))),
+                range(ByteRange.FACTORY, "integer", v -> (byte)v.nextInt(), JsonWriter::value),
+                range(FloatRange.FACTORY, "number", v -> (float)v.nextDouble(), JsonWriter::value),
+                range(IntegerRange.FACTORY, "integer", JsonReader::nextInt, JsonWriter::value),
+                range(DoubleRange.FACTORY, "number", JsonReader::nextDouble, JsonWriter::value),
+                range(LongRange.FACTORY, "integer", JsonReader::nextLong, JsonWriter::value),
+                range(ShortRange.FACTORY, "integer", v -> (short)v.nextInt(), JsonWriter::value));
     }
 
     public Stream<TypeAdapterFactory> factories() {
