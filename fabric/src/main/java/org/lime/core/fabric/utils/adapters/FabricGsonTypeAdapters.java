@@ -13,7 +13,6 @@ import net.minecraft.core.HolderLookup;
 import net.minecraft.core.Registry;
 import net.minecraft.core.RegistryAccess;
 import net.minecraft.resources.ResourceKey;
-import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.world.phys.Vec3;
 import org.lime.core.common.utils.adapters.CommonGsonTypeAdapters;
@@ -65,16 +64,16 @@ public class FabricGsonTypeAdapters
                 new StringTypeAdapter<ResourceKey<T>>() {
                     @Override
                     public String write(ResourceKey<T> value) {
-                        return value.location().toString();
+                        return ResourceLocationIdentifierProxy.identifierLocation(value).toString();
                     }
                     @Override
                     public ResourceKey<T> read(String value) {
-                        ResourceLocation location = Objects.requireNonNull(ResourceLocation.tryParse(value), "Invalid resource key: " + value);
+                        ResourceLocationIdentifierProxy location = ResourceLocationIdentifierProxy.parse(value);
                         for (ResourceKey<T> key : resourceKeys) {
-                            if (key.location().equals(location))
+                            if (location.equals(ResourceLocationIdentifierProxy.identifierLocation(key)))
                                 return key;
                         }
-                        throw new IllegalArgumentException("Resource "+resourceClass.getSimpleName()+"#"+location+" not found. Allowed: " + String.join(", ", Iterables.transform(resourceKeys, v -> Objects.requireNonNull(v).location().toString())));
+                        throw new IllegalArgumentException("Resource "+resourceClass.getSimpleName()+"#"+location+" not found. Allowed: " + String.join(", ", Iterables.transform(resourceKeys, v -> ResourceLocationIdentifierProxy.identifierLocation(Objects.requireNonNull(v)).toString())));
                     }
                 });
     }
@@ -92,13 +91,13 @@ public class FabricGsonTypeAdapters
                 new StringTypeAdapter<ResourceKey<T>>() {
                     @Override
                     public String write(ResourceKey<T> value) {
-                        return value.location().toString();
+                        return ResourceLocationIdentifierProxy.identifierLocation(value).toString();
                     }
                     @Override
                     public ResourceKey<T> read(String value) {
-                        ResourceLocation location = Objects.requireNonNull(ResourceLocation.tryParse(value), "Invalid resource key: " + value);
+                        ResourceLocationIdentifierProxy location = ResourceLocationIdentifierProxy.parse(value);
                         return registry.listElementIds()
-                                .filter(v -> v.location().equals(location))
+                                .filter(v -> ResourceLocationIdentifierProxy.identifierLocation(v).equals(location))
                                 .findFirst()
                                 .orElseThrow(() -> new IllegalStateException("Missing element " + location + " in " + registry.key()));
                     }
@@ -116,15 +115,20 @@ public class FabricGsonTypeAdapters
                 return new StringTypeAdapter<>() {
                     @Override
                     public String write(T value) throws IOException {
-                        return ((ResourceKey<?>)value).location().toString();
+                        return ResourceLocationIdentifierProxy.identifierLocation((ResourceKey<?>)value).toString();
                     }
                     @SuppressWarnings("unchecked")
                     @Override
                     public T read(String value) throws IOException {
-                        ResourceLocation location = Objects.requireNonNull(ResourceLocation.tryParse(value), "Invalid resource key: " + value);
-                        return registry.keySet().stream()
-                                .filter(location::equals)
-                                .map(v -> (T)ResourceKey.create(registry.key(), v))
+                        ResourceLocationIdentifierProxy location = ResourceLocationIdentifierProxy.parse(value);
+                        return registry
+                                //#if PROPERTIES.versionMinecraft == '1.21.11'
+                                //IF//                                .listElementIds()
+                                //#else
+                                .registryKeySet().stream()
+                                //#endif
+                                .filter(v -> ResourceLocationIdentifierProxy.identifierLocation(v).equals(location))
+                                .map(v -> (T)v)
                                 .findFirst()
                                 .orElseThrow(() -> new IllegalStateException("Missing element " + location + " in " + registry.key()));
                     }

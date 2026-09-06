@@ -26,7 +26,7 @@ public final class RegistryUtils {
             ResourceKey<? extends Registry<?>> registryKey = (ResourceKey<? extends Registry<?>>)field.get(null);
             var type = TypeToken.get(elementType);
             //#switch PROPERTIES.versionMinecraft
-            //#caseofregex 1\.21\.[4-8]
+            //#caseofregex 1\.21\.([4-9]|11)
             //OF//            return registryAccess.lookup((ResourceKey)registryKey)
             //#default
             return registryAccess.registry((ResourceKey)registryKey)

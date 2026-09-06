@@ -1,13 +1,14 @@
 package org.lime.core.fabric;
 
 //#switch PROPERTIES.versionAdventurePlatform
-//#caseof 6.3.0;6.6.0
+//#caseofregex 6\.\d\.\d
 //OF//import net.kyori.adventure.platform.modcommon.MinecraftAudiences;
 //OF//import net.kyori.adventure.platform.modcommon.MinecraftServerAudiences;
 //#default
 import net.kyori.adventure.platform.fabric.FabricAudiences;
 import net.kyori.adventure.platform.fabric.FabricServerAudiences;
 //#endswitch
+import com.mojang.authlib.minecraft.MinecraftSessionService;
 import com.google.inject.TypeLiteral;
 import net.kyori.adventure.platform.AudienceProvider;
 import net.minecraft.commands.Commands;
@@ -25,6 +26,7 @@ import net.minecraft.world.level.levelgen.structure.templatesystem.StructureTemp
 import net.minecraft.world.scores.Scoreboard;
 import org.apache.commons.lang3.reflect.TypeUtils;
 import org.lime.core.common.BaseInstanceModule;
+import org.lime.core.common.reflection.ReflectionMethod;
 import org.lime.core.common.services.InstancesUtility;
 import org.lime.core.common.services.ScheduleTaskService;
 import org.lime.core.common.services.UnsafeMappingsUtility;
@@ -33,6 +35,7 @@ import org.lime.core.common.services.buffers.BasePacketEntityBufferStorage;
 import org.lime.core.common.services.memories.BaseConnectionStorageService;
 import org.lime.core.common.services.skins.BaseSkinsCache;
 import org.lime.core.common.utils.Lazy;
+import org.lime.core.common.utils.execute.Func1;
 import org.lime.core.fabric.commands.NativeCommandConsumerFactory;
 import org.lime.core.fabric.services.ConnectionStorageService;
 import org.lime.core.fabric.services.SkinsCache;
@@ -68,6 +71,17 @@ public class BaseFabricInstanceModule
         return FabricGsonTypeAdapters.class;
     }
 
+    @SuppressWarnings("unchecked")
+    private static final Lazy<Func1<MinecraftServer, MinecraftSessionService>> sessionServiceAccess = Lazy.of(() -> ReflectionMethod
+            .ofMojangOptional(MinecraftServer.class, "services")
+            .flatMap(v -> ReflectionMethod.ofMojangOptional(v.target().getReturnType(), "sessionService")
+                    .<Func1<MinecraftServer, MinecraftSessionService>>map(j -> {
+                        Func1<MinecraftServer, Object> services = v.lambda(Func1.class);
+                        Func1<Object, MinecraftSessionService> sessionService = j.lambda(Func1.class);
+                        return server -> sessionService.invoke(services.invoke(server));
+                    }))
+            .orElseGet(() -> ReflectionMethod.ofMojang(MinecraftServer.class, "getSessionService").lambda(Func1.class)));
+
     @Override
     protected void configure() {
         super.configure();
@@ -77,7 +91,7 @@ public class BaseFabricInstanceModule
         bind(MinecraftServer.class).toInstance(instance.server);
 
         //#switch PROPERTIES.versionAdventurePlatform
-        //#caseof 6.3.0;6.6.0
+        //#caseofregex 6\.\d\.\d
         //OF//        bindMappedCast(MinecraftServerAudiences.class, MinecraftAudiences.class, MinecraftServer.class, MinecraftServerAudiences::of);
         //OF//        bindCast(AudienceProvider.class, MinecraftServerAudiences.class);
         //#default
@@ -98,6 +112,7 @@ public class BaseFabricInstanceModule
         bindMapped(RecipeManager.class, MinecraftServer.class, MinecraftServer::getRecipeManager);
         bindMapped(ResourceManager.class, MinecraftServer.class, MinecraftServer::getResourceManager);
         bindMapped(StructureTemplateManager.class, MinecraftServer.class, MinecraftServer::getStructureManager);
+        bindMapped(MinecraftSessionService.class, MinecraftServer.class, sessionServiceAccess.value());
 
         bind(ScheduleTaskService.class).toInstance(instance.scheduleTaskService);
         bind(NativeCommandConsumerFactory.class).toInstance(nativeCommandFactory());

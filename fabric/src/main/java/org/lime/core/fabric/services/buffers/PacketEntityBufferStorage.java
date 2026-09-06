@@ -8,11 +8,7 @@ import net.kyori.adventure.key.Key;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.network.protocol.BundlerInfo;
 import net.minecraft.network.protocol.Packet;
-import net.minecraft.network.protocol.game.ClientboundBundlePacket;
-import net.minecraft.network.protocol.game.ClientboundRemoveEntitiesPacket;
-import net.minecraft.network.protocol.game.ClientboundSetEntityDataPacket;
-import net.minecraft.network.protocol.game.ClientboundSetEquipmentPacket;
-import net.minecraft.network.protocol.game.ServerboundInteractPacket;
+import net.minecraft.network.protocol.game.*;
 import net.minecraft.network.syncher.SynchedEntityData;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerEntity;
@@ -42,6 +38,7 @@ import org.lime.core.fabric.hooks.PacketEntityInteractionHook;
 import org.lime.core.fabric.hooks.PacketEntitySendHook;
 import org.lime.core.fabric.services.NativeComponent;
 import org.lime.core.fabric.utils.WorldLocation;
+import org.lime.core.fabric.utils.adapters.ResourceLocationIdentifierProxy;
 
 import java.util.ArrayList;
 import java.util.EnumMap;
@@ -53,6 +50,7 @@ import java.util.OptionalInt;
 import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.function.Predicate;
 
 @BindService
 public class PacketEntityBufferStorage
@@ -308,7 +306,7 @@ public class PacketEntityBufferStorage
     private @NotNull ServerLevel requireLevel(@NotNull WorldLocation location) {
         ServerLevel level = location.level(server);
         if (level == null) {
-            throw new IllegalArgumentException("Level " + location.levelKey().location() + " is not loaded");
+            throw new IllegalArgumentException("Level " + ResourceLocationIdentifierProxy.identifierLocation(location.levelKey()) + " is not loaded");
         }
         return level;
     }
@@ -316,7 +314,7 @@ public class PacketEntityBufferStorage
     private static <T extends Entity> @Nullable T create(@NotNull EntityType<T> entityType, @NotNull ServerLevel level) {
         return entityType.create(level
                 //#switch PROPERTIES.versionMinecraft
-                //#caseofregex 1\.21\.[4-8]
+                //#caseofregex 1\.21\.([4-9]|11)
                 //OF//                , EntitySpawnReason.COMMAND
                 //#default
                 //#endswitch
@@ -326,7 +324,7 @@ public class PacketEntityBufferStorage
     private static void move(@NotNull Entity entity, @NotNull WorldLocation location) {
         var position = location.position();
         //#switch PROPERTIES.versionMinecraft
-        //#caseof 1.21.8
+        //#caseofregex 1\.21\.(8|11)
         //OF//        entity.snapTo(position.x, position.y, position.z, location.yaw(), location.pitch());
         //#default
         entity.moveTo(position.x, position.y, position.z, location.yaw(), location.pitch());
@@ -456,7 +454,27 @@ public class PacketEntityBufferStorage
                     entity,
                     1,
                     type.trackDeltas(),
+                    //#switch PROPERTIES.versionMinecraft
+                    //#caseof 1.21.11
+                    //OF//                    new ServerEntity.Synchronizer() {
+                    //OF//                        @Override
+                    //OF//                        public void sendToTrackingPlayers(@NotNull Packet<? super ClientGamePacketListener> packet) {
+                    //OF//                            broadcast(packet);
+                    //OF//                        }
+                    //OF//
+                    //OF//                        @Override
+                    //OF//                        public void sendToTrackingPlayersAndSelf(@NotNull Packet<? super ClientGamePacketListener> packet) {
+                    //OF//                            broadcast(packet);
+                    //OF//                        }
+                    //OF//
+                    //OF//                        @Override
+                    //OF//                        public void sendToTrackingPlayersFiltered(@NotNull Packet<? super ClientGamePacketListener> packet, @NotNull Predicate<ServerPlayer> predicate) {
+                    //OF//                            broadcast(packet, predicate);
+                    //OF//                        }
+                    //OF//                    }
+                    //#default
                     this::broadcast
+                    //#endswitch
                     //#switch PROPERTIES.versionMinecraft
                     //#caseof 1.21.8
                     //OF//                    , this::broadcast
@@ -473,6 +491,10 @@ public class PacketEntityBufferStorage
 
         private void broadcast(@NotNull Packet<?> packet, @NotNull List<UUID> ignoredPlayers) {
             tracker.broadcast(packet, player -> !ignoredPlayers.contains(player.getUUID()));
+        }
+
+        private void broadcast(@NotNull Packet<?> packet, @NotNull Predicate<ServerPlayer> filter) {
+            tracker.broadcast(packet, filter);
         }
 
         private void changeLevel(@NotNull ServerLevel newLevel, @NotNull WorldLocation location) {

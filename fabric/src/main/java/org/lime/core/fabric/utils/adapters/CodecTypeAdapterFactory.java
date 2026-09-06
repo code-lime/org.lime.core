@@ -81,7 +81,7 @@ public class CodecTypeAdapterFactory
         //#endswitch
 
         //#switch PROPERTIES.versionMinecraft
-        //#caseof 1.21.8
+        //#caseofregex 1\.21\.(8|9|10|11)
         //OF//        currentVersion = SharedConstants.getCurrentVersion().dataVersion().version();
         //#default
         currentVersion = SharedConstants.getCurrentVersion().getDataVersion().getVersion();

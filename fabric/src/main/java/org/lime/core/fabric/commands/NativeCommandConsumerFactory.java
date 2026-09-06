@@ -8,9 +8,10 @@ import com.mojang.brigadier.builder.LiteralArgumentBuilder;
 import com.mojang.brigadier.tree.CommandNode;
 import com.mojang.serialization.JsonOps;
 import net.kyori.adventure.audience.Audience;
+import net.minecraft.SharedConstants;
 import net.minecraft.server.MinecraftServer;
 //#switch PROPERTIES.versionAdventurePlatform
-//#caseof 6.3.0;6.6.0
+//#caseofregex 6\.\d\.\d
 //OF//import net.kyori.adventure.platform.modcommon.MinecraftAudiences;
 //OF//import net.kyori.adventure.platform.modcommon.MinecraftServerAudiences;
 //#default
@@ -37,7 +38,7 @@ public class NativeCommandConsumerFactory
         implements NativeCommandConsumer.Factory<CommandSourceStack, NativeCommandConsumerFactory.NativeRegister> {
     private final MinecraftServer server;
     //#switch PROPERTIES.versionAdventurePlatform
-    //#caseof 6.3.0;6.6.0
+    //#caseofregex 6\.\d\.\d
     //OF//    private final MinecraftAudiences audiences;
     //OF//    public NativeCommandConsumerFactory(MinecraftServer server) {
     //OF//        this.server = server;
@@ -89,7 +90,7 @@ public class NativeCommandConsumerFactory
     @Override
     public Message message(Component component) {
         //#switch PROPERTIES.versionAdventurePlatform
-        //#caseof 6.3.0;6.6.0
+        //#caseofregex 6\.\d\.\d
         //OF//        return audiences.asNative(component);
         //#default
         return audiences.toNative(component);
@@ -107,6 +108,12 @@ public class NativeCommandConsumerFactory
 
     @Override
     public Predicate<CommandSourceStack> operator() {
-        return v -> v.hasPermission(Commands.LEVEL_GAMEMASTERS);
+        return v ->
+                //#switch PROPERTIES.versionMinecraft
+                //#caseof 1.21.11
+                //OF//                Commands.LEVEL_GAMEMASTERS.check(v.permissions());
+                //#default
+                v.hasPermission(Commands.LEVEL_GAMEMASTERS);
+                //#endswitch
     }
 }

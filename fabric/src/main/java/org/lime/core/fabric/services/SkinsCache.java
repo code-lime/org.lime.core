@@ -3,6 +3,7 @@ package org.lime.core.fabric.services;
 import com.google.inject.Inject;
 import com.mojang.authlib.GameProfile;
 import com.mojang.authlib.minecraft.MinecraftProfileTexture;
+import com.mojang.authlib.minecraft.MinecraftSessionService;
 import com.mojang.authlib.properties.Property;
 import net.minecraft.network.protocol.game.*;
 import net.minecraft.server.MinecraftServer;
@@ -22,6 +23,7 @@ import java.util.*;
 public class SkinsCache
         extends BaseSkinsCache<ServerPlayer, GameProfile> {
     @Inject MinecraftServer server;
+    @Inject MinecraftSessionService sessions;
 
     @Override
     protected Property renameProperty(Property property, String name) {
@@ -53,20 +55,20 @@ public class SkinsCache
     public Map<MinecraftProfileTexture.Type, MinecraftProfileTexture> skinDataProfile(GameProfile profile) {
         //#switch PROPERTIES.versionMinecraft
         //#caseofregex 1\.21\.*
-        //OF//        var textures = server.getSessionService().getTextures(profile);
+        //OF//        var textures = sessions.getTextures(profile);
         //OF//        HashMap<MinecraftProfileTexture.Type, MinecraftProfileTexture> result = new HashMap<>();
         //OF//        putIfNotNull(result, MinecraftProfileTexture.Type.SKIN, textures.skin());
         //OF//        putIfNotNull(result, MinecraftProfileTexture.Type.CAPE, textures.cape());
         //OF//        putIfNotNull(result, MinecraftProfileTexture.Type.ELYTRA, textures.elytra());
         //OF//        return result;
         //#default
-        return server.getSessionService().getTextures(profile, true);
+        return sessions.getTextures(profile, true);
         //#endswitch
     }
     @Override
     public void flush(ServerPlayer player) {
         //#switch PROPERTIES.versionMinecraft
-        //#caseof 1.21.8
+        //#caseofregex 1\.21\.(8|11)
         //OF//        ServerLevel serverLevel = player.level();
         //#default
         ServerLevel serverLevel = player.serverLevel();

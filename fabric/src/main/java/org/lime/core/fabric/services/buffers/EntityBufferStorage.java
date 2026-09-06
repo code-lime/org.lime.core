@@ -39,7 +39,7 @@ public class EntityBufferStorage
         BuiltInRegistries.ENTITY_TYPE.entrySet().forEach(dat -> {
             var entity = dat.getValue().create(overworld
                     //#switch PROPERTIES.versionMinecraft
-                    //#caseofregex 1\.21\.[4-8]
+                    //#caseofregex 1\.21\.([4-9]|11)
                     //OF//                    , EntitySpawnReason.COMMAND
                     //#default
                     //#endswitch
@@ -137,7 +137,7 @@ public class EntityBufferStorage
                         entity -> {
                     var pos = location.position();
                     //#switch PROPERTIES.versionMinecraft
-                    //#caseof 1.21.8
+                    //#caseofregex 1\.21\.(8|11)
                     //OF//                    entity.snapTo(pos.x, pos.y, pos.z, location.yaw(), location.pitch());
                     //#default
                     entity.moveTo(pos.x, pos.y, pos.z, location.yaw(), location.pitch());
@@ -145,7 +145,7 @@ public class EntityBufferStorage
                     setup.invoke(entity);
                 }, location.blockPos(),
                         //#switch PROPERTIES.versionMinecraft
-                        //#caseofregex 1\.21\.[4-8]
+                        //#caseofregex 1\.21\.([4-9]|11)
                         //OF//                        EntitySpawnReason.COMMAND
                         //#default
                         MobSpawnType.COMMAND
@@ -182,14 +182,14 @@ public class EntityBufferStorage
         var pos = location.position();
         entity.teleportTo(location.level(server), pos.x, pos.y, pos.z,
                 //#switch PROPERTIES.versionMinecraft
-                //#caseofregex 1\.21\.[4-8]
+                //#caseofregex 1\.21\.([4-9]|11)
                 //OF//                Relative.ALL
                 //#default
                 RelativeMovement.ALL
                 //#endswitch
                 , location.yaw(), location.pitch()
                 //#switch PROPERTIES.versionMinecraft
-                //#caseofregex 1\.21\.[4-8]
+                //#caseofregex 1\.21\.([4-9]|11)
                 //OF//                , true
                 //#default
                 //#endswitch

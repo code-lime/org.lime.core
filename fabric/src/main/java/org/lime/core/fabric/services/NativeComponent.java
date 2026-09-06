@@ -1,22 +1,27 @@
 package org.lime.core.fabric.services;
 
 //#switch PROPERTIES.versionAdventurePlatform
-//#caseof 6.3.0;6.6.0
+//#caseofregex 6\.\d\.\d
 //OF//import net.kyori.adventure.platform.modcommon.MinecraftAudiences;
 //#default
 import net.kyori.adventure.platform.fabric.FabricAudiences;
 //#endswitch
 
+//#if PROPERTIES.versionMinecraft == '1.21.11'
+//IF//import net.minecraft.resources.Identifier;
+//#else
+import net.minecraft.resources.ResourceLocation;
+//#endif
+
 import com.google.inject.Inject;
 import com.google.inject.Singleton;
 import net.kyori.adventure.key.Key;
 import net.kyori.adventure.text.Component;
-import net.minecraft.resources.ResourceLocation;
 
 @Singleton
 public class NativeComponent {
     //#switch PROPERTIES.versionAdventurePlatform
-    //#caseof 6.3.0;6.6.0
+    //#caseofregex 6\.\d\.\d
     //OF//    @Inject MinecraftAudiences audiences;
     //#default
     @Inject FabricAudiences audiences;
@@ -24,7 +29,7 @@ public class NativeComponent {
 
     public Component convert(net.minecraft.network.chat.Component component) {
         //#switch PROPERTIES.versionAdventurePlatform
-        //#caseof 6.3.0;6.6.0
+        //#caseofregex 6\.\d\.\d
         //OF//        return audiences.asAdventure(component);
         //#default
         return component.asComponent();
@@ -32,22 +37,30 @@ public class NativeComponent {
     }
     public net.minecraft.network.chat.Component convert(Component component) {
         //#switch PROPERTIES.versionAdventurePlatform
-        //#caseof 6.3.0;6.6.0
+        //#caseofregex 6\.\d\.\d
         //OF//        return audiences.asNative(component.asComponent());
         //#default
         return audiences.toNative(component.asComponent());
         //#endswitch
     }
 
+    //#if PROPERTIES.versionMinecraft == '1.21.11'
+    //IF//    public Identifier convert(Key key) {
+    //#else
     public ResourceLocation convert(Key key) {
+    //#endif
         //#switch PROPERTIES.versionAdventurePlatform
-        //#caseof 6.3.0;6.6.0
+        //#caseofregex 6\.\d\.\d
         //OF//        return MinecraftAudiences.asNative(key);
         //#default
         return FabricAudiences.toNative(key);
         //#endswitch
     }
+    //#if PROPERTIES.versionMinecraft == '1.21.11'
+    //IF//    public Key convert(Identifier key) {
+    //#else
     public Key convert(ResourceLocation key) {
+    //#endif
         return key;
     }
 }
