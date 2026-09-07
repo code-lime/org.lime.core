@@ -47,9 +47,14 @@ dependencies {
     modImplementation "net.fabricmc:fabric-loader:${versionLoader}"
 
     modImplementation "net.fabricmc.fabric-api:fabric-api:${versionFabric}"
+    modImplementation include("net.fabricmc:mapping-io:${versionMappingIo}")
 }
 
 processResources {
+    from({ configurations.mappings.collect { zipTree(it) } }) {
+        include "mappings/mappings.tiny"
+        into "META-INF/${modIdWithoutSuffix}"
+    }
     configureProcessResources(delegate, "fabric.mod.json", [
             modId: "${modId}",
             modIdWithoutSuffix: "${modIdWithoutSuffix}",

@@ -26,7 +26,6 @@ import net.minecraft.world.level.levelgen.structure.templatesystem.StructureTemp
 import net.minecraft.world.scores.Scoreboard;
 import org.apache.commons.lang3.reflect.TypeUtils;
 import org.lime.core.common.BaseInstanceModule;
-import org.lime.core.common.reflection.ReflectionMethod;
 import org.lime.core.common.services.InstancesUtility;
 import org.lime.core.common.services.ScheduleTaskService;
 import org.lime.core.common.services.UnsafeMappingsUtility;
@@ -35,7 +34,6 @@ import org.lime.core.common.services.buffers.BasePacketEntityBufferStorage;
 import org.lime.core.common.services.memories.BaseConnectionStorageService;
 import org.lime.core.common.services.skins.BaseSkinsCache;
 import org.lime.core.common.utils.Lazy;
-import org.lime.core.common.utils.execute.Func1;
 import org.lime.core.fabric.commands.NativeCommandConsumerFactory;
 import org.lime.core.fabric.services.ConnectionStorageService;
 import org.lime.core.fabric.services.SkinsCache;
@@ -71,17 +69,6 @@ public class BaseFabricInstanceModule
         return FabricGsonTypeAdapters.class;
     }
 
-    @SuppressWarnings("unchecked")
-    private static final Lazy<Func1<MinecraftServer, MinecraftSessionService>> sessionServiceAccess = Lazy.of(() -> ReflectionMethod
-            .ofMojangOptional(MinecraftServer.class, "services")
-            .flatMap(v -> ReflectionMethod.ofMojangOptional(v.target().getReturnType(), "sessionService")
-                    .<Func1<MinecraftServer, MinecraftSessionService>>map(j -> {
-                        Func1<MinecraftServer, Object> services = v.lambda(Func1.class);
-                        Func1<Object, MinecraftSessionService> sessionService = j.lambda(Func1.class);
-                        return server -> sessionService.invoke(services.invoke(server));
-                    }))
-            .orElseGet(() -> ReflectionMethod.ofMojang(MinecraftServer.class, "getSessionService").lambda(Func1.class)));
-
     @Override
     protected void configure() {
         super.configure();
@@ -112,7 +99,13 @@ public class BaseFabricInstanceModule
         bindMapped(RecipeManager.class, MinecraftServer.class, MinecraftServer::getRecipeManager);
         bindMapped(ResourceManager.class, MinecraftServer.class, MinecraftServer::getResourceManager);
         bindMapped(StructureTemplateManager.class, MinecraftServer.class, MinecraftServer::getStructureManager);
-        bindMapped(MinecraftSessionService.class, MinecraftServer.class, sessionServiceAccess.value());
+
+        //#switch PROPERTIES.versionMinecraft
+        //#caseof 1.21.11
+        //OF//        bindMapped(MinecraftSessionService.class, MinecraftServer.class, v -> v.services().sessionService());
+        //#default
+        bindMapped(MinecraftSessionService.class, MinecraftServer.class, MinecraftServer::getSessionService);
+        //#endswitch
 
         bind(ScheduleTaskService.class).toInstance(instance.scheduleTaskService);
         bind(NativeCommandConsumerFactory.class).toInstance(nativeCommandFactory());

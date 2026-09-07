@@ -1,30 +1,47 @@
 package org.lime.core.fabric.utils.adapters;
 
-import net.minecraft.resources.ResourceKey;
+import net.kyori.adventure.key.Key;
+import net.kyori.adventure.key.Keyed;
+import net.minecraft.resources.*;
 import org.jetbrains.annotations.NotNull;
-import org.lime.core.common.reflection.Reflection;
-import org.lime.core.common.reflection.ReflectionMethod;
-import org.lime.core.common.utils.execute.Func1;
 
-@SuppressWarnings("unchecked")
-public record ResourceLocationIdentifierProxy(Object handle) {
-    private static final Class<?> handleClass = Reflection.findClassOptional("net.minecraft.resources.ResourceLocation")
-            .orElseGet(() -> Reflection.findClass("net.minecraft.resources.Identifier"));
-    private static final Func1<String, Object> parse = ReflectionMethod.ofMojang(handleClass, "parse", String.class).lambda(Func1.class);
-    private static final Func1<ResourceKey<?>, Object> identifierLocation = ReflectionMethod.ofMojangOptional(ResourceKey.class, "location")
-            .orElseGet(() -> ReflectionMethod.ofMojang(ResourceKey.class, "identifier"))
-            .lambda(Func1.class);
-
+public record ResourceLocationIdentifierProxy(
+        //#switch PROPERTIES.versionMinecraft
+        //#caseof 1.21.11
+        //OF//        Identifier handle
+        //#default
+        ResourceLocation handle
+        //#endswitch
+) implements Keyed {
     @Override
     public @NotNull String toString() {
         return handle.toString();
     }
 
     public static ResourceLocationIdentifierProxy identifierLocation(ResourceKey<?> resourceKey) {
-        return new ResourceLocationIdentifierProxy(identifierLocation.invoke(resourceKey));
+        return new ResourceLocationIdentifierProxy(
+                //#switch PROPERTIES.versionMinecraft
+                //#caseof 1.21.11
+                //OF//                resourceKey.identifier()
+                //#default
+                resourceKey.location()
+                //#endswitch
+        );
     }
 
     public static ResourceLocationIdentifierProxy parse(String value) {
-        return new ResourceLocationIdentifierProxy(parse.invoke(value));
+        return new ResourceLocationIdentifierProxy(
+                //#switch PROPERTIES.versionMinecraft
+                //#caseof 1.21.11
+                //OF//                Identifier.parse(value)
+                //#default
+                ResourceLocation.parse(value)
+                //#endswitch
+        );
+    }
+
+    @Override
+    public @NotNull Key key() {
+        return handle;
     }
 }

@@ -19,9 +19,10 @@ public abstract class CommandsMixin {
                     remap = false)
     )
     private
-    //#if PROPERTIES.versionMinecraft == '1.21.8'
-    //IF//    static
-    //#endif
+    //#switch PROPERTIES.versionMinecraft
+    //#caseof 1.21.8;1.21.11
+    //OF//    static
+    //#endswitch
     CommandNode<SharedSuggestionProvider> argumentBuilder(
             ArgumentBuilder<SharedSuggestionProvider, ?> argumentBuilder) {
         return CommandHelperUtils.argumentBuilder(argumentBuilder);
