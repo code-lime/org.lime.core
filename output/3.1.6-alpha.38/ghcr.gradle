@@ -1,0 +1,900 @@
+buildscript {
+    repositories {
+        mavenCentral()
+    }
+    dependencies {
+        classpath 'land.oras:oras-java-sdk:0.8.4'
+    }
+}
+
+import groovy.json.JsonOutput
+import groovy.json.JsonSlurper
+import land.oras.Annotations
+import land.oras.ArtifactType
+import land.oras.ContainerRef
+import land.oras.CopyUtils
+import land.oras.Descriptor
+import land.oras.LayoutRef
+import land.oras.LocalPath
+import land.oras.Manifest
+import land.oras.OCILayout
+import land.oras.Registry
+import land.oras.exception.OrasException
+import land.oras.utils.Const
+import org.gradle.api.GradleException
+import org.gradle.api.Project
+import org.gradle.api.provider.Provider
+import org.gradle.api.publish.maven.MavenArtifact
+import org.gradle.api.publish.maven.MavenPublication
+import org.gradle.api.publish.maven.tasks.GenerateMavenPom
+import org.apache.commons.compress.archivers.tar.TarArchiveEntry
+import org.apache.commons.compress.archivers.tar.TarArchiveOutputStream
+
+import java.nio.file.Files
+import java.nio.file.LinkOption
+import java.nio.file.Path
+import java.nio.file.StandardCopyOption
+import java.nio.charset.StandardCharsets
+import java.security.MessageDigest
+import java.time.Instant
+import java.util.concurrent.ConcurrentHashMap
+
+abstract class GhcrAuthenticatedSpec {
+    final GhcrCredentialsSpec credentials = new GhcrCredentialsSpec()
+
+    void credentials(Closure configuration) {
+        GhcrDsl.configure(credentials, configuration)
+    }
+}
+
+class GhcrCredentialsSpec {
+    Object username
+    Object password
+}
+
+class GhcrMavenPublicationSpec extends GhcrAuthenticatedSpec {
+    final String name
+    final MavenPublication publication
+    Object image
+    Object diagnosticTag
+    Object source
+    Object revision
+    Object created
+    boolean insecure
+    Map<String, String> annotations = [:]
+
+    GhcrMavenPublicationSpec(MavenPublication publication) {
+        this.name = publication.name
+        this.publication = publication
+    }
+}
+
+class GhcrMavenRepositorySpec extends GhcrAuthenticatedSpec {
+    final String name
+    Object image
+    Object tag
+    Object destinationDirectory
+    Object mavenVersion
+    String group
+    String module
+    boolean insecure
+    List<String> requiredClassifiers = []
+
+    GhcrMavenRepositorySpec(String name) {
+        this.name = name
+    }
+}
+
+class GhcrDsl {
+    static void configure(Object target, Closure configuration) {
+        Closure configured = (Closure)configuration.rehydrate(
+                target, configuration.owner, configuration.thisObject)
+        configured.resolveStrategy = Closure.DELEGATE_FIRST
+        configured.call()
+    }
+}
+
+class GhcrSupport {
+    static final String ARTIFACT_TYPE =
+            'application/vnd.overpatchlabs.maven.repository.v1'
+    static final String MARKER_NAME = '.ghcr-maven.json'
+    static final String ANNOTATION_CREATED = 'org.opencontainers.image.created'
+    static final String ANNOTATION_REVISION = 'org.opencontainers.image.revision'
+    static final String ANNOTATION_SOURCE = 'org.opencontainers.image.source'
+    static final String ANNOTATION_VERSION = 'org.opencontainers.image.version'
+    static final String ANNOTATION_GROUP = 'io.overpatchlabs.maven.group'
+    static final String ANNOTATION_MODULE = 'io.overpatchlabs.maven.module'
+    static final String ANNOTATION_ROOT = 'io.overpatchlabs.maven.root'
+
+    private final Project project
+    private final Map<String, Object> pullLocks = new ConcurrentHashMap<>()
+
+    GhcrSupport(Project project) {
+        this.project = project
+    }
+
+    void registerPublication(GhcrMavenPublicationSpec spec) {
+        validateName(spec.name)
+        String capitalizedName = capitalize(spec.name)
+        Provider stagingDirectory = project.layout.buildDirectory.dir(
+                "ghcr/${spec.name}/maven")
+        Provider<GenerateMavenPom> pomTask = project.tasks.named(
+                "generatePomFileFor${capitalizedName}Publication",
+                GenerateMavenPom)
+        def stageTask = project.tasks.register("ghcrStage${capitalizedName}") { task ->
+            task.group = 'publishing'
+            task.description = "Stages ${spec.name} as a Maven repository layout."
+            task.dependsOn(pomTask)
+            task.dependsOn {
+                spec.publication.artifacts.collect { artifact ->
+                    artifact.buildDependencies
+                }
+            }
+            task.outputs.dir(stagingDirectory)
+            task.outputs.upToDateWhen { false }
+            task.doLast {
+                stagePublication(spec, pomTask.get().destination,
+                        stagingDirectory.get().asFile.toPath())
+            }
+        }
+
+        String taskName = "ghcrPush${capitalizedName}"
+        def pushTask = project.tasks.register(taskName) { task ->
+            task.group = 'publishing'
+            task.description = "Publishes ${spec.name} Maven layout to an OCI registry."
+            task.dependsOn(stageTask)
+            task.outputs.upToDateWhen { false }
+            task.doLast {
+                push(spec, stagingDirectory.get().asFile.toPath())
+            }
+        }
+        project.tasks.named('publish').configure { task ->
+            task.dependsOn(pushTask)
+        }
+    }
+
+    private void stagePublication(GhcrMavenPublicationSpec spec, File pom,
+            Path stagingDirectory) {
+        String group = spec.publication.groupId
+        String module = spec.publication.artifactId
+        String version = spec.publication.version
+        validateCoordinates(group, module)
+        validateTag(version, "Maven publication '${spec.name}' version")
+        if (!pom.isFile()) {
+            throw new GradleException(
+                    "Generated POM for Maven publication '${spec.name}' is missing: ${pom}")
+        }
+
+        deleteRecursively(stagingDirectory)
+        Path versionDirectory = stagingDirectory.resolve(group.replace('.', '/'))
+                .resolve(module).resolve(version)
+        Files.createDirectories(versionDirectory)
+        Files.copy(pom.toPath(), versionDirectory.resolve("${module}-${version}.pom"))
+
+        Set<String> targets = new HashSet<>()
+        boolean primaryJar = false
+        spec.publication.artifacts.each { MavenArtifact artifact ->
+            Path source = artifact.file.toPath()
+            if (!Files.isRegularFile(source, LinkOption.NOFOLLOW_LINKS)
+                    || Files.isSymbolicLink(source)) {
+                throw new GradleException(
+                        "Maven publication '${spec.name}' artifact is not a regular file: ${source}")
+            }
+            String extension = requireArtifactSegment(artifact.extension,
+                    "Maven publication '${spec.name}' artifact extension")
+            String classifier = optionalValue(artifact.classifier)
+            if (classifier != null) {
+                validateArtifactSegment(classifier,
+                        "Maven publication '${spec.name}' artifact classifier")
+            }
+            String classifierSuffix = classifier == null ? '' : "-${classifier}"
+            String targetName = "${module}-${version}${classifierSuffix}.${extension}"
+            if (!targets.add(targetName)) {
+                throw new GradleException(
+                        "Maven publication '${spec.name}' contains duplicate artifact ${targetName}")
+            }
+            Files.copy(source, versionDirectory.resolve(targetName))
+            primaryJar = primaryJar || classifier == null && extension == 'jar'
+        }
+        if (!primaryJar) {
+            throw new GradleException(
+                    "Maven publication '${spec.name}' must contain an unclassified JAR")
+        }
+        validateMavenLayout(stagingDirectory, group, module, version, [])
+        rejectSymbolicLinks(stagingDirectory)
+    }
+
+    void registerRepository(GhcrMavenRepositorySpec spec) {
+        validateName(spec.name)
+        validateCoordinates(spec.group, spec.module)
+        Path destination = resolvePath(spec.destinationDirectory,
+                "ghcr.mavenRepository('${spec.name}').destinationDirectory")
+        validateOwnedDestination(destination)
+
+        project.repositories.exclusiveContent {
+            forRepository {
+                project.repositories.maven { repository ->
+                    repository.name = "Ghcr${capitalize(spec.name)}"
+                    repository.url = project.uri(destination)
+                    repository.metadataSources {
+                        mavenPom()
+                        artifact()
+                    }
+                }
+            }
+            filter {
+                includeModule(spec.group, spec.module)
+            }
+        }
+
+        String taskName = "ghcrPull${capitalize(spec.name)}"
+        project.tasks.register(taskName) { task ->
+            task.group = 'build setup'
+            task.description = "Hydrates ${spec.name} Maven layout from an OCI registry."
+            task.outputs.dir(destination)
+            task.outputs.upToDateWhen { false }
+            task.doLast {
+                ensurePulled(spec)
+            }
+        }
+
+        project.configurations.configureEach { configuration ->
+            configuration.incoming.beforeResolve {
+                if (configuration.allDependencies.any { dependency ->
+                    dependency.group == spec.group && dependency.name == spec.module
+                }) {
+                    ensurePulled(spec)
+                }
+            }
+        }
+    }
+
+    private void push(GhcrMavenPublicationSpec spec, Path sourceDirectory) {
+        String group = spec.publication.groupId
+        String module = spec.publication.artifactId
+        String tag = spec.publication.version
+        validateCoordinates(group, module)
+        String image = requireValue(spec.image,
+                "ghcr.mavenPublication('${spec.name}').image")
+        validateTag(tag, "Maven publication '${spec.name}' version")
+        String diagnosticTag = optionalValue(spec.diagnosticTag)
+        if (diagnosticTag != null) {
+            validateTag(diagnosticTag,
+                    "ghcr.mavenPublication('${spec.name}').diagnosticTag")
+        }
+        validateMavenLayout(sourceDirectory, group, module, tag, [])
+        rejectSymbolicLinks(sourceDirectory)
+
+        ContainerRef versionRef = parseReference(image, tag)
+        Registry registry = createRegistry(
+                versionRef, spec.credentials, spec.insecure)
+        Path temporaryRoot = project.layout.buildDirectory.dir(
+                "tmp/ghcr/${spec.name}-${UUID.randomUUID()}").get().asFile.toPath()
+        deleteRecursively(temporaryRoot)
+        Files.createDirectories(temporaryRoot)
+
+        try {
+            Path layoutDirectory = temporaryRoot.resolve('oci-layout')
+            OCILayout layout = OCILayout.builder().defaults(layoutDirectory).build()
+            LayoutRef layoutRef = LayoutRef.parse("${layoutDirectory}:${tag}")
+            Path archive = createDeterministicArchive(
+                    sourceDirectory, temporaryRoot.resolve('maven.tar'))
+            String archiveDigest = calculateFileDigest(archive)
+            project.logger.info(
+                    "Prepared deterministic Maven archive ${archiveDigest}")
+            Map<String, String> manifestAnnotations = publicationAnnotations(
+                    spec, group, module, tag, sourceDirectory.fileName.toString())
+            Annotations annotations = Annotations.ofManifest(manifestAnnotations)
+                    .withFileAnnotations(archive.fileName.toString(), [
+                            (Const.ANNOTATION_TITLE)              : sourceDirectory.fileName.toString(),
+                            (Const.ANNOTATION_ORAS_UNPACK)        : 'true',
+                            (Const.ANNOTATION_ORAS_CONTENT_DIGEST): archiveDigest
+                    ])
+            Manifest candidate = layout.pushArtifact(
+                    layoutRef,
+                    ArtifactType.from(ARTIFACT_TYPE),
+                    annotations,
+                    LocalPath.of(archive, Const.DEFAULT_BLOB_MEDIA_TYPE))
+            String candidateDigest = requireDigest(candidate.digest)
+
+            Manifest existingVersion = findManifest(registry, versionRef)
+            if (existingVersion != null) {
+                String existingDigest = requireDigest(existingVersion.digest)
+                if (existingDigest != candidateDigest) {
+                    if (!equivalentManifest(existingVersion, candidate)) {
+                        throw new GradleException(
+                                "Refusing to replace immutable OCI tag ${image}:${tag}: "
+                                        + "existing ${existingDigest}, candidate ${candidateDigest}")
+                    }
+                    project.logger.info(
+                            "OCI registry serialized an equivalent Maven manifest "
+                                    + "as ${existingDigest}")
+                }
+                publishDiagnosticTag(registry, versionRef, diagnosticTag,
+                        existingVersion, existingDigest)
+                project.logger.lifecycle(
+                        "OCI tag ${image}:${tag} already contains ${existingDigest}")
+                return
+            }
+
+            CopyUtils.copy(layout, layoutRef, registry, versionRef,
+                    CopyUtils.CopyOptions.shallow())
+            Manifest publishedVersion = registry.getManifest(versionRef)
+            String publishedDigest = requireDigest(publishedVersion.digest)
+            if (publishedDigest != candidateDigest) {
+                throw new GradleException(
+                        "OCI registry changed the Maven manifest digest: expected "
+                                + "${candidateDigest}, found ${publishedDigest}")
+            }
+            publishDiagnosticTag(registry, versionRef, diagnosticTag,
+                    publishedVersion, publishedDigest)
+            project.logger.lifecycle(
+                    "Published ${image}:${tag} at ${publishedDigest}")
+        } finally {
+            deleteRecursively(temporaryRoot)
+        }
+    }
+
+    private void publishDiagnosticTag(Registry registry, ContainerRef versionRef,
+            String diagnosticTag, Manifest manifest, String expectedDigest) {
+        if (diagnosticTag == null) {
+            return
+        }
+        ContainerRef diagnosticRef = versionRef.withTag(diagnosticTag)
+        Manifest existing = findManifest(registry, diagnosticRef)
+        if (existing != null && requireDigest(existing.digest) != expectedDigest) {
+            throw new GradleException(
+                    "Refusing to replace diagnostic OCI tag ${diagnosticRef}: "
+                            + "existing ${existing.digest}, expected ${expectedDigest}")
+        }
+        if (existing == null) {
+            registry.pushManifest(diagnosticRef, manifest)
+        }
+        String diagnosticDigest = requireDigest(
+                registry.getManifest(diagnosticRef).digest)
+        if (diagnosticDigest != expectedDigest) {
+            throw new GradleException(
+                    "OCI diagnostic tag ${diagnosticRef} resolved to "
+                            + "${diagnosticDigest}, expected ${expectedDigest}")
+        }
+    }
+
+    private static boolean equivalentManifest(Manifest left, Manifest right) {
+        return left.schemaVersion == right.schemaVersion
+                && left.mediaType == right.mediaType
+                && left.artifactTypeAsString == right.artifactTypeAsString
+                && left.annotations == right.annotations
+                && equivalentDescriptor(left.config, right.config)
+                && equivalentDescriptor(left.subject, right.subject)
+                && left.layers.size() == right.layers.size()
+                && (0..<left.layers.size()).every { index ->
+                    equivalentDescriptor(left.layers[index], right.layers[index])
+                }
+    }
+
+    private static boolean equivalentDescriptor(Descriptor left,
+            Descriptor right) {
+        if (left == null || right == null) {
+            return left == right
+        }
+        return left.mediaType == right.mediaType
+                && left.digest == right.digest
+                && left.size == right.size
+                && left.annotations == right.annotations
+                && left.artifactType?.mediaType == right.artifactType?.mediaType
+    }
+
+    private void ensurePulled(GhcrMavenRepositorySpec spec) {
+        Object lock = pullLocks.computeIfAbsent(spec.name) { new Object() }
+        synchronized (lock) {
+            pullLocked(spec)
+        }
+    }
+
+    private void pullLocked(GhcrMavenRepositorySpec spec) {
+        String image = requireValue(spec.image,
+                "ghcr.mavenRepository('${spec.name}').image")
+        String tag = requireTag(spec.tag,
+                "ghcr.mavenRepository('${spec.name}').tag")
+        String mavenVersion = optionalValue(spec.mavenVersion) ?: tag
+        Path destination = resolvePath(spec.destinationDirectory,
+                "ghcr.mavenRepository('${spec.name}').destinationDirectory")
+        validateOwnedDestination(destination)
+
+        Map marker = readMarker(destination.resolve(MARKER_NAME))
+        boolean localValid = markerMatches(marker, image, tag, spec, null)
+                && isMavenLayoutValid(destination, spec.group, spec.module,
+                        mavenVersion, spec.requiredClassifiers)
+                && marker.layoutDigest == calculateLayoutDigest(destination)
+        if (project.gradle.startParameter.offline) {
+            if (!localValid) {
+                throw new GradleException(
+                        "Cannot hydrate ${spec.group}:${spec.module}:${mavenVersion} "
+                                + 'while Gradle is offline: the local GHCR marker or Maven layout is invalid')
+            }
+            project.logger.info("Using offline GHCR Maven layout at ${destination}")
+            return
+        }
+
+        ContainerRef tagRef = parseReference(image, tag)
+        Registry registry = createRegistry(
+                tagRef, spec.credentials, spec.insecure)
+        Manifest manifest = registry.getManifest(tagRef)
+        validateManifest(manifest, tag, spec.group, spec.module)
+        String manifestDigest = requireDigest(manifest.digest)
+        if (localValid && marker.manifestDigest == manifestDigest) {
+            project.logger.info(
+                    "GHCR Maven layout ${image}:${tag} is current at ${manifestDigest}")
+            return
+        }
+
+        String rootName = manifest.annotations[ANNOTATION_ROOT]
+        Path parent = destination.parent
+        Files.createDirectories(parent)
+        Path staging = Files.createTempDirectory(parent,
+                ".${destination.fileName}-ghcr-")
+        try {
+            registry.pullArtifact(tagRef.withDigest(manifestDigest), staging, true)
+            Path pulledRoot = staging.resolve(rootName).normalize()
+            if (!pulledRoot.startsWith(staging) || !Files.isDirectory(
+                    pulledRoot, LinkOption.NOFOLLOW_LINKS)) {
+                throw new GradleException(
+                        "OCI artifact did not contain the declared Maven root '${rootName}'")
+            }
+            validateMavenLayout(pulledRoot, spec.group, spec.module,
+                    mavenVersion, spec.requiredClassifiers)
+            rejectSymbolicLinks(pulledRoot)
+            String layoutDigest = calculateLayoutDigest(pulledRoot)
+            writeMarker(pulledRoot.resolve(MARKER_NAME), [
+                    formatVersion : 1,
+                    image         : image,
+                    tag           : tag,
+                    manifestDigest: manifestDigest,
+                    artifactType  : ARTIFACT_TYPE,
+                    group         : spec.group,
+                    module        : spec.module,
+                    mavenVersion  : mavenVersion,
+                    layoutDigest  : layoutDigest
+            ])
+            replaceDirectory(pulledRoot, destination)
+            project.logger.lifecycle(
+                    "Hydrated ${spec.group}:${spec.module}:${mavenVersion} "
+                            + "from ${image}:${tag} at ${manifestDigest}")
+        } finally {
+            deleteRecursively(staging)
+        }
+    }
+
+    private static Map<String, String> publicationAnnotations(
+            GhcrMavenPublicationSpec spec, String group, String module,
+            String tag, String rootName) {
+        Map<String, String> result = new LinkedHashMap<>()
+        result.putAll(spec.annotations ?: [:])
+        result[ANNOTATION_VERSION] = tag
+        result[ANNOTATION_SOURCE] = requireValue(spec.source,
+                "ghcr.mavenPublication('${spec.name}').source")
+        result[ANNOTATION_REVISION] = requireValue(spec.revision,
+                "ghcr.mavenPublication('${spec.name}').revision")
+        result[ANNOTATION_GROUP] = group
+        result[ANNOTATION_MODULE] = module
+        result[ANNOTATION_ROOT] = rootName
+        result[ANNOTATION_CREATED] = normalizeCreated(spec.created)
+                ?: Instant.EPOCH.toString()
+        return result
+    }
+
+    private static String normalizeCreated(Object value) {
+        String created = optionalValue(value)
+        if (created == null) {
+            return null
+        }
+        try {
+            return Instant.parse(created).toString()
+        } catch (RuntimeException exception) {
+            throw new GradleException(
+                    "ghcr Maven publication created must be an ISO-8601 instant: ${created}",
+                    exception)
+        }
+    }
+
+    private static void validateManifest(Manifest manifest, String tag,
+            String group, String module) {
+        if (manifest.artifactType.mediaType != ARTIFACT_TYPE) {
+            throw new GradleException(
+                    "Expected OCI artifact type ${ARTIFACT_TYPE}, found "
+                            + manifest.artifactType.mediaType)
+        }
+        Map<String, String> annotations = manifest.annotations
+        Map<String, String> expected = [
+                (ANNOTATION_VERSION): tag,
+                (ANNOTATION_GROUP)  : group,
+                (ANNOTATION_MODULE) : module
+        ]
+        expected.each { key, value ->
+            if (annotations[key] != value) {
+                throw new GradleException(
+                        "OCI manifest annotation ${key} must be '${value}', "
+                                + "found '${annotations[key]}'")
+            }
+        }
+        String rootName = annotations[ANNOTATION_ROOT]
+        if (rootName == null || !(rootName ==~ /[A-Za-z0-9][A-Za-z0-9._-]*/)) {
+            throw new GradleException(
+                    "OCI manifest has an invalid Maven root annotation: ${rootName}")
+        }
+    }
+
+    private static Registry createRegistry(ContainerRef ref,
+            GhcrCredentialsSpec credentials, boolean insecure) {
+        String username = optionalValue(credentials.username)
+        String password = optionalValue(credentials.password)
+        if ((username == null) != (password == null)) {
+            throw new GradleException(
+                    'GHCR credentials require both username and password')
+        }
+        if (insecure) {
+            return username == null
+                    ? Registry.builder().insecure(ref.registry).build()
+                    : Registry.builder().insecure(
+                            ref.registry, username, password).build()
+        }
+        return username == null
+                ? Registry.builder().defaults(ref.registry).build()
+                : Registry.builder().defaults(
+                        ref.registry, username, password).build()
+    }
+
+    private static Manifest findManifest(Registry registry, ContainerRef ref) {
+        try {
+            return registry.getManifest(ref)
+        } catch (OrasException exception) {
+            if (exception.statusCode == 404) {
+                return null
+            }
+            throw exception
+        }
+    }
+
+    private static ContainerRef parseReference(String image, String tag) {
+        try {
+            return ContainerRef.parse("${image}:${tag}")
+        } catch (RuntimeException exception) {
+            throw new GradleException(
+                    "Invalid OCI image or tag '${image}:${tag}'", exception)
+        }
+    }
+
+    private static String requireDigest(String digest) {
+        if (!(digest ==~ /sha256:[0-9a-f]{64}/)) {
+            throw new GradleException("Expected a sha256 OCI digest, found '${digest}'")
+        }
+        return digest
+    }
+
+    private static void validateMavenLayout(Path root, String group,
+            String module, String version, Collection<String> classifiers) {
+        if (!isMavenLayoutValid(root, group, module, version, classifiers)) {
+            throw new GradleException(
+                    "Invalid Maven layout for ${group}:${module}:${version} at ${root}")
+        }
+    }
+
+    private static boolean isMavenLayoutValid(Path root, String group,
+            String module, String version, Collection<String> classifiers) {
+        if (!Files.isDirectory(root, LinkOption.NOFOLLOW_LINKS)) {
+            return false
+        }
+        Path versionDirectory = root.resolve(group.replace('.', '/'))
+                .resolve(module).resolve(version)
+        if (!Files.isDirectory(versionDirectory, LinkOption.NOFOLLOW_LINKS)) {
+            return false
+        }
+        List<String> required = [
+                "${module}-${version}.pom",
+                "${module}-${version}.jar"
+        ]
+        required.addAll((classifiers ?: []).collect { classifier ->
+            if (!(classifier ==~ /[A-Za-z0-9][A-Za-z0-9._-]*/)) {
+                throw new GradleException(
+                        "Invalid required Maven classifier '${classifier}'")
+            }
+            return "${module}-${version}-${classifier}.jar"
+        })
+        return required.every { fileName ->
+            Files.isRegularFile(versionDirectory.resolve(fileName),
+                    LinkOption.NOFOLLOW_LINKS)
+        }
+    }
+
+    private static void rejectSymbolicLinks(Path root) {
+        Files.walk(root).withCloseable { paths ->
+            Path symbolicLink = paths.filter { Files.isSymbolicLink(it) }
+                    .findFirst().orElse(null)
+            if (symbolicLink != null) {
+                throw new GradleException(
+                        "Maven layout must not contain symbolic links: ${symbolicLink}")
+            }
+        }
+    }
+
+    private static Map readMarker(Path markerPath) {
+        if (!Files.isRegularFile(markerPath, LinkOption.NOFOLLOW_LINKS)) {
+            return [:]
+        }
+        try {
+            Object value = new JsonSlurper().parse(markerPath.toFile())
+            return value instanceof Map ? (Map)value : [:]
+        } catch (RuntimeException ignored) {
+            return [:]
+        }
+    }
+
+    private static boolean markerMatches(Map marker, String image, String tag,
+            GhcrMavenRepositorySpec spec, String digest) {
+        if (marker.formatVersion != 1
+                || marker.image != image
+                || marker.tag != tag
+                || marker.artifactType != ARTIFACT_TYPE
+                || marker.group != spec.group
+                || marker.module != spec.module
+                || marker.mavenVersion != (optionalValue(spec.mavenVersion) ?: tag)
+                || !(marker.manifestDigest ==~ /sha256:[0-9a-f]{64}/)
+                || !(marker.layoutDigest ==~ /sha256:[0-9a-f]{64}/)) {
+            return false
+        }
+        return digest == null || marker.manifestDigest == digest
+    }
+
+    private static Path createDeterministicArchive(Path source, Path archive) {
+        Files.deleteIfExists(archive)
+        Files.newOutputStream(archive).withCloseable { fileStream ->
+            TarArchiveOutputStream output = new TarArchiveOutputStream(fileStream)
+            output.withCloseable {
+                output.setLongFileMode(TarArchiveOutputStream.LONGFILE_POSIX)
+                Files.walk(source).withCloseable { paths ->
+                    paths.filter { path ->
+                        Files.isRegularFile(path, LinkOption.NOFOLLOW_LINKS)
+                    }.sorted { left, right ->
+                        normalizedRelativePath(source, left) <=>
+                                normalizedRelativePath(source, right)
+                    }.forEach { path ->
+                        String relative = normalizedRelativePath(source, path)
+                        String entryName = "${source.fileName}/${relative}"
+                        TarArchiveEntry entry = new TarArchiveEntry(entryName)
+                        entry.setSize(Files.size(path))
+                        entry.setMode(0644)
+                        entry.setUserId(0)
+                        entry.setGroupId(0)
+                        entry.setUserName('')
+                        entry.setGroupName('')
+                        entry.setModTime(0L)
+                        output.putArchiveEntry(entry)
+                        Files.copy(path, output)
+                        output.closeArchiveEntry()
+                    }
+                }
+                output.finish()
+            }
+        }
+        return archive
+    }
+
+    private static String calculateFileDigest(Path path) {
+        MessageDigest digest = MessageDigest.getInstance('SHA-256')
+        Files.newInputStream(path).withCloseable { stream ->
+            byte[] buffer = new byte[8192]
+            int read
+            while ((read = stream.read(buffer)) >= 0) {
+                digest.update(buffer, 0, read)
+            }
+        }
+        return 'sha256:' + digest.digest().encodeHex().toString()
+    }
+
+    private static String calculateLayoutDigest(Path root) {
+        MessageDigest digest = MessageDigest.getInstance('SHA-256')
+        Files.walk(root).withCloseable { paths ->
+            paths.filter { path ->
+                Files.isRegularFile(path, LinkOption.NOFOLLOW_LINKS)
+                        && path.fileName.toString() != MARKER_NAME
+            }.sorted { left, right ->
+                normalizedRelativePath(root, left) <=> normalizedRelativePath(root, right)
+            }.forEach { path ->
+                String relative = normalizedRelativePath(root, path)
+                digest.update(relative.getBytes(StandardCharsets.UTF_8))
+                digest.update((byte)0)
+                digest.update(Long.toString(Files.size(path))
+                        .getBytes(StandardCharsets.US_ASCII))
+                digest.update((byte)0)
+                Files.newInputStream(path).withCloseable { stream ->
+                    byte[] buffer = new byte[8192]
+                    int read
+                    while ((read = stream.read(buffer)) >= 0) {
+                        digest.update(buffer, 0, read)
+                    }
+                }
+            }
+        }
+        return 'sha256:' + digest.digest().encodeHex().toString()
+    }
+
+    private static String normalizedRelativePath(Path root, Path path) {
+        return root.relativize(path).toString().replace('\\', '/')
+    }
+
+    private static void writeMarker(Path markerPath, Map marker) {
+        Files.writeString(markerPath,
+                JsonOutput.prettyPrint(JsonOutput.toJson(marker)) + System.lineSeparator())
+    }
+
+    private static void replaceDirectory(Path source, Path destination) {
+        Path backup = destination.resolveSibling(
+                ".${destination.fileName}-backup-${UUID.randomUUID()}")
+        boolean hadDestination = Files.exists(destination, LinkOption.NOFOLLOW_LINKS)
+        try {
+            if (hadDestination) {
+                moveDirectory(destination, backup)
+            }
+            moveDirectory(source, destination)
+            deleteRecursively(backup)
+        } catch (Throwable failure) {
+            if (!Files.exists(destination, LinkOption.NOFOLLOW_LINKS)
+                    && Files.exists(backup, LinkOption.NOFOLLOW_LINKS)) {
+                moveDirectory(backup, destination)
+            }
+            throw failure
+        }
+    }
+
+    private static void moveDirectory(Path source, Path destination) {
+        try {
+            Files.move(source, destination, StandardCopyOption.ATOMIC_MOVE)
+        } catch (IOException ignored) {
+            Files.move(source, destination)
+        }
+    }
+
+    private static void deleteRecursively(Path path) {
+        if (path == null || !Files.exists(path, LinkOption.NOFOLLOW_LINKS)) {
+            return
+        }
+        Files.walk(path).withCloseable { paths ->
+            paths.sorted(Comparator.reverseOrder()).forEach { Files.deleteIfExists(it) }
+        }
+    }
+
+    private void validateOwnedDestination(Path destination) {
+        Path normalized = destination.toAbsolutePath().normalize()
+        Path buildRoot = project.rootProject.projectDir.toPath()
+                .toAbsolutePath().normalize()
+        if (normalized == buildRoot || !normalized.startsWith(buildRoot)) {
+            throw new GradleException(
+                    "GHCR Maven destination must be a child of ${buildRoot}: ${destination}")
+        }
+    }
+
+    private Path resolvePath(Object value, String propertyName) {
+        Object resolved = unwrap(value)
+        if (resolved == null) {
+            throw new GradleException("${propertyName} is required")
+        }
+        return project.file(resolved).toPath().toAbsolutePath().normalize()
+    }
+
+    private static String requireValue(Object value, String propertyName) {
+        String resolved = optionalValue(value)
+        if (resolved == null) {
+            throw new GradleException("${propertyName} is required")
+        }
+        return resolved
+    }
+
+    private static String requireTag(Object value, String propertyName) {
+        String tag = requireValue(value, propertyName)
+        validateTag(tag, propertyName)
+        return tag
+    }
+
+    private static void validateTag(String tag, String propertyName) {
+        if (!(tag ==~ /[A-Za-z0-9_][A-Za-z0-9_.-]{0,127}/)) {
+            throw new GradleException("${propertyName} is not a valid OCI tag: ${tag}")
+        }
+    }
+
+    private static String requireArtifactSegment(String value,
+            String propertyName) {
+        if (value == null || value.isBlank()) {
+            throw new GradleException("${propertyName} is required")
+        }
+        validateArtifactSegment(value, propertyName)
+        return value
+    }
+
+    private static void validateArtifactSegment(String value,
+            String propertyName) {
+        if (!(value ==~ /[A-Za-z0-9][A-Za-z0-9._-]*/)) {
+            throw new GradleException(
+                    "${propertyName} contains unsupported characters: ${value}")
+        }
+    }
+
+    private static void validateCoordinates(String group, String module) {
+        if (group == null || !(group ==~ /[A-Za-z0-9_][A-Za-z0-9_.-]*/)) {
+            throw new GradleException("Invalid Maven group '${group}'")
+        }
+        if (module == null || !(module ==~ /[A-Za-z0-9_][A-Za-z0-9_.-]*/)) {
+            throw new GradleException("Invalid Maven module '${module}'")
+        }
+    }
+
+    private static void validateName(String name) {
+        if (!(name ==~ /[A-Za-z][A-Za-z0-9]*/)) {
+            throw new GradleException(
+                    "GHCR Maven registration name must be alphanumeric: ${name}")
+        }
+    }
+
+    private static String capitalize(String value) {
+        return value.substring(0, 1).toUpperCase(Locale.ROOT) + value.substring(1)
+    }
+
+    private static String optionalValue(Object value) {
+        Object resolved = unwrap(value)
+        if (resolved == null) {
+            return null
+        }
+        String text = resolved.toString().trim()
+        return text.isEmpty() ? null : text
+    }
+
+    private static Object unwrap(Object value) {
+        Object resolved = value
+        while (resolved instanceof Provider) {
+            resolved = ((Provider)resolved).orNull
+        }
+        if (resolved instanceof Closure) {
+            resolved = ((Closure)resolved).call()
+        }
+        return resolved
+    }
+}
+
+class GhcrExtension {
+    private final GhcrSupport support
+    private final Set<String> publicationNames = new HashSet<>()
+    private final Set<String> repositoryNames = new HashSet<>()
+
+    GhcrExtension(Project project) {
+        support = new GhcrSupport(project)
+    }
+
+    void mavenPublication(Object publicationValue, Closure configuration) {
+        Object resolved = publicationValue
+        while (resolved instanceof Provider) {
+            resolved = ((Provider)resolved).orNull
+        }
+        if (!(resolved instanceof MavenPublication)) {
+            throw new GradleException(
+                    'ghcr.mavenPublication requires an existing MavenPublication')
+        }
+        MavenPublication publication = (MavenPublication)resolved
+        String name = publication.name
+        if (!publicationNames.add(name)) {
+            throw new GradleException("GHCR Maven publication '${name}' is already registered")
+        }
+        GhcrMavenPublicationSpec spec = new GhcrMavenPublicationSpec(publication)
+        GhcrDsl.configure(spec, configuration)
+        support.registerPublication(spec)
+    }
+
+    void mavenRepository(String name, Closure configuration) {
+        if (!repositoryNames.add(name)) {
+            throw new GradleException("GHCR Maven repository '${name}' is already registered")
+        }
+        GhcrMavenRepositorySpec spec = new GhcrMavenRepositorySpec(name)
+        GhcrDsl.configure(spec, configuration)
+        support.registerRepository(spec)
+    }
+}
+
+extensions.add('ghcr', new GhcrExtension(project))
