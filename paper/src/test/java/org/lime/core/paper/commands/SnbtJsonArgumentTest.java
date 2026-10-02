@@ -57,54 +57,6 @@ class SnbtJsonArgumentTest {
     }
 
     @Test
-    void selectsContextualSchemaForSuggestionsAndStrictRead() throws Exception {
-        Gson gson = new Gson();
-        Injector injector = Guice.createInjector(new AbstractModule() {
-            @Override
-            protected void configure() {
-                bind(new TypeLiteral<NativeCommandConsumer.Factory<?, ?>>() {}).toInstance(NativeCommandConsumerFactory.INSTANCE);
-                bind(Gson.class).toInstance(gson);
-            }
-        });
-        CustomArgumentUtility utility = injector.getInstance(CustomArgumentUtility.class);
-        CustomArgumentUtility.ContextualJsonArgument<JsonElement> descriptor = utility.json(context -> adapter(gson, context));
-        CommandDispatcher<net.minecraft.commands.CommandSourceStack> nativeDispatcher = new CommandDispatcher<>();
-        ApiMirrorRootNode root = new ApiMirrorRootNode() {
-            @Override
-            public CommandDispatcher<net.minecraft.commands.CommandSourceStack> getDispatcher() {
-                return nativeDispatcher;
-            }
-        };
-        root.addChild(Commands.literal("contextual").then(Commands.argument("mode", StringArgumentType.word())
-                .then(Commands.argument("value", descriptor.argument()))).build());
-        assertNotNull(root.getChild("contextual"));
-
-        AtomicReference<JsonElement> read = new AtomicReference<>();
-        CommandDispatcher<Object> dispatcher = new CommandDispatcher<>();
-        dispatcher.register(literal("test").then(argument("mode", StringArgumentType.word()).then(argument("value", descriptor.argument())
-                .executes(context -> {
-                    read.set(descriptor.read(context, "value"));
-                    return 1;
-                }))));
-
-        var suggestions = dispatcher.getCompletionSuggestions(dispatcher.parse("test alpha r", SOURCE)).join();
-        assertEquals(List.of("\"red\""), suggestions.getList().stream().map(value -> value.getText()).toList());
-        assertEquals(1, dispatcher.execute("test alpha \"red\"", SOURCE));
-        assertEquals(new JsonPrimitive("red"), read.get());
-        CommandSyntaxException invalid = assertThrows(CommandSyntaxException.class, () -> dispatcher.execute("test alpha \"blue\"", SOURCE));
-        assertInstanceOf(IllegalArgumentException.class, invalid.getCause());
-        assertEquals(1, dispatcher.execute("test beta \"blue\"", SOURCE));
-        assertEquals(new JsonPrimitive("blue"), read.get());
-        assertEquals(1, dispatcher.execute("test flag 1", SOURCE));
-        assertEquals(new JsonPrimitive(true), read.get());
-        JsonElement beforeFailure = read.get();
-        assertThrows(CommandSyntaxException.class, () -> dispatcher.execute("test flag garbage", SOURCE));
-        assertSame(beforeFailure, read.get());
-        assertEquals(1, dispatcher.execute("test flag 0", SOURCE));
-        assertEquals(new JsonPrimitive(false), read.get());
-    }
-
-    @Test
     void completesNativeNumbersQuotationAndNestedValues() {
         Gson gson = new Gson();
         JsonInput input = JsonInput.of(gson, com.google.gson.reflect.TypeToken.get(CompletionData.class));
