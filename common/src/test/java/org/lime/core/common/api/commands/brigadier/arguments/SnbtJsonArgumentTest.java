@@ -7,6 +7,7 @@ import com.mojang.brigadier.arguments.ArgumentType;
 import com.mojang.brigadier.context.*;
 import com.mojang.brigadier.exceptions.*;
 import com.mojang.brigadier.suggestion.*;
+import net.kyori.adventure.text.serializer.plain.PlainTextComponentSerializer;
 import org.junit.jupiter.api.Test;
 
 import java.util.*;
@@ -105,6 +106,11 @@ class SnbtJsonArgumentTest {
         };
         assertSame(failure, assertThrows(CompletionException.class, () -> suggestions(raw(failing), "")).getCause());
         assertTrue(texts(argument(JsonInput.of(JsonInput.none()), GSON.getAdapter(JsonElement.class), nativeType), "").isEmpty());
+        IllegalArgumentException schemaFailure = new IllegalArgumentException("broken schema resolver");
+        JsonInput broken = JsonInput.of(JsonInput.object(Map.of("kind", JsonInput.scalar(JsonInput.Type.STRING),
+                "data", JsonInput.dependent("kind", value -> { throw schemaFailure; }))));
+        assertSame(schemaFailure, assertThrows(IllegalArgumentException.class,
+                () -> suggestions(argument(broken, GSON.getAdapter(JsonElement.class), new JsonNativeType()), "{kind:alpha,data:")));
     }
 
     @Test
@@ -114,26 +120,26 @@ class SnbtJsonArgumentTest {
         assertSuggestions(mode, "S", Map.of("\"SAFE\"", new StringRange(0, 1)));
         assertSuggestions(mode, "\"SA", Map.of("\"SAFE\"", new StringRange(0, 3)));
         assertTrue(texts(mode, "SAFE").isEmpty());
-        assertTrue(texts(mode, "UNKNOWN").isEmpty());
+        assertEquals(Set.of("\"SAFE\"", "\"FORCE\""), texts(mode, "UNKNOWN"));
 
         SnbtJsonArgument<DeepClass, JsonElement> object = typed(TypeToken.get(DeepClass.class));
-        assertTrue(texts(object, "{").containsAll(List.of("id", "count", "enabled", "mode", "children", "}")));
-        assertSuggestions(object, "{mo", Map.of("mode", new StringRange(1, 3), "modes", new StringRange(1, 3)));
-        assertSuggestions(object, "{mode", Map.of(":", new StringRange(5, 5)));
+        assertTrue(texts(object, "{").containsAll(List.of("id:", "count:", "enabled:", "mode:", "children:", "}")));
+        assertSuggestions(object, "{mo", Map.of("mode:", new StringRange(1, 3), "modes:", new StringRange(1, 3)));
+        assertSuggestions(object, "{mode", Map.of("mode:", new StringRange(1, 5), "modes:", new StringRange(1, 5)));
         assertEquals(Set.of("\"SAFE\"", "\"FORCE\""), texts(object, "{mode:"));
-        assertTrue(texts(object, "{children:[{").contains("children"));
+        assertTrue(texts(object, "{children:[{").contains("children:"));
 
         SnbtJsonArgument<Map<DeepMode, DeepObject>, JsonElement> map = typed(new TypeToken<>() {});
-        assertEquals(Set.of("SAFE", "FORCE", "}"), texts(map, "{"));
-        assertSuggestions(map, "{SA", Map.of("SAFE", new StringRange(1, 3)));
+        assertEquals(Set.of("SAFE:", "FORCE:", "}"), texts(map, "{"));
+        assertSuggestions(map, "{SA", Map.of("SAFE:", new StringRange(1, 3)));
     }
 
     @Test
     void completesEveryCursorStateWithOneRange() {
         SnbtJsonArgument<DeepClass, JsonElement> object = typed(TypeToken.get(DeepClass.class));
-        assertState(object, "{\"mo", Set.of("\"mode\"", "\"modes\""), new StringRange(1, 4));
-        assertState(object, "{mode", Set.of(":"), new StringRange(5, 5));
-        assertState(object, "{\"mode\"", Set.of(":"), new StringRange(7, 7));
+        assertState(object, "{\"mo", Set.of("\"mode\":", "\"modes\":"), new StringRange(1, 4));
+        assertState(object, "{mode", Set.of("mode:", "modes:"), new StringRange(1, 5));
+        assertState(object, "{\"mode\"", Set.of("\"mode\":", "\"modes\":"), new StringRange(1, 7));
         assertState(object, "{mode:", Set.of("\"SAFE\"", "\"FORCE\""), new StringRange(6, 6));
         assertState(object, "{mode:S", Set.of("\"SAFE\""), new StringRange(6, 7));
         assertFalse(texts(object, "{mode:SAFE,").contains("}"));
@@ -146,8 +152,8 @@ class SnbtJsonArgumentTest {
 
         SnbtJsonArgument<Map<String, String>, JsonElement> arbitrary = typed(new TypeToken<>() {});
         assertState(arbitrary, "{", Set.of("}"), new StringRange(1, 1));
-        assertState(arbitrary, "{abc", Set.of(":"), new StringRange(4, 4));
-        assertState(arbitrary, "{\"abc", Set.of("\""), new StringRange(5, 5));
+        assertState(arbitrary, "{abc", Set.of("abc:"), new StringRange(1, 4));
+        assertState(arbitrary, "{\"abc", Set.of("\"abc\":"), new StringRange(1, 5));
         assertState(arbitrary, "{abc:\"value", Set.of("\""), new StringRange(11, 11));
 
         for (String invalid : List.of("{]", "[}", "{mode=", "{mode:\"bad\\"))
@@ -155,22 +161,39 @@ class SnbtJsonArgumentTest {
     }
 
     @Test
-    void appliesPropertyColonAndValueAsSeparateTabs() {
+    void completesThePropertyWithItsSeparatorAndPreservesQuotation() {
         SnbtJsonArgument<DeepClass, JsonElement> argument = typed(TypeToken.get(DeepClass.class));
         String prefix = "/test.json class ";
         String input = prefix + "{mod";
 
-        input = suggestion(argument, input, prefix.length(), "mode").apply(input);
-        assertEquals(prefix + "{mode", input);
-        input = suggestion(argument, input, prefix.length(), ":").apply(input);
+        input = suggestion(argument, input, prefix.length(), "mode:").apply(input);
         assertEquals(prefix + "{mode:", input);
         input = suggestion(argument, input, prefix.length(), "\"SAFE\"").apply(input);
         assertEquals(prefix + "{mode:\"SAFE\"", input);
 
         input = prefix + "{\"mod";
-        input = suggestion(argument, input, prefix.length(), "\"mode\"").apply(input);
-        assertEquals(prefix + "{\"mode\"", input);
-        assertEquals(":", suggestion(argument, input, prefix.length(), ":").getText());
+        input = suggestion(argument, input, prefix.length(), "\"mode\":").apply(input);
+        assertEquals(prefix + "{\"mode\":", input);
+        input = prefix + "{'mod";
+        input = suggestion(argument, input, prefix.length(), "'mode':").apply(input);
+        assertEquals(prefix + "{'mode':", input);
+        input = suggestion(argument, input + "'SA", prefix.length(), "'SAFE'").apply(input + "'SA");
+        assertEquals(prefix + "{'mode':'SAFE'", input);
+    }
+
+    @Test
+    void resolvesNestedArrayHintsFromCompletedSiblingRegardlessOfPropertyOrder() {
+        JsonInput.Node kind = JsonInput.scalar(JsonInput.Type.STRING, List.of(new JsonPrimitive("alpha"), new JsonPrimitive("beta")));
+        JsonInput.Node data = JsonInput.dependent("kind", value -> JsonInput.object(Map.of("mode",
+                JsonInput.scalar(JsonInput.Type.STRING, List.of(new JsonPrimitive(value.getAsString().equals("alpha") ? "red" : "blue")))), JsonInput.none(), Set.of("mode")));
+        JsonInput input = JsonInput.of(JsonInput.array(JsonInput.object(Map.of("kind", kind, "data", data), JsonInput.none(), Set.of("kind", "data"))));
+        SnbtJsonArgument<JsonElement, JsonElement> argument = argument(input, GSON.getAdapter(JsonElement.class), new JsonNativeType());
+
+        assertEquals(Set.of("\"red\""), texts(argument, "[{kind:\"alpha\",data:{mode:"));
+        assertEquals(Set.of("\"blue\""), texts(argument, "[{kind:\"alpha\",kind:\"beta\",data:{mode:"));
+        assertTrue(texts(argument, "[{data:{mode:").isEmpty());
+        input.validate(JsonParser.parseString("[{data:{mode:\"red\"},kind:\"alpha\"}]"));
+        assertThrows(IllegalArgumentException.class, () -> input.validate(JsonParser.parseString("[{kind:\"alpha\",data:{mode:\"blue\"}}]")));
     }
 
     private static SnbtJsonArgument<JsonElement, JsonElement> raw() {
@@ -186,7 +209,8 @@ class SnbtJsonArgumentTest {
     }
 
     private static <T> SnbtJsonArgument<T, JsonElement> argument(JsonInput input, TypeAdapter<T> adapter, ArgumentType<JsonElement> nativeType) {
-        return new SnbtJsonArgument<>(nativeType, value -> value, input, adapter);
+        return new SnbtJsonArgument<>(nativeType, value -> value, input, adapter,
+                component -> new LiteralMessage(PlainTextComponentSerializer.plainText().serialize(component)), null);
     }
 
     private static Set<String> texts(SnbtJsonArgument<?, JsonElement> argument, String input) {
@@ -250,10 +274,24 @@ class SnbtJsonArgumentTest {
 
     private static class JsonNativeType implements ArgumentType<JsonElement> {
         @Override
-        public JsonElement parse(StringReader reader) {
-            JsonElement value = JsonParser.parseString(reader.getRemaining());
-            reader.setCursor(reader.getTotalLength());
-            return value;
+        public JsonElement parse(StringReader reader) throws CommandSyntaxException {
+            if (!reader.canRead())
+                throw CommandSyntaxException.BUILT_IN_EXCEPTIONS.readerExpectedSymbol().createWithContext(reader, "value");
+            if (reader.peek() == '"' || reader.peek() == '\'')
+                return new JsonPrimitive(reader.readString());
+            if (reader.peek() != '{' && reader.peek() != '[') {
+                String value = reader.readUnquotedString();
+                if (value.isEmpty())
+                    throw CommandSyntaxException.BUILT_IN_EXCEPTIONS.readerExpectedSymbol().createWithContext(reader, "value");
+                return JsonParser.parseString(value);
+            }
+            try {
+                JsonElement value = JsonParser.parseString(reader.getRemaining());
+                reader.setCursor(reader.getTotalLength());
+                return value;
+            } catch (JsonParseException exception) {
+                throw new SimpleCommandExceptionType(new LiteralMessage(exception.getMessage())).createWithContext(reader);
+            }
         }
     }
 }

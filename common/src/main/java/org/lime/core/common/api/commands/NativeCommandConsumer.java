@@ -21,6 +21,7 @@ import org.lime.core.common.utils.execute.Action1;
 
 import java.util.*;
 import java.util.function.Predicate;
+import java.util.function.Function;
 
 public interface NativeCommandConsumer<Sender, Register extends NativeCommandConsumer.NativeRegister<Sender>>
         extends CommandConsumer<Register> {
@@ -62,6 +63,9 @@ public interface NativeCommandConsumer<Sender, Register extends NativeCommandCon
         <T, N> ArgumentType<T> argument(BaseMappedArgument<T, N> mappedArgument);
         default <T> ArgumentType<T> json(JsonInput input, TypeAdapter<T> adapter) {
             throw new UnsupportedOperationException("JSON arguments are not supported on this platform");
+        }
+        default ArgumentType<JsonElement> contextualJson(Function<CommandContext<?>, JsonInput> input, TypeAdapter<JsonElement> adapter) {
+            throw new UnsupportedOperationException("Contextual JSON arguments are not supported on this platform");
         }
 
         Predicate<Sender> operator();

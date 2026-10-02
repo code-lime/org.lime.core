@@ -1,16 +1,19 @@
 package org.lime.core.common.api.commands.brigadier.arguments;
 
 import com.google.gson.*;
-import com.mojang.brigadier.LiteralMessage;
+import com.mojang.brigadier.*;
 import com.mojang.brigadier.arguments.ArgumentType;
 import com.mojang.brigadier.context.CommandContext;
 import com.mojang.brigadier.exceptions.*;
 import com.mojang.brigadier.suggestion.*;
+import net.kyori.adventure.text.Component;
+import net.kyori.adventure.text.format.NamedTextColor;
 import org.jetbrains.annotations.*;
 import org.lime.core.common.utils.execute.Func1;
 
 import java.util.*;
 import java.util.concurrent.CompletableFuture;
+import java.util.function.Function;
 
 /** Maps one vanilla-parsed SNBT value to Gson and provides typed completion. */
 public final class SnbtJsonArgument<T, N> implements BaseMappedArgument<T, N> {
@@ -18,12 +21,18 @@ public final class SnbtJsonArgument<T, N> implements BaseMappedArgument<T, N> {
     private final Func1<N, JsonElement> json;
     private final JsonInput input;
     private final TypeAdapter<T> adapter;
+    private final Function<Component, Message> message;
+    private final @Nullable Function<CommandContext<?>, JsonInput> inputSelector;
 
-    public SnbtJsonArgument(@NotNull ArgumentType<N> nativeType, @NotNull Func1<N, JsonElement> json, @NotNull JsonInput input, @NotNull TypeAdapter<T> adapter) {
+    public SnbtJsonArgument(@NotNull ArgumentType<N> nativeType, @NotNull Func1<N, JsonElement> json, @NotNull JsonInput input,
+                            @NotNull TypeAdapter<T> adapter, @NotNull Function<Component, Message> message,
+                            @Nullable Function<CommandContext<?>, JsonInput> inputSelector) {
         this.nativeType = nativeType;
         this.json = json;
         this.input = input;
         this.adapter = adapter;
+        this.message = message;
+        this.inputSelector = inputSelector;
     }
 
     @Override
@@ -37,192 +46,161 @@ public final class SnbtJsonArgument<T, N> implements BaseMappedArgument<T, N> {
         try {
             return adapter.fromJsonTree(normalized);
         } catch (JsonParseException | IllegalStateException | NumberFormatException exception) {
-            throw syntax("Invalid JSON value: " + exception.getMessage());
+            throw new SimpleCommandExceptionType(new LiteralMessage("Invalid JSON value: " + exception.getMessage())).create();
         }
     }
 
     @Override
     public <S> @NotNull CompletableFuture<Suggestions> suggestions(@NotNull CommandContext<S> context, @NotNull SuggestionsBuilder builder) {
-        if (input.root().any())
-            return nativeType.listSuggestions(context, new SuggestionsBuilder(builder.getInput(), builder.getStart()));
-        if (input.root().none())
+        JsonInput selected = inputSelector == null ? input : inputSelector.apply(context);
+        JsonInput.View root = selected.root();
+        if (root.any())
+            return nativeType.listSuggestions(context, builder);
+        if (root.none())
             return Suggestions.empty();
         CursorInput cursor = new CursorParser(builder.getRemaining()).parse();
-        if (cursor instanceof ValueInput value && input.at(value.path()).any())
-            return nativeType.listSuggestions(context, new SuggestionsBuilder(builder.getInput(), builder.getStart()));
         SuggestionCollector collector = new SuggestionCollector(builder);
-        cursor.complete(new InputCompleter(collector));
+        InputCompleter completer = new InputCompleter(selected, collector);
+        if (cursor instanceof PropertyInput property) {
+            JsonInput.View node = selected.at(property.path(), property.context());
+            if (node.any())
+                return nativeType.listSuggestions(context, builder.createOffset(builder.getStart() + property.containerStart()));
+            if (property.prefix() == null)
+                return nativeType.listSuggestions(context, builder.createOffset(builder.getStart() + property.tokenStart()));
+            completer.property(property, node);
+        } else if (cursor instanceof ValueInput value) {
+            JsonInput.View node = selected.at(value.path(), value.context());
+            if (node.none())
+                return Suggestions.empty();
+            if (completer.value(value, node))
+                return nativeType.listSuggestions(context, builder.createOffset(builder.getStart() + value.tokenStart()))
+                        .thenApply(suggestions -> Suggestions.merge(builder.getInput(), List.of(collector.build(), suggestions)));
+        }
         return CompletableFuture.completedFuture(collector.build());
     }
 
-    private final class InputCompleter implements Completer {
+    private final class InputCompleter {
+        private final JsonInput input;
         private final SuggestionCollector collector;
 
-        private InputCompleter(SuggestionCollector collector) {
+        private InputCompleter(JsonInput input, SuggestionCollector collector) {
+            this.input = input;
             this.collector = collector;
         }
 
-        @Override
-        public void value(ValueInput input) {
-            if (input.suffix()) {
-                if (input.closing() == ']' && !canAddArrayItem(input.path()))
-                    return;
-                if (valueComplete(input))
-                    addAfterValueSuggestions(collector, new SuffixInput(input.path(), input.tokenStart() + input.rawPrefix().length(), input.usedProperties(), input.closing(), false));
-                else
-                    addValueSuggestions(collector, input, false);
-                return;
+        private void property(PropertyInput property, JsonInput.View node) {
+            char quote = quotation(collector.remaining().substring(property.tokenStart()));
+            for (var entry : node.properties().entrySet()) {
+                if (property.usedProperties().contains(entry.getKey()) || !startsWithIgnoreCase(entry.getKey(), property.prefix()))
+                    continue;
+                JsonInput.View child = input.at(append(property.path(), entry.getKey()), property.context());
+                collector.addAt(property.tokenStart(), encodeKey(entry.getKey(), quote) + ":", tooltip(child, null));
             }
-
-            if (input.closing() != ']' || canAddArrayItem(input.path()))
-                addValueSuggestions(collector, input, input.closing() == '\0');
-            if (!input.afterSeparator() && input.closing() == ']' && input.prefix().isEmpty()
-                    && input.path().get(input.path().size() - 1).equals(0)
-                    && SnbtJsonArgument.this.input.at(parentPath(input.path())).canCloseArray(0))
-                collector.addAt(input.tokenStart(), "]", null);
+            if (node.properties().isEmpty() && !property.prefix().isEmpty() && node.additionalPropertiesAllowed())
+                collector.addAt(property.tokenStart(), encodeKey(property.prefix(), quote) + ":", message.apply(Component.text("Property name", NamedTextColor.AQUA)));
+            if (!property.afterSeparator() && property.prefix().isEmpty() && node.canCloseObject(property.usedProperties()))
+                collector.addAt(property.tokenStart(), "}", null);
         }
 
-        @Override
-        public void property(PropertyInput input) {
-            addObjectKeySuggestions(collector, input);
-            if (!input.afterSeparator() && input.prefix().isEmpty()
-                    && SnbtJsonArgument.this.input.at(input.path()).canCloseObject(input.usedProperties()))
-                collector.addAt(input.tokenStart(), "}", null);
-        }
-
-        @Override
-        public void suffix(SuffixInput input) {
-            if (input.colon())
-                collector.addAt(input.tokenStart(), ":", null);
-            else
-                addAfterValueSuggestions(collector, input);
-        }
-    }
-
-    private void addObjectKeySuggestions(SuggestionCollector collector, PropertyInput input) {
-        JsonInput.View node = this.input.at(input.path());
-        Map<String, JsonInput.Node> properties = node.properties();
-        boolean quoted = quoted(input.rawPrefix());
-        JsonInput.Node exact = properties.get(input.prefix());
-        if (exact != null && !input.usedProperties().contains(input.prefix())) {
-            collector.addAt(input.tokenStart() + input.rawPrefix().length(), quoted ? "\"" : ":", null);
-            return;
-        }
-        for (var entry : properties.entrySet()) {
-            if (input.usedProperties().contains(entry.getKey()) || !startsWithIgnoreCase(entry.getKey(), input.prefix()))
-                continue;
-            collector.addAt(input.tokenStart(), quoted ? quote(entry.getKey()) : encodeKey(entry.getKey()), null);
-        }
-
-        if (properties.isEmpty() && !input.prefix().isEmpty() && node.additionalPropertiesAllowed())
-            collector.addAt(input.tokenStart() + input.rawPrefix().length(), quoted ? "\"" : ":", "Property name");
-    }
-
-    private void addValueSuggestions(SuggestionCollector collector, ValueInput input, boolean root) {
-        JsonInput.View node = this.input.at(input.path());
-        Map<String, String> values = new LinkedHashMap<>();
-        node.values().forEach(value -> addValue(values, value));
-
-        boolean constrainedValues = !values.isEmpty();
-        if (!constrainedValues) {
-            for (JsonInput.Type type : node.types())
-                if (type != JsonInput.Type.STRING || !quoted(input.rawPrefix()))
-                    type.suggestions().forEach(value -> values.putIfAbsent(value, value));
-        }
-
-        for (var entry : values.entrySet()) {
-            if (startsWithIgnoreCase(entry.getKey(), input.prefix()) || startsWithIgnoreCase(entry.getValue(), input.rawPrefix()))
-                collector.addAt(input.tokenStart(), entry.getValue(), null);
-        }
-
-        if (quoted(input.rawPrefix()) && !constrainedValues && node.types().contains(JsonInput.Type.STRING))
-            collector.addAt(input.tokenStart() + input.rawPrefix().length(), "\"", null);
-
-        if (root && valueComplete(input))
-            collector.clear();
-    }
-
-    private boolean valueComplete(ValueInput input) {
-        if (input.rawPrefix().isEmpty() || quoted(input.rawPrefix()))
-            return false;
-
-        JsonInput.View node = this.input.at(input.path());
-        if (!node.values().isEmpty())
-            return node.values().stream().map(this::logicalValue).anyMatch(input.prefix()::equals);
-        return node.types().stream().anyMatch(type -> type.complete(input.prefix()));
-    }
-
-    private void addAfterValueSuggestions(SuggestionCollector collector, SuffixInput input) {
-        List<Object> containerPath = parentPath(input.path());
-        JsonInput.View container = this.input.at(containerPath);
-        if (input.closing() == '}') {
-            Map<String, JsonInput.Node> properties = container.properties();
-            boolean hasUnusedProperty = properties.keySet().stream().anyMatch(property -> !input.usedProperties().contains(property));
-            boolean canAddProperty = hasUnusedProperty || container.additionalPropertiesAllowed();
-            if (canAddProperty)
-                collector.addAt(input.tokenStart(), ",", null);
-            if (container.canCloseObject(input.usedProperties()))
-                collector.addAt(input.tokenStart(), "}", null);
-
-            if (canAddProperty)
-                for (var entry : properties.entrySet())
-                    if (!input.usedProperties().contains(entry.getKey()))
-                        collector.addAt(input.tokenStart(), ", " + encodeKey(entry.getKey()), null);
-        } else if (input.closing() == ']') {
-            int count = arrayCount(input.path());
-            if (container.canAddArrayItem(count))
-                collector.addAt(input.tokenStart(), ",", null);
-            if (container.canCloseArray(count))
-                collector.addAt(input.tokenStart(), "]", null);
-        }
-    }
-
-    private int arrayCount(List<Object> path) {
-        if (path.isEmpty() || !(path.get(path.size() - 1) instanceof Integer index))
-            return 1;
-        return index + 1;
-    }
-
-    private boolean canAddArrayItem(List<Object> path) {
-        if (path.isEmpty() || !(path.get(path.size() - 1) instanceof Integer index))
-            return true;
-        return input.at(parentPath(path)).canAddArrayItem(index);
-    }
-
-    private void addValue(Map<String, String> values, JsonElement value) {
-        toSnbt(value).ifPresent(snbt -> values.putIfAbsent(logicalValue(value), snbt));
-    }
-
-    private String logicalValue(JsonElement value) {
-        return value.isJsonPrimitive() ? value.getAsJsonPrimitive().getAsString() : value.toString();
-    }
-
-    private Optional<String> toSnbt(JsonElement value) {
-        if (value.isJsonNull())
-            return Optional.empty();
-        if (value.isJsonPrimitive()) {
-            JsonPrimitive primitive = value.getAsJsonPrimitive();
-            return Optional.of(primitive.isString() ? quote(primitive.getAsString()) : primitive.toString());
-        }
-        if (value.isJsonArray()) {
-            List<String> items = new ArrayList<>();
-            for (JsonElement item : value.getAsJsonArray()) {
-                Optional<String> encoded = toSnbt(item);
-                if (encoded.isEmpty())
-                    return Optional.empty();
-                items.add(encoded.get());
+        /** Returns whether the native parser should also complete this value's syntax. */
+        private boolean value(ValueInput value, JsonInput.View node) {
+            JsonInput.View container = input.at(parentPath(value.path()), value.context());
+            if (value.closing() == ']' && !container.canAddArrayItem(arrayIndex(value.path())))
+                return false;
+            String error = null;
+            if (value.value() != null) {
+                try {
+                    input.normalizeAndValidate(node, value.path(), value.value());
+                } catch (JsonInput.ValidationException exception) {
+                    error = exception.getMessage();
+                }
+                if (error == null) {
+                    afterValue(value, container);
+                    return false;
+                }
             }
-            return Optional.of("[" + String.join(",", items) + "]");
+            if (node.any())
+                return true;
+            String raw = collector.remaining().substring(value.tokenStart(), value.tokenEnd());
+            char quote = quotation(raw);
+            String prefix = raw;
+            if (quote != '\0') {
+                if (value.value() != null && value.value().isJsonPrimitive() && value.value().getAsJsonPrimitive().isString())
+                    prefix = value.value().getAsString();
+                else {
+                    JsonElement decoded = readQuotedPrefix(raw, quote);
+                    if (decoded == null)
+                        return true;
+                    prefix = decoded.getAsString();
+                }
+            }
+            Map<String, String> candidates = new LinkedHashMap<>();
+            for (JsonElement candidate : node.values())
+                toSnbt(candidate, quote == '\0' ? '"' : quote).ifPresent(encoded -> candidates.putIfAbsent(logicalValue(candidate), encoded));
+            if (node.values().isEmpty())
+                for (JsonInput.Type type : node.types())
+                    if (type != JsonInput.Type.STRING || quote == '\0')
+                        type.suggestions().forEach(candidate -> candidates.putIfAbsent(candidate, candidate));
+            String typedPrefix = prefix;
+            boolean hasMatch = candidates.keySet().stream().anyMatch(candidate -> startsWithIgnoreCase(candidate, typedPrefix));
+            String correction = error != null && !hasMatch ? error : null;
+            Message tooltip = tooltip(node, correction);
+            String trailing = collector.remaining().substring(value.tokenEnd());
+            for (var entry : candidates.entrySet())
+                if (correction != null || startsWithIgnoreCase(entry.getKey(), prefix))
+                    collector.addAt(value.tokenStart(), entry.getValue() + trailing, tooltip);
+            if (quote != '\0' && value.value() == null && node.values().isEmpty() && node.types().contains(JsonInput.Type.STRING))
+                collector.addAt(value.tokenEnd(), Character.toString(quote), tooltip);
+            if (!value.afterSeparator() && raw.isEmpty() && value.closing() == ']' && arrayIndex(value.path()) == 0 && container.canCloseArray(0))
+                collector.addAt(value.tokenStart(), "]", null);
+            return value.value() == null && !raw.isEmpty() && quote == '\0' && !hasMatch;
         }
 
-        List<String> entries = new ArrayList<>();
-        for (var entry : value.getAsJsonObject().entrySet()) {
-            Optional<String> encoded = toSnbt(entry.getValue());
-            if (encoded.isEmpty())
-                return Optional.empty();
-            entries.add(encodeKey(entry.getKey()) + ":" + encoded.get());
+        private void afterValue(ValueInput value, JsonInput.View container) {
+            int offset = collector.remaining().length();
+            if (value.closing() == '}') {
+                boolean canAdd = container.additionalPropertiesAllowed()
+                        || container.properties().keySet().stream().anyMatch(property -> !value.usedProperties().contains(property));
+                if (canAdd)
+                    collector.addAt(offset, ",", null);
+                if (container.canCloseObject(value.usedProperties()))
+                    collector.addAt(offset, "}", null);
+                for (var entry : container.properties().entrySet())
+                    if (!value.usedProperties().contains(entry.getKey())) {
+                        JsonInput.View child = input.at(append(parentPath(value.path()), entry.getKey()), value.context());
+                        collector.addAt(offset, ", " + encodeKey(entry.getKey(), '\0') + ":", tooltip(child, null));
+                    }
+            } else if (value.closing() == ']') {
+                int count = arrayIndex(value.path()) + 1;
+                if (container.canAddArrayItem(count))
+                    collector.addAt(offset, ",", null);
+                if (container.canCloseArray(count))
+                    collector.addAt(offset, "]", null);
+            }
         }
-        return Optional.of("{" + String.join(",", entries) + "}");
+
+        private Message tooltip(JsonInput.View node, @Nullable String error) {
+            Component component = error == null ? Component.empty() : Component.text(error + "\n", NamedTextColor.RED);
+            String types = node.any() ? "SNBT" : String.join(" | ", node.types().stream().map(type -> type.name().toLowerCase(Locale.ROOT)).toList());
+            component = component.append(Component.text(types, NamedTextColor.AQUA));
+            if (!node.values().isEmpty())
+                component = component.append(Component.text("\n" + String.join(", ", node.values().stream().map(SnbtJsonArgument::logicalValue).toList()), NamedTextColor.YELLOW));
+            return message.apply(component);
+        }
+    }
+
+    private @Nullable JsonElement readQuotedPrefix(String raw, char quote) {
+        N parsed;
+        try {
+            parsed = nativeType.parse(new StringReader(raw + quote));
+        } catch (CommandSyntaxException exception) {
+            return null;
+        }
+        return json.invoke(parsed);
+    }
+
+    private static int arrayIndex(List<Object> path) {
+        return (Integer)path.get(path.size() - 1);
     }
 
     private static List<Object> parentPath(List<Object> path) {
@@ -236,30 +214,54 @@ public final class SnbtJsonArgument<T, N> implements BaseMappedArgument<T, N> {
         return result;
     }
 
-    private static boolean quoted(String value) {
-        return !value.isEmpty() && (value.charAt(0) == '"' || value.charAt(0) == '\'');
+    private static char quotation(String value) {
+        return !value.isEmpty() && (value.charAt(0) == '"' || value.charAt(0) == '\'') ? value.charAt(0) : '\0';
     }
 
     private static boolean startsWithIgnoreCase(String value, String prefix) {
         return prefix.isEmpty() || value.regionMatches(true, 0, prefix, 0, prefix.length());
     }
 
-    private static String encodeKey(String value) {
-        return !value.isEmpty() && value.chars().allMatch(SnbtJsonArgument::isSafeKeyCharacter) ? value : quote(value);
+    private static String logicalValue(JsonElement value) {
+        return value.isJsonPrimitive() ? value.getAsJsonPrimitive().getAsString() : value.toString();
     }
 
-    private static boolean isSafeKeyCharacter(int value) {
-        return value >= '0' && value <= '9' || value >= 'A' && value <= 'Z' || value >= 'a' && value <= 'z'
-                || value == '_' || value == '-' || value == '.' || value == '+';
+    private static Optional<String> toSnbt(JsonElement value, char quote) {
+        if (value.isJsonNull())
+            return Optional.empty();
+        if (value.isJsonPrimitive())
+            return Optional.of(value.getAsJsonPrimitive().isString() ? quote(value.getAsString(), quote) : value.toString());
+        List<String> entries = new ArrayList<>();
+        if (value.isJsonArray()) {
+            for (JsonElement item : value.getAsJsonArray()) {
+                Optional<String> encoded = toSnbt(item, quote);
+                if (encoded.isEmpty())
+                    return Optional.empty();
+                entries.add(encoded.get());
+            }
+            return Optional.of("[" + String.join(",", entries) + "]");
+        }
+        for (var entry : value.getAsJsonObject().entrySet()) {
+            Optional<String> encoded = toSnbt(entry.getValue(), quote);
+            if (encoded.isEmpty())
+                return Optional.empty();
+            entries.add(encodeKey(entry.getKey(), '\0') + ":" + encoded.get());
+        }
+        return Optional.of("{" + String.join(",", entries) + "}");
     }
 
-    private static String quote(String value) {
-        StringBuilder result = new StringBuilder(value.length() + 2).append('"');
+    private static String encodeKey(String value, char quote) {
+        return quote == '\0' && !value.isEmpty() && value.chars().allMatch(character -> StringReader.isAllowedInUnquotedString((char)character))
+                ? value : quote(value, quote == '\0' ? '"' : quote);
+    }
+
+    private static String quote(String value, char quote) {
+        StringBuilder result = new StringBuilder(value.length() + 2).append(quote);
         for (int i = 0; i < value.length(); i++) {
             char current = value.charAt(i);
-            switch (current) {
-                case '\\' -> result.append("\\\\");
-                case '"' -> result.append("\\\"");
+            if (current == quote || current == '\\')
+                result.append('\\').append(current);
+            else switch (current) {
                 case '\b' -> result.append("\\b");
                 case '\f' -> result.append("\\f");
                 case '\n' -> result.append("\\n");
@@ -273,91 +275,49 @@ public final class SnbtJsonArgument<T, N> implements BaseMappedArgument<T, N> {
                 }
             }
         }
-        return result.append('"').toString();
+        return result.append(quote).toString();
     }
 
-    private static CommandSyntaxException syntax(String message) {
-        return new SimpleCommandExceptionType(new LiteralMessage(message)).create();
+    private sealed interface CursorInput permits ValueInput, PropertyInput, NoInput {
     }
 
-    private sealed interface CursorInput permits ValueInput, PropertyInput, SuffixInput, NoInput {
-        void complete(Completer completer);
+    private record ValueInput(List<Object> path, int tokenStart, int tokenEnd, @Nullable JsonElement value,
+                              Set<String> usedProperties, char closing, boolean afterSeparator, JsonElement context) implements CursorInput {
     }
 
-    private record ValueInput(List<Object> path, int tokenStart, String prefix, String rawPrefix, Set<String> usedProperties, char closing, boolean afterSeparator, boolean suffix) implements CursorInput {
-        @Override
-        public void complete(Completer completer) {
-            completer.value(this);
-        }
-    }
-
-    private record PropertyInput(List<Object> path, int tokenStart, String prefix, String rawPrefix, Set<String> usedProperties, boolean afterSeparator) implements CursorInput {
-        @Override
-        public void complete(Completer completer) {
-            completer.property(this);
-        }
-    }
-
-    private record SuffixInput(List<Object> path, int tokenStart, Set<String> usedProperties, char closing, boolean colon) implements CursorInput {
-        @Override
-        public void complete(Completer completer) {
-            completer.suffix(this);
-        }
+    private record PropertyInput(List<Object> path, int containerStart, int tokenStart, @Nullable String prefix, Set<String> usedProperties,
+                                 boolean afterSeparator, JsonElement context) implements CursorInput {
     }
 
     private enum NoInput implements CursorInput {
-        INSTANCE;
-
-        @Override
-        public void complete(Completer completer) {
-        }
-    }
-
-    private interface Completer {
-        void value(ValueInput input);
-
-        void property(PropertyInput input);
-
-        void suffix(SuffixInput input);
+        INSTANCE,
+        ;
     }
 
     private static final class SuggestionCollector {
         private final SuggestionsBuilder root;
-        private final Set<String> keys = new HashSet<>();
         private final Map<Integer, SuggestionsBuilder> builders = new LinkedHashMap<>();
 
         private SuggestionCollector(SuggestionsBuilder root) {
             this.root = root;
         }
 
-        private void addAt(int localOffset, String value, @Nullable String tooltip) {
-            if (value.isEmpty())
-                return;
-            int absoluteOffset = root.getStart() + Math.max(0, localOffset);
-            if (!keys.add(absoluteOffset + "\u0000" + value))
-                return;
+        private String remaining() {
+            return root.getRemaining();
+        }
 
-            SuggestionsBuilder target = builders.computeIfAbsent(absoluteOffset, root::createOffset);
-            if (tooltip == null || tooltip.isBlank())
-                target.suggest(value);
-            else
-                target.suggest(value, new LiteralMessage(tooltip));
+        private void addAt(int offset, String value, @Nullable Message tooltip) {
+            builders.computeIfAbsent(root.getStart() + offset, root::createOffset).suggest(value, tooltip);
         }
 
         private Suggestions build() {
-            if (builders.isEmpty())
-                return new SuggestionsBuilder(root.getInput(), root.getStart()).build();
             return Suggestions.merge(root.getInput(), builders.values().stream().map(SuggestionsBuilder::build).toList());
-        }
-
-        private void clear() {
-            keys.clear();
-            builders.clear();
         }
     }
 
-    private static final class CursorParser {
+    private final class CursorParser {
         private final String input;
+        private JsonElement context;
         private int cursor;
 
         private CursorParser(String input) {
@@ -366,101 +326,123 @@ public final class SnbtJsonArgument<T, N> implements BaseMappedArgument<T, N> {
 
         private CursorInput parse() {
             skipWhitespace();
-            if (end())
-                return value(List.of(), cursor, "", "", Set.of(), '\0', false, false);
-
-            CursorInput result = parseValue(new ArrayList<>(), Set.of(), '\0');
-            if (result != null)
-                return result;
-            skipWhitespace();
-            return NoInput.INSTANCE;
+            context = !end() && peek() == '[' ? new JsonArray() : new JsonObject();
+            CursorInput result = parseValue(List.of(), Set.of(), '\0', false);
+            return result == null ? NoInput.INSTANCE : result;
         }
 
-        private @Nullable CursorInput parseValue(List<Object> path, Set<String> usedProperties, char closing) {
+        private @Nullable CursorInput parseValue(List<Object> path, Set<String> used, char closing, boolean afterSeparator) {
             skipWhitespace();
-            if (end())
-                return value(path, cursor, "", "", usedProperties, closing, false, false);
-
-            char current = peek();
-            if (current == '{')
-                return parseObject(path);
-            if (current == '[')
-                return parseArray(path);
-            if (current == '"' || current == '\'') {
-                int start = cursor;
-                StringToken token = readQuoted();
-                if (!token.valid())
-                    return NoInput.INSTANCE;
-                return token.complete() ? null : value(path, start, token.value(), input.substring(start), usedProperties, closing, false, false);
-            }
-            if (current == '}' || current == ']' || current == ',')
-                return NoInput.INSTANCE;
-
             int start = cursor;
-            while (!end() && !isValueDelimiter(peek()))
-                cursor++;
-            String token = input.substring(start, cursor);
-            if (token.isEmpty())
-                return NoInput.INSTANCE;
             if (end())
-                return value(path, start, token, token, usedProperties, closing, false, closing != '\0');
-            return null;
+                return new ValueInput(path, start, start, null, used, closing, afterSeparator, context);
+            if ((peek() == '{' || peek() == '[') && !containerClosed(start))
+                return peek() == '{' ? parseObject(path) : parseArray(path);
+            StringReader reader = new StringReader(input);
+            reader.setCursor(start);
+            N parsed;
+            try {
+                parsed = nativeType.parse(reader);
+            } catch (CommandSyntaxException exception) {
+                if (peek() == '{')
+                    return parseObject(path);
+                if (peek() == '[')
+                    return parseArray(path);
+                if (peek() == '}' || peek() == ']' || peek() == ',')
+                    return NoInput.INSTANCE;
+                return new ValueInput(path, start, input.length(), null, used, closing, afterSeparator, context);
+            }
+            JsonElement value = json.invoke(parsed);
+            cursor = reader.getCursor();
+            int tokenEnd = cursor;
+            if (!path.isEmpty())
+                set(context, path, 0, value);
+            skipWhitespace();
+            return end() ? new ValueInput(path, start, tokenEnd, value, used, closing, afterSeparator, context) : null;
+        }
+
+        /** Finds a boundary only; the native parser still validates every completed value. */
+        private boolean containerClosed(int start) {
+            int depth = 0;
+            char quote = '\0';
+            for (int i = start; i < input.length(); i++) {
+                char current = input.charAt(i);
+                if (quote != '\0') {
+                    if (current == '\\')
+                        i++;
+                    else if (current == quote)
+                        quote = '\0';
+                } else if (current == '"' || current == '\'')
+                    quote = current;
+                else if (current == '{' || current == '[')
+                    depth++;
+                else if ((current == '}' || current == ']') && --depth == 0)
+                    return true;
+            }
+            return false;
         }
 
         private @Nullable CursorInput parseObject(List<Object> path) {
-            cursor++;
-            Set<String> usedProperties = new LinkedHashSet<>();
-            skipWhitespace();
-            if (end())
-                return property(path, cursor, "", "", usedProperties, false);
-            if (peek() == '}') {
-                cursor++;
-                return null;
-            }
-
+            if (!path.isEmpty())
+                set(context, path, 0, new JsonObject());
+            int containerStart = cursor++;
+            Set<String> used = new LinkedHashSet<>();
+            boolean afterSeparator = false;
             while (true) {
                 skipWhitespace();
                 if (end())
-                    return property(path, cursor, "", "", usedProperties, false);
-
-                int keyStart = cursor;
+                    return new PropertyInput(path, containerStart, cursor, "", used, afterSeparator, context);
+                if (peek() == '}') {
+                    cursor++;
+                    return null;
+                }
+                int start = cursor;
                 String key;
-                if (peek() == '"' || peek() == '\'') {
-                    StringToken token = readQuoted();
-                    if (!token.valid())
+                if (quotation(input.substring(cursor)) != '\0') {
+                    char quote = input.charAt(cursor++);
+                    boolean escaped = false;
+                    boolean closed = false;
+                    while (!end()) {
+                        char current = input.charAt(cursor++);
+                        if (escaped)
+                            escaped = false;
+                        else if (current == '\\')
+                            escaped = true;
+                        else if (current == quote) {
+                            closed = true;
+                            break;
+                        }
+                    }
+                    String raw = input.substring(start, cursor);
+                    JsonElement decoded = readQuotedPrefix(closed ? raw.substring(0, raw.length() - 1) : raw, quote);
+                    if (!closed || end())
+                        return new PropertyInput(path, containerStart, start, decoded == null ? null : decoded.getAsString(), used, afterSeparator, context);
+                    if (decoded == null)
                         return NoInput.INSTANCE;
-                    if (!token.complete())
-                        return property(path, keyStart, token.value(), input.substring(keyStart), usedProperties, false);
-                    key = token.value();
+                    key = decoded.getAsString();
                 } else {
-                    while (!end() && !isKeyDelimiter(peek()))
+                    while (!end() && !Character.isWhitespace(peek()) && peek() != ':' && peek() != ',' && peek() != '}' && peek() != ']')
                         cursor++;
-                    key = input.substring(keyStart, cursor);
-                    if (key.isEmpty())
+                    key = input.substring(start, cursor);
+                    if (key.isEmpty() || !key.chars().allMatch(character -> StringReader.isAllowedInUnquotedString((char)character)))
                         return NoInput.INSTANCE;
                     if (end())
-                        return property(path, keyStart, key, key, usedProperties, false);
+                        return new PropertyInput(path, containerStart, start, key, used, afterSeparator, context);
                 }
-
-                usedProperties.add(key);
                 skipWhitespace();
                 if (end())
-                    return suffix(append(path, key), cursor, usedProperties, '}', true);
+                    return new PropertyInput(path, containerStart, start, key, used, afterSeparator, context);
                 if (peek() != ':')
                     return NoInput.INSTANCE;
                 cursor++;
-
+                used.add(key);
                 List<Object> childPath = append(path, key);
-                skipWhitespace();
-                if (end())
-                    return value(childPath, cursor, "", "", usedProperties, '}', false, false);
-                CursorInput result = parseValue(childPath, usedProperties, '}');
+                set(context, childPath, 0, JsonNull.INSTANCE);
+                CursorInput result = parseValue(childPath, used, '}', false);
                 if (result != null)
                     return result;
-
-                skipWhitespace();
                 if (end())
-                    return suffix(childPath, cursor, usedProperties, '}', false);
+                    return NoInput.INSTANCE;
                 if (peek() == '}') {
                     cursor++;
                     return null;
@@ -468,35 +450,29 @@ public final class SnbtJsonArgument<T, N> implements BaseMappedArgument<T, N> {
                 if (peek() != ',')
                     return NoInput.INSTANCE;
                 cursor++;
-                skipWhitespace();
-                if (end())
-                    return property(path, cursor, "", "", usedProperties, true);
+                afterSeparator = true;
             }
         }
 
         private @Nullable CursorInput parseArray(List<Object> path) {
+            if (!path.isEmpty())
+                set(context, path, 0, new JsonArray());
             cursor++;
             skipWhitespace();
-            if (!end() && (peek() == 'B' || peek() == 'I' || peek() == 'L') && cursor + 1 < input.length() && input.charAt(cursor + 1) == ';') {
+            if (!end() && (peek() == 'B' || peek() == 'I' || peek() == 'L') && cursor + 1 < input.length() && input.charAt(cursor + 1) == ';')
                 cursor += 2;
-                skipWhitespace();
-            }
-
             int index = 0;
-            if (end())
-                return value(append(path, index), cursor, "", "", Set.of(), ']', false, false);
-            if (peek() == ']') {
-                cursor++;
-                return null;
-            }
-
             while (true) {
-                CursorInput result = parseValue(append(path, index), Set.of(), ']');
+                skipWhitespace();
+                if (!end() && peek() == ']') {
+                    cursor++;
+                    return null;
+                }
+                CursorInput result = parseValue(append(path, index), Set.of(), ']', index > 0);
                 if (result != null)
                     return result;
-                skipWhitespace();
                 if (end())
-                    return suffix(append(path, index), cursor, Set.of(), ']', false);
+                    return NoInput.INSTANCE;
                 if (peek() == ']') {
                     cursor++;
                     return null;
@@ -505,37 +481,7 @@ public final class SnbtJsonArgument<T, N> implements BaseMappedArgument<T, N> {
                     return NoInput.INSTANCE;
                 cursor++;
                 index++;
-                skipWhitespace();
-                if (end())
-                    return value(append(path, index), cursor, "", "", Set.of(), ']', true, false);
             }
-        }
-
-        private StringToken readQuoted() {
-            char quote = input.charAt(cursor++);
-            StringBuilder value = new StringBuilder();
-            boolean escaped = false;
-            while (!end()) {
-                char current = input.charAt(cursor++);
-                if (escaped) {
-                    value.append(switch (current) {
-                        case 'b' -> '\b';
-                        case 'f' -> '\f';
-                        case 'n' -> '\n';
-                        case 'r' -> '\r';
-                        case 't' -> '\t';
-                        default -> current;
-                    });
-                    escaped = false;
-                } else if (current == '\\') {
-                    escaped = true;
-                } else if (current == quote) {
-                    return new StringToken(value.toString(), true, true);
-                } else {
-                    value.append(current);
-                }
-            }
-            return new StringToken(value.toString(), false, !escaped);
         }
 
         private void skipWhitespace() {
@@ -551,34 +497,33 @@ public final class SnbtJsonArgument<T, N> implements BaseMappedArgument<T, N> {
             return input.charAt(cursor);
         }
 
-        private static boolean isValueDelimiter(char value) {
-            return Character.isWhitespace(value) || value == ',' || value == ']' || value == '}';
-        }
-
-        private static boolean isKeyDelimiter(char value) {
-            return Character.isWhitespace(value) || value == ':' || value == ',' || value == '}';
-        }
-
-        private static List<Object> append(List<Object> path, Object value) {
-            List<Object> result = new ArrayList<>(path.size() + 1);
-            result.addAll(path);
-            result.add(value);
-            return result;
-        }
-
-        private static ValueInput value(List<Object> path, int tokenStart, String prefix, String rawPrefix, Set<String> usedProperties, char closing, boolean afterSeparator, boolean suffix) {
-            return new ValueInput(path, tokenStart, prefix, rawPrefix, usedProperties, closing, afterSeparator, suffix);
-        }
-
-        private static PropertyInput property(List<Object> path, int tokenStart, String prefix, String rawPrefix, Set<String> usedProperties, boolean afterSeparator) {
-            return new PropertyInput(path, tokenStart, prefix, rawPrefix, usedProperties, afterSeparator);
-        }
-
-        private static SuffixInput suffix(List<Object> path, int tokenStart, Set<String> usedProperties, char closing, boolean colon) {
-            return new SuffixInput(path, tokenStart, usedProperties, closing, colon);
-        }
-
-        private record StringToken(String value, boolean complete, boolean valid) {
+        private void set(JsonElement parent, List<Object> path, int depth, JsonElement value) {
+            Object part = path.get(depth);
+            if (depth == path.size() - 1) {
+                if (part instanceof String key)
+                    parent.getAsJsonObject().add(key, value);
+                else {
+                    JsonArray array = parent.getAsJsonArray();
+                    while (array.size() <= (Integer)part)
+                        array.add(JsonNull.INSTANCE);
+                    array.set((Integer)part, value);
+                }
+                return;
+            }
+            Object next = path.get(depth + 1);
+            JsonElement child = part instanceof String key && parent.isJsonObject() ? parent.getAsJsonObject().get(key)
+                    : part instanceof Integer index && parent.isJsonArray() && index < parent.getAsJsonArray().size() ? parent.getAsJsonArray().get(index) : null;
+            if (child == null || child.isJsonNull())
+                child = next instanceof String ? new JsonObject() : new JsonArray();
+            if (part instanceof String key)
+                parent.getAsJsonObject().add(key, child);
+            else {
+                JsonArray array = parent.getAsJsonArray();
+                while (array.size() <= (Integer)part)
+                    array.add(JsonNull.INSTANCE);
+                array.set((Integer)part, child);
+            }
+            set(child, path, depth + 1, value);
         }
     }
 }

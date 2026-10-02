@@ -10,6 +10,7 @@ import java.lang.reflect.*;
 import java.math.BigDecimal;
 import java.util.*;
 import java.util.function.Supplier;
+import java.util.function.Function;
 
 public final class JsonInput {
     private static final View ANY_VIEW = new View(true, false, Set.of(), Map.of(), null, Set.of(), List.of(), null, 0, Integer.MAX_VALUE, List.of());
@@ -29,6 +30,10 @@ public final class JsonInput {
 
     public static @NotNull JsonInput of(@NotNull Gson gson, @NotNull TypeToken<?> type) {
         return new JsonInput(new Builder(gson).input(type));
+    }
+
+    public static @NotNull JsonInput of(@NotNull Gson gson, @NotNull Provider provider) {
+        return new JsonInput(provider.input(new Builder(gson)));
     }
 
     public static @NotNull JsonInput of(@NotNull Node root) {
@@ -79,26 +84,127 @@ public final class JsonInput {
         return new Node(() -> merge(values, false));
     }
 
-    View root() {
+    public static @NotNull Node dependent(@NotNull String sibling, @NotNull Function<JsonElement, Node> resolver) {
+        return new Node(() -> NONE_VIEW, sibling, resolver);
+    }
+
+    public View root() {
         return root.view();
     }
 
-    View at(List<Object> path) {
+    public View at(List<Object> path) {
         Node node = root;
         for (Object part : path)
             node = node.view().child(part);
         return node.view();
     }
 
-    JsonElement normalize(JsonElement value) {
-        return normalize(root, value);
+    public View at(List<Object> path, JsonElement context) {
+        Node node = root;
+        JsonElement current = context;
+        JsonElement parent = context;
+        for (Object part : path) {
+            if (node.sibling != null) {
+                if (!parent.isJsonObject() || !parent.getAsJsonObject().has(node.sibling))
+                    return NONE_VIEW;
+                node = node.resolver.apply(parent.getAsJsonObject().get(node.sibling));
+            }
+            node = node.view().child(part);
+            parent = current;
+            if (current.isJsonObject() && part instanceof String key && current.getAsJsonObject().has(key))
+                current = current.getAsJsonObject().get(key);
+            else if (current.isJsonArray() && part instanceof Integer index && index < current.getAsJsonArray().size())
+                current = current.getAsJsonArray().get(index);
+            else
+                current = JsonNull.INSTANCE;
+        }
+        if (node.sibling != null) {
+            if (!parent.isJsonObject() || !parent.getAsJsonObject().has(node.sibling))
+                return NONE_VIEW;
+            node = node.resolver.apply(parent.getAsJsonObject().get(node.sibling));
+        }
+        return node.view();
     }
 
-    private JsonElement normalize(Node node, JsonElement value) {
-        View view = node.view();
+    public JsonElement normalizeAndValidate(View view, List<Object> path, JsonElement value) {
+        JsonElement normalized = normalize(view, value);
+        String location = "$";
+        for (Object part : path)
+            location += part instanceof String name ? "." + name : "[" + part + "]";
+        validate(view, normalized, location);
+        return normalized;
+    }
+
+    public JsonElement normalize(JsonElement value) {
+        return normalize(root, value, null);
+    }
+
+    public void validate(@NotNull JsonElement value) {
+        normalizeAndValidate(value);
+    }
+
+    public JsonElement normalizeAndValidate(@NotNull JsonElement value) {
+        JsonElement normalized = normalize(value);
+        validate(root, normalized, null, "$");
+        return normalized;
+    }
+
+    private void validate(Node node, JsonElement value, @Nullable JsonObject parent, String path) {
+        if (node.sibling != null) {
+            if (parent == null || !parent.has(node.sibling))
+                throw new ValidationException("Missing sibling '" + node.sibling + "' at " + path);
+            node = node.resolver.apply(parent.get(node.sibling));
+        }
+        validate(node.view(), value, path);
+    }
+
+    private void validate(View view, JsonElement value, String path) {
+        if (view.any())
+            return;
+        if (value == null || value.isJsonNull()) {
+            if (!view.any() && !view.types().contains(Type.NULL))
+                throw new ValidationException("Null is not allowed at " + path);
+            return;
+        }
+        Type actual = value.isJsonObject() ? Type.OBJECT : value.isJsonArray() ? Type.ARRAY : value.getAsJsonPrimitive().isBoolean() ? Type.BOOLEAN
+                : value.getAsJsonPrimitive().isString() ? Type.STRING : value.getAsJsonPrimitive().getAsBigDecimal().stripTrailingZeros().scale() <= 0 ? Type.INTEGER : Type.NUMBER;
+        if (!view.any() && (view.none() || !view.types().contains(actual) && !(actual == Type.INTEGER && view.types().contains(Type.NUMBER))))
+            throw new ValidationException("Invalid value type at " + path + ": " + actual);
+        if (!view.values().isEmpty() && view.values().stream().noneMatch(value::equals))
+            throw new ValidationException("Invalid value at " + path + ": " + value);
+        if (value.isJsonObject()) {
+            JsonObject object = value.getAsJsonObject();
+            for (String required : view.required())
+                if (!object.has(required))
+                    throw new ValidationException("Missing required property '" + required + "' at " + path);
+            for (var entry : object.entrySet()) {
+                Node child = view.child(entry.getKey());
+                validate(child, entry.getValue(), object, path + "." + entry.getKey());
+            }
+        } else if (value.isJsonArray()) {
+            JsonArray array = value.getAsJsonArray();
+            if (array.size() < view.minItems() || array.size() > view.maxItems())
+                throw new ValidationException("Invalid array length at " + path);
+            for (int i = 0; i < array.size(); i++)
+                validate(view.child(i), array.get(i), null, path + "[" + i + "]");
+        }
+    }
+
+    private JsonElement normalize(Node node, JsonElement value, @Nullable JsonObject parent) {
+        if (node.sibling != null) {
+            if (parent == null || !parent.has(node.sibling))
+                return value;
+            node = node.resolver.apply(parent.get(node.sibling));
+        }
+        return normalize(node.view(), value);
+    }
+
+    private JsonElement normalize(View view, JsonElement value) {
+        if (view.any())
+            return value;
         if (value.isJsonPrimitive()) {
             JsonPrimitive primitive = value.getAsJsonPrimitive();
-            if (primitive.isNumber() && view.types().equals(Set.of(Type.BOOLEAN))) {
+            if (primitive.isNumber() && view.types().contains(Type.BOOLEAN) && view.types().stream().allMatch(type -> type == Type.BOOLEAN || type == Type.NULL)) {
                 BigDecimal number = primitive.getAsBigDecimal();
                 if (number.compareTo(BigDecimal.ZERO) == 0)
                     return new JsonPrimitive(false);
@@ -108,11 +214,18 @@ public final class JsonInput {
         } else if (value.isJsonArray()) {
             JsonArray array = value.getAsJsonArray();
             for (int i = 0; i < array.size(); i++)
-                array.set(i, normalize(view.child(i), array.get(i)));
+                array.set(i, normalize(view.child(i), array.get(i), null));
         } else if (value.isJsonObject()) {
-            value.getAsJsonObject().entrySet().forEach(entry -> entry.setValue(normalize(view.child(entry.getKey()), entry.getValue())));
+            JsonObject object = value.getAsJsonObject();
+            object.entrySet().forEach(entry -> entry.setValue(normalize(view.child(entry.getKey()), entry.getValue(), object)));
         }
         return value;
+    }
+
+    public static final class ValidationException extends IllegalArgumentException {
+        private ValidationException(String message) {
+            super(message);
+        }
     }
 
     public interface Provider {
@@ -124,24 +237,14 @@ public final class JsonInput {
     }
 
     public enum Type {
-        OBJECT(List.of("{")) {
-            @Override boolean complete(String value) { return false; }
-        },
-        ARRAY(List.of("[")) {
-            @Override boolean complete(String value) { return false; }
-        },
-        STRING(List.of("\"\"")) {
-            @Override boolean complete(String value) { return true; }
-        },
-        INTEGER(List.of("0")) {
-            @Override boolean complete(String value) { return value.matches("[-+]?\\d+[bBsSlL]?"); }
-        },
-        NUMBER(List.of("0")) {
-            @Override boolean complete(String value) { return value.matches("[-+]?(?:\\d+(?:\\.\\d*)?|\\.\\d+)(?:[eE][-+]?\\d+)?[fFdD]?"); }
-        },
-        BOOLEAN(List.of("true", "false")) {
-            @Override boolean complete(String value) { return value.equals("true") || value.equals("false"); }
-        };
+        OBJECT(List.of("{")),
+        ARRAY(List.of("[")),
+        STRING(List.of("\"\"")),
+        INTEGER(List.of("0")),
+        NULL(List.of()),
+        NUMBER(List.of("0")),
+        BOOLEAN(List.of("true", "false")),
+        ;
 
         private final List<String> suggestions;
 
@@ -152,15 +255,21 @@ public final class JsonInput {
         List<String> suggestions() {
             return suggestions;
         }
-
-        abstract boolean complete(String value);
     }
 
     public static final class Node {
         private final Supplier<View> view;
+        private final @Nullable String sibling;
+        private final @Nullable Function<JsonElement, Node> resolver;
 
         private Node(Supplier<View> view) {
+            this(view, null, null);
+        }
+
+        private Node(Supplier<View> view, @Nullable String sibling, @Nullable Function<JsonElement, Node> resolver) {
             this.view = view;
+            this.sibling = sibling;
+            this.resolver = resolver;
         }
 
         private View view() {
@@ -168,10 +277,14 @@ public final class JsonInput {
         }
     }
 
-    record View(boolean any, boolean none, Set<Type> types, Map<String, Node> properties, @Nullable Node additional,
-                Set<String> required, List<Node> prefixItems, @Nullable Node items, int minItems, int maxItems,
-                List<JsonElement> values) {
-        Node child(Object part) {
+    public record View(
+            boolean any,
+            boolean none,
+            Set<Type> types, Map<String, Node> properties,
+            @Nullable Node additional, Set<String> required,
+            List<Node> prefixItems, @Nullable Node items, int minItems, int maxItems,
+            List<JsonElement> values) {
+        public Node child(Object part) {
             if (any)
                 return ANY;
             if (none)
@@ -184,19 +297,19 @@ public final class JsonInput {
             return items == null ? NONE : items;
         }
 
-        boolean additionalPropertiesAllowed() {
+        public boolean additionalPropertiesAllowed() {
             return additional != null && !additional.view().none;
         }
 
-        boolean canCloseObject(Set<String> used) {
+        public boolean canCloseObject(Set<String> used) {
             return used.containsAll(required);
         }
 
-        boolean canAddArrayItem(int index) {
+        public boolean canAddArrayItem(int index) {
             return index < maxItems && !child(index).view().none;
         }
 
-        boolean canCloseArray(int count) {
+        public boolean canCloseArray(int count) {
             return count >= minItems;
         }
     }

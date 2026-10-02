@@ -4,6 +4,7 @@ import com.google.errorprone.annotations.CanIgnoreReturnValue;
 import com.google.gson.*;
 import com.google.gson.reflect.TypeToken;
 import com.google.gson.stream.*;
+import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 import org.lime.core.common.api.commands.brigadier.arguments.JsonInput;
 import org.lime.core.common.utils.AnnotationUtils;
@@ -353,7 +354,7 @@ public final class RuntimeTypeAdapterFactory<T>
                 jsonElementAdapter.write(out, clone);
             }
             @Override
-            public JsonInput.Node input(JsonInput.Context context) {
+            public JsonInput.@NotNull Node input(JsonInput.@NotNull Context context) {
                 List<JsonInput.Node> variants = new ArrayList<>();
                 labelToSubtype.forEach((label, subtype) -> {
                     JsonInput.Node value = JsonInput.scalar(JsonInput.Type.STRING, List.of(new JsonPrimitive(label)));

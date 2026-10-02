@@ -5,6 +5,7 @@ import com.mojang.brigadier.CommandDispatcher;
 import com.mojang.brigadier.Message;
 import com.mojang.brigadier.arguments.ArgumentType;
 import com.mojang.brigadier.builder.LiteralArgumentBuilder;
+import com.mojang.brigadier.context.CommandContext;
 import com.mojang.brigadier.tree.CommandNode;
 import com.mojang.serialization.JsonOps;
 import net.kyori.adventure.audience.Audience;
@@ -33,6 +34,7 @@ import org.lime.core.fabric.commands.brigadier.CustomArgumentType;
 
 import java.util.List;
 import java.util.function.Predicate;
+import java.util.function.Function;
 
 public class NativeCommandConsumerFactory
         implements NativeCommandConsumer.Factory<CommandSourceStack, NativeCommandConsumerFactory.NativeRegister> {
@@ -103,7 +105,12 @@ public class NativeCommandConsumerFactory
     @Override
     public <T> ArgumentType<T> json(JsonInput input, TypeAdapter<T> adapter) {
         ArgumentType<Tag> nativeType = NbtTagArgument.nbtTag();
-        return argument(new SnbtJsonArgument<>(nativeType, value -> NbtOps.INSTANCE.convertTo(JsonOps.INSTANCE, value), input, adapter));
+        return argument(new SnbtJsonArgument<>(nativeType, value -> NbtOps.INSTANCE.convertTo(JsonOps.INSTANCE, value), input, adapter, this::message, null));
+    }
+    @Override
+    public ArgumentType<JsonElement> contextualJson(Function<CommandContext<?>, JsonInput> input, TypeAdapter<JsonElement> adapter) {
+        ArgumentType<Tag> nativeType = NbtTagArgument.nbtTag();
+        return argument(new SnbtJsonArgument<>(nativeType, value -> NbtOps.INSTANCE.convertTo(JsonOps.INSTANCE, value), JsonInput.raw(), adapter, this::message, input));
     }
 
     @Override

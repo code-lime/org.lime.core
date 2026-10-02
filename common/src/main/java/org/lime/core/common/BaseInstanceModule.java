@@ -4,6 +4,7 @@ import com.google.common.base.CaseFormat;
 import com.google.gson.*;
 import com.google.inject.*;
 import com.google.inject.matcher.Matchers;
+import com.google.inject.spi.Elements;
 import com.google.inject.spi.TypeEncounter;
 import com.google.inject.spi.TypeListener;
 import net.kyori.adventure.text.Component;

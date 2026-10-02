@@ -4,6 +4,7 @@ import com.google.gson.*;
 import com.google.gson.stream.JsonReader;
 import com.google.gson.stream.JsonWriter;
 import com.google.inject.Provider;
+import org.jetbrains.annotations.NotNull;
 import org.lime.core.common.api.commands.brigadier.arguments.JsonInput;
 import org.lime.core.common.utils.Lazy;
 
@@ -38,7 +39,7 @@ public abstract class JsonTypeAdapter<T, E extends JsonElement>
     }
 
     @Override
-    public JsonInput.Node input(JsonInput.Context context) {
+    public JsonInput.@NotNull Node input(JsonInput.@NotNull Context context) {
         if (JsonObject.class.isAssignableFrom(jsonElementClass))
             return JsonInput.object(Map.of(), JsonInput.any(), Set.of());
         if (JsonArray.class.isAssignableFrom(jsonElementClass))

@@ -4,10 +4,13 @@ import com.google.gson.*;
 import com.google.gson.annotations.SerializedName;
 import com.google.gson.reflect.TypeToken;
 import com.google.gson.stream.*;
+import org.jetbrains.annotations.NotNull;
 import org.junit.jupiter.api.Test;
+import org.lime.core.common.utils.adapters.CommonGsonTypeAdapters;
 
 import java.io.IOException;
 import java.util.*;
+import java.util.stream.Stream;
 
 import static org.junit.jupiter.api.Assertions.*;
 
@@ -57,6 +60,32 @@ class JsonInputTest {
         assertTrue(inputByKind.root().canCloseObject(Set.of("kind")));
     }
 
+    @Test
+    void validatesDependentSchemasAgainstContainingObject() {
+        JsonInput.Node kind = JsonInput.scalar(JsonInput.Type.STRING, List.of(new JsonPrimitive("text")));
+        JsonInput.Node text = JsonInput.object(Map.of("value", JsonInput.scalar(JsonInput.Type.STRING)), JsonInput.none(), Set.of("value"));
+        JsonInput input = JsonInput.of(JsonInput.object(Map.of(
+                "kind", kind,
+                "data", JsonInput.dependent("kind", value -> value.getAsString().equals("text") ? text : JsonInput.none()))));
+
+        input.validate(JsonParser.parseString("{kind:\"text\",data:{value:\"ok\"}}"));
+        assertThrows(IllegalArgumentException.class, () -> input.validate(JsonParser.parseString("{kind:\"text\",data:{unknown:1}}")));
+        assertThrows(IllegalArgumentException.class, () -> input.validate(JsonParser.parseString("{kind:\"text\",data:{}}")));
+    }
+
+    @Test
+    void optionalAdapterSerializesNullAndExposesInnerSchema() {
+        Gson gson = new GsonBuilder().registerTypeAdapterFactory(new OptionalAdapters().factory()).create();
+        TypeToken<Optional<Value>> type = new TypeToken<>() {};
+        JsonInput input = JsonInput.of(gson, type);
+
+        assertEquals("null", gson.toJson(Optional.empty(), type.getType()));
+        assertEquals(Optional.empty(), gson.fromJson("null", type));
+        assertEquals(Optional.of(new Value("text")), gson.fromJson("{\"value\":\"text\"}", type));
+        input.validate(JsonNull.INSTANCE);
+        input.validate(gson.toJsonTree(new Value("text")));
+    }
+
     private record External(String value) {}
 
     private record Holder(External external) {}
@@ -88,8 +117,21 @@ class JsonInputTest {
 
     private static final class ProviderAdapter extends ExternalAdapter implements JsonInput.Provider {
         @Override
-        public JsonInput.Node input(JsonInput.Context context) {
+        public JsonInput.@NotNull Node input(JsonInput.@NotNull Context context) {
             return JsonInput.scalar(JsonInput.Type.STRING, List.of(new JsonPrimitive("provided")));
+        }
+    }
+
+    private record Value(String value) {}
+
+    private static final class OptionalAdapters extends CommonGsonTypeAdapters {
+        private com.google.gson.TypeAdapterFactory factory() {
+            return optional();
+        }
+
+        @Override
+        public Stream<com.google.gson.TypeAdapterFactory> factories() {
+            return Stream.of(optional());
         }
     }
 }

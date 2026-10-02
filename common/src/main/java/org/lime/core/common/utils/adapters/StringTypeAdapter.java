@@ -3,6 +3,7 @@ package org.lime.core.common.utils.adapters;
 import com.google.gson.*;
 import com.google.gson.stream.JsonReader;
 import com.google.gson.stream.JsonWriter;
+import org.jetbrains.annotations.NotNull;
 import org.lime.core.common.api.commands.brigadier.arguments.JsonInput;
 
 import java.io.IOException;
@@ -25,7 +26,7 @@ public abstract class StringTypeAdapter<T>
     }
 
     @Override
-    public JsonInput.Node input(JsonInput.Context context) {
+    public JsonInput.@NotNull Node input(JsonInput.@NotNull Context context) {
         return JsonInput.scalar(JsonInput.Type.STRING);
     }
 }

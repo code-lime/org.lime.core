@@ -5,6 +5,7 @@ import com.google.gson.reflect.TypeToken;
 import com.google.gson.stream.JsonReader;
 import com.google.gson.stream.JsonWriter;
 import com.google.inject.TypeLiteral;
+import org.jetbrains.annotations.NotNull;
 import org.lime.core.common.api.commands.brigadier.arguments.JsonInput;
 import org.lime.core.common.reflection.Reflection;
 import org.lime.core.common.reflection.ReflectionConstructor;
@@ -56,7 +57,7 @@ public class JsonRecordSingleTypeAdapterFactory
                 return constructor.invoke(parameterAdapter.read(in));
             }
             @Override
-            public JsonInput.Node input(JsonInput.Context context) {
+            public JsonInput.@NotNull Node input(JsonInput.@NotNull Context context) {
                 return context.input(parameterType);
             }
         }

@@ -34,6 +34,7 @@ import org.lime.core.common.utils.execute.*;
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
 import java.util.function.Predicate;
+import java.util.function.Function;
 
 public class NativeCommandConsumerFactory
         implements NativeCommandConsumer.Factory<CommandSourceStack, NativeCommandConsumerFactory.NativeRegister> {
@@ -108,7 +109,11 @@ public class NativeCommandConsumerFactory
     }
     @Override
     public <T> ArgumentType<T> json(JsonInput input, TypeAdapter<T> adapter) {
-        return argument(new SnbtJsonArgument<>(wrap(NbtTagArgument.nbtTag()), value -> NbtOps.INSTANCE.convertTo(JsonOps.INSTANCE, value), input, adapter));
+        return argument(new SnbtJsonArgument<>(wrap(NbtTagArgument.nbtTag()), value -> NbtOps.INSTANCE.convertTo(JsonOps.INSTANCE, value), input, adapter, this::message, null));
+    }
+    @Override
+    public ArgumentType<JsonElement> contextualJson(Function<CommandContext<?>, JsonInput> input, TypeAdapter<JsonElement> adapter) {
+        return argument(new SnbtJsonArgument<>(wrap(NbtTagArgument.nbtTag()), value -> NbtOps.INSTANCE.convertTo(JsonOps.INSTANCE, value), JsonInput.raw(), adapter, this::message, input));
     }
     @SuppressWarnings("unchecked")
     public <T> ArgumentType<T> wrap(ArgumentType<T> vanillaType) {

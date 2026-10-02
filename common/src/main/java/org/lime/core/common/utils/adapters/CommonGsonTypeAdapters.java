@@ -7,6 +7,7 @@ import com.google.gson.stream.JsonReader;
 import com.google.gson.stream.JsonWriter;
 import com.google.inject.Inject;
 import com.google.inject.Provider;
+import org.jetbrains.annotations.NotNull;
 import org.lime.core.common.api.commands.brigadier.arguments.JsonInput;
 import net.kyori.adventure.key.Key;
 import net.kyori.adventure.text.Component;
@@ -115,7 +116,7 @@ public abstract class CommonGsonTypeAdapters
             ActionEx2<JsonWriter, T> writeElement) {
         abstract class Adapter extends TypeAdapter<R> implements JsonInput.Provider {
             @Override
-            public JsonInput.Node input(JsonInput.Context context) {
+            public JsonInput.@NotNull Node input(JsonInput.@NotNull Context context) {
                 JsonInput.Node element = JsonInput.scalar(JsonInput.Type.valueOf(type.toUpperCase(Locale.ROOT)));
                 return JsonInput.tuple(List.of(element, element));
             }
@@ -163,6 +164,48 @@ public abstract class CommonGsonTypeAdapters
                 range(ShortRange.FACTORY, "integer", v -> (short)v.nextInt(), JsonWriter::value));
     }
 
+    protected TypeAdapterFactory optional() {
+        return new TypeAdapterFactory() {
+            @Override
+            public <T> TypeAdapter<T> create(Gson gson, TypeToken<T> type) {
+                if (type.getRawType() != Optional.class)
+                    return null;
+                Type valueType = ((java.lang.reflect.ParameterizedType)type.getType()).getActualTypeArguments()[0];
+                TypeAdapter<?> adapter = optionalAdapter(gson.getAdapter(TypeToken.get(valueType)), TypeToken.get(valueType));
+                @SuppressWarnings("unchecked") TypeAdapter<T> result = (TypeAdapter<T>)adapter;
+                return result;
+            }
+        };
+    }
+
+    private static <T> TypeAdapter<Optional<T>> optionalAdapter(TypeAdapter<T> delegate, TypeToken<?> valueType) {
+        class Adapter extends TypeAdapter<Optional<T>> implements JsonInput.Provider {
+            @Override
+            public void write(JsonWriter out, Optional<T> value) throws IOException {
+                if (value.isEmpty()) {
+                    out.nullValue();
+                    return;
+                }
+                delegate.write(out, value.get());
+            }
+
+            @Override
+            public Optional<T> read(JsonReader in) throws IOException {
+                if (in.peek() == com.google.gson.stream.JsonToken.NULL) {
+                    in.nextNull();
+                    return Optional.empty();
+                }
+                return Optional.ofNullable(delegate.read(in));
+            }
+
+            @Override
+            public JsonInput.@NotNull Node input(JsonInput.@NotNull Context context) {
+                return JsonInput.choice(List.of(JsonInput.scalar(JsonInput.Type.NULL), context.input(valueType)));
+            }
+        }
+        return new Adapter();
+    }
+
     public Stream<TypeAdapterFactory> factories() {
         return Stream.of(
             key(),
@@ -170,6 +213,7 @@ public abstract class CommonGsonTypeAdapters
             duration(),
             rgbColor(),
             range(),
+            optional(),
             JsonRecordSingleTypeAdapterFactory.INSTANCE,
             RuntimeTypeAdapterFactory.AUTO);
     }

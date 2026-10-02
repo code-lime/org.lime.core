@@ -21,6 +21,7 @@ import org.lime.core.common.api.commands.brigadier.arguments.BaseMappedArgument;
 import org.lime.core.common.api.commands.brigadier.arguments.CustomArgumentBuilder;
 import org.lime.core.common.api.commands.brigadier.arguments.JsonInput;
 import org.lime.core.common.api.commands.brigadier.exceptions.CommandExceptions;
+import org.lime.core.common.api.commands.brigadier.exceptions.Generic1CommandExceptionType;
 import org.lime.core.common.api.commands.brigadier.exceptions.Generic2CommandExceptionType;
 import org.lime.core.common.utils.DurationUtils;
 import org.lime.core.common.utils.execute.Func1;
@@ -30,6 +31,7 @@ import java.time.Duration;
 import java.util.*;
 import java.util.concurrent.CompletableFuture;
 import java.util.stream.Stream;
+import java.util.function.Function;
 
 @Singleton
 public class CustomArgumentUtility {
@@ -45,6 +47,9 @@ public class CustomArgumentUtility {
                             .append(v)
                             .color(NamedTextColor.AQUA))
                     .toList()))));
+    private final Generic1CommandExceptionType<Throwable> JSON_SYNTAX = CommandExceptions.of((expected) -> factory.message(Component.empty()
+            .append(Component.text("Invalid JSON value: "))
+            .append(Component.text(expected.getMessage()).color(NamedTextColor.AQUA))));
     private final SimpleCommandExceptionType ERROR_NOT_SOURCE = new SimpleCommandExceptionType(new LiteralMessage("A source is required to run this command here"));
 
     public <J, T, Source> CustomArgumentBuilder<J, T, Source> builder(
@@ -130,5 +135,48 @@ public class CustomArgumentUtility {
     /** Parses one vanilla SNBT value through the configured project Gson. */
     public <T> ArgumentType<T> json(TypeToken<T> type) {
         return factory.json(JsonInput.of(gson, type), gson.getAdapter(type));
+    }
+
+    public <T> ContextualJsonArgument<T> json(Function<CommandContext<?>, TypeAdapter<T>> selector) {
+        return new ContextualJsonArgument<>(factory.contextualJson(context -> input(selector.apply(context)), gson.getAdapter(JsonElement.class)), selector);
+    }
+
+    private JsonInput input(TypeAdapter<?> adapter) {
+        if (!(adapter instanceof JsonInput.Provider provider))
+            throw new IllegalStateException("Contextual JSON adapter must implement JsonInput.Provider");
+        return JsonInput.of(gson, provider);
+    }
+
+    public final class ContextualJsonArgument<T> {
+        private final ArgumentType<JsonElement> argument;
+        private final Function<CommandContext<?>, TypeAdapter<T>> selector;
+
+        private ContextualJsonArgument(ArgumentType<JsonElement> argument, Function<CommandContext<?>, TypeAdapter<T>> selector) {
+            this.argument = argument;
+            this.selector = selector;
+        }
+
+        public ArgumentType<JsonElement> argument() {
+            return argument;
+        }
+
+        public <S> T read(CommandContext<S> context, String name) throws CommandSyntaxException {
+            try {
+                TypeAdapter<T> adapter = selected(context);
+                JsonInput input = CustomArgumentUtility.this.input(adapter);
+                JsonElement value = input.normalizeAndValidate(context.getArgument(name, JsonElement.class));
+                return adapter.fromJsonTree(value);
+            } catch (JsonParseException | IllegalStateException | IllegalArgumentException exception) {
+                throw JSON_SYNTAX.create(exception);
+            }
+        }
+
+        private TypeAdapter<T> selected(CommandContext<?> context) {
+            TypeAdapter<T> adapter = selector.apply(context);
+            if (adapter == null)
+                throw new IllegalStateException("Contextual JSON adapter selector returned null");
+            return adapter;
+        }
+
     }
 }
