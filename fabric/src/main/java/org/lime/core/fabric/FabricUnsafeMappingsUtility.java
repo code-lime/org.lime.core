@@ -1,6 +1,7 @@
 package org.lime.core.fabric;
 
 import net.fabricmc.loader.api.FabricLoader;
+import net.fabricmc.loader.api.MappingResolver;
 import net.fabricmc.mappingio.MappingReader;
 import net.fabricmc.mappingio.tree.*;
 import org.lime.core.common.services.UnsafeMappingsUtility;
@@ -8,95 +9,117 @@ import org.objectweb.asm.Type;
 
 import java.io.*;
 import java.nio.charset.StandardCharsets;
-import java.util.Optional;
+import java.util.*;
 
-public class FabricUnsafeMappingsUtility implements UnsafeMappingsUtility {
+public class FabricUnsafeMappingsUtility
+        implements UnsafeMappingsUtility {
     private static final String MAPPINGS_RESOURCE = "/META-INF/org-lime-core-fabric/mappings/mappings.tiny";
     private static final String NAMED_NAMESPACE = "named";
+    private static final String INTERMEDIARY_NAMESPACE = "intermediary";
 
     public static final FabricUnsafeMappingsUtility INSTANCE = new FabricUnsafeMappingsUtility();
     public static FabricUnsafeMappingsUtility instance() {
         return INSTANCE;
     }
 
+    private final MappingResolver resolver;
     private final MemoryMappingTree mappings;
     private final int namedNamespace;
-    private final int runtimeNamespace;
+    private final int intermediaryNamespace;
 
     private FabricUnsafeMappingsUtility() {
-        mappings = loadMappings();
-        namedNamespace = requiredNamespace(NAMED_NAMESPACE);
-        runtimeNamespace = requiredNamespace(FabricLoader.getInstance()
-                .getMappingResolver()
-                .getCurrentRuntimeNamespace());
-    }
-
-    private static MemoryMappingTree loadMappings() {
+        resolver = FabricLoader.getInstance().getMappingResolver();
         var stream = FabricUnsafeMappingsUtility.class.getResourceAsStream(MAPPINGS_RESOURCE);
         if (stream == null)
             throw new IllegalStateException("Missing bundled official Mojang mappings: " + MAPPINGS_RESOURCE);
 
-        MemoryMappingTree mappings = new MemoryMappingTree(true);
+        mappings = new MemoryMappingTree(true);
         try (stream; var reader = new InputStreamReader(stream, StandardCharsets.UTF_8)) {
             MappingReader.read(reader, mappings);
         } catch (IOException e) {
             throw new IllegalStateException("Unable to read bundled official Mojang mappings: " + MAPPINGS_RESOURCE, e);
         }
-        return mappings;
+        namedNamespace = mappings.getNamespaceId(NAMED_NAMESPACE);
+        intermediaryNamespace = mappings.getNamespaceId(INTERMEDIARY_NAMESPACE);
+        if (namedNamespace == MappingTreeView.NULL_NAMESPACE_ID || intermediaryNamespace == MappingTreeView.NULL_NAMESPACE_ID)
+            throw new IllegalStateException("Bundled official mappings do not contain namespace '" + NAMED_NAMESPACE + "' or '" + INTERMEDIARY_NAMESPACE + "'");
+        if (!resolver.getNamespaces().contains(INTERMEDIARY_NAMESPACE))
+            throw new IllegalStateException("Fabric MappingResolver does not contain required namespace '" + INTERMEDIARY_NAMESPACE + "' for runtime namespace '" + resolver.getCurrentRuntimeNamespace() + "'");
     }
 
-    private int requiredNamespace(String namespace) {
-        int id = mappings.getNamespaceId(namespace);
-        if (id == MappingTreeView.NULL_NAMESPACE_ID)
-            throw new IllegalStateException("Bundled official Mojang mappings do not contain namespace '" + namespace + "'");
-        return id;
+    private String runtimeToIntermediaryClass(String runtimeName) {
+        return resolver.unmapClassName(INTERMEDIARY_NAMESPACE, runtimeName.replace('/', '.'))
+                .replace('.', '/');
     }
 
-    private MappingTreeView.MemberMappingView member(
-            String owner,
-            String name,
-            String desc,
-            int namespace,
-            boolean isMethod) {
+    private Type runtimeToIntermediaryType(Type type) {
+        return switch (type.getSort()) {
+            case Type.OBJECT -> Type.getObjectType(runtimeToIntermediaryClass(type.getInternalName()));
+            case Type.ARRAY -> Type.getType("[".repeat(type.getDimensions())
+                    + runtimeToIntermediaryType(type.getElementType()).getDescriptor());
+            case Type.METHOD -> Type.getMethodType(
+                    runtimeToIntermediaryType(type.getReturnType()),
+                    Arrays.stream(type.getArgumentTypes())
+                            .map(this::runtimeToIntermediaryType)
+                            .toArray(Type[]::new));
+            default -> type;
+        };
+    }
+
+    private String intermediaryToRuntimeMember(String owner, String name, String desc, boolean isMethod) {
+        String binaryOwner = owner.replace('/', '.');
         return isMethod
-                ? mappings.getMethod(owner, name, desc, namespace)
-                : mappings.getField(owner, name, desc, namespace);
+                ? resolver.mapMethodName(INTERMEDIARY_NAMESPACE, binaryOwner, name, desc)
+                : resolver.mapFieldName(INTERMEDIARY_NAMESPACE, binaryOwner, name, desc);
     }
 
     @Override
     public String ofMojang(Class<?> tClass, String name, String desc, boolean isMethod) {
-        String runtimeOwner = tClass.getName().replace('.', '/');
-        var owner = mappings.getClass(runtimeOwner, runtimeNamespace);
-        if (owner == null)
-            return name;
-
-        String namedOwner = owner.getName(namedNamespace);
-        if (namedOwner == null)
-            return name;
-
-        String namedDesc = mappings.mapDesc(desc, runtimeNamespace, namedNamespace);
-        var member = member(namedOwner, name, namedDesc, namedNamespace, isMethod);
-        if (member == null)
-            return name;
-
-        String mappedName = member.getName(runtimeNamespace);
-        return mappedName == null ? name : mappedName;
+        return ofMojang(tClass, name, Type.getType(desc), isMethod);
     }
     @Override
     public String ofMojang(Class<?> tClass, String name, Type desc, boolean isMethod) {
-        return ofMojang(tClass, name, desc.getDescriptor(), isMethod);
-    }
+        String intermediaryOwner = runtimeToIntermediaryClass(tClass.getName());
+        var owner = mappings.getClass(intermediaryOwner, intermediaryNamespace);
+        if (owner == null || owner.getName(namedNamespace) == null)
+            return name;
 
+        String intermediaryDesc = runtimeToIntermediaryType(desc).getDescriptor();
+        String namedDesc = mappings.mapDesc(intermediaryDesc, intermediaryNamespace, namedNamespace);
+        var member = isMethod ? owner.getMethod(name, namedDesc, namedNamespace) : owner.getField(name, namedDesc, namedNamespace);
+        if (member == null)
+            return name;
+
+        String intermediaryName = member.getName(intermediaryNamespace);
+        String memberDesc = member.getDesc(intermediaryNamespace);
+        return intermediaryName == null || memberDesc == null
+                ? name
+                : intermediaryToRuntimeMember(intermediaryOwner, intermediaryName, memberDesc, isMethod);
+    }
     @Override
     public Optional<String> ofMapped(Class<?> tClass, String name, String desc, boolean isMethod) {
-        String owner = tClass.getName().replace('.', '/');
-        var member = member(owner, name, desc, runtimeNamespace, isMethod);
-        return member == null
-                ? Optional.empty()
-                : Optional.ofNullable(member.getName(namedNamespace));
+        return ofMapped(tClass, name, Type.getType(desc), isMethod);
     }
     @Override
     public Optional<String> ofMapped(Class<?> tClass, String name, Type desc, boolean isMethod) {
-        return ofMapped(tClass, name, desc.getDescriptor(), isMethod);
+        String intermediaryOwner = runtimeToIntermediaryClass(tClass.getName());
+        var owner = mappings.getClass(intermediaryOwner, intermediaryNamespace);
+        if (owner == null)
+            return Optional.empty();
+
+        String intermediaryDesc = runtimeToIntermediaryType(desc).getDescriptor();
+        Collection<? extends MappingTreeView.MemberMappingView> members = isMethod ? owner.getMethods() : owner.getFields();
+        for (var member : members) {
+            String memberDesc = member.getDesc(intermediaryNamespace);
+            if (!Objects.equals(memberDesc, intermediaryDesc))
+                continue;
+
+            String intermediaryName = member.getName(intermediaryNamespace);
+            if (intermediaryName == null || !intermediaryToRuntimeMember(intermediaryOwner, intermediaryName, memberDesc, isMethod).equals(name))
+                continue;
+
+            return Optional.ofNullable(member.getName(namedNamespace));
+        }
+        return Optional.empty();
     }
 }
