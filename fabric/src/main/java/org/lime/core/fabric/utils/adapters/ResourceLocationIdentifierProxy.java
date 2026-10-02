@@ -35,7 +35,7 @@ public record ResourceLocationIdentifierProxy(
                 //#caseof 1.21.11
                 //OF//                Identifier.parse(value)
                 //#default
-                ResourceLocation.parse(value)
+                ResourceLocation.tryParse(value)
                 //#endswitch
         );
     }
