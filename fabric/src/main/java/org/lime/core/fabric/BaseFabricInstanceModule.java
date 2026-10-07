@@ -35,6 +35,7 @@ import org.lime.core.common.services.memories.BaseConnectionStorageService;
 import org.lime.core.common.services.skins.BaseSkinsCache;
 import org.lime.core.common.utils.Lazy;
 import org.lime.core.fabric.commands.NativeCommandConsumerFactory;
+import org.lime.core.fabric.services.BungeeApi;
 import org.lime.core.fabric.services.ConnectionStorageService;
 import org.lime.core.fabric.services.SkinsCache;
 import org.lime.core.fabric.services.buffers.EntityBufferStorage;
@@ -120,6 +121,7 @@ public class BaseFabricInstanceModule
             bindFromCore(PacketEntityBufferStorage.class);
             bindFromCore(SkinsCache.class);
             bindFromCore(ConnectionStorageService.class);
+            bindFromCore(BungeeApi.class);
         }
     }
 }

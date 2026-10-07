@@ -35,6 +35,7 @@ import org.bukkit.plugin.Plugin;
 import org.bukkit.plugin.PluginBase;
 import org.bukkit.plugin.PluginManager;
 import org.bukkit.plugin.java.JavaPlugin;
+import org.bukkit.plugin.messaging.Messenger;
 import org.bukkit.scheduler.BukkitScheduler;
 import org.bukkit.scoreboard.ScoreboardManager;
 import org.bukkit.structure.StructureManager;
@@ -51,6 +52,7 @@ import org.lime.core.common.utils.Lazy;
 import org.lime.core.common.utils.adapters.CommonGsonTypeAdapters;
 import org.lime.core.common.utils.execute.Func1;
 import org.lime.core.paper.commands.NativeCommandConsumerFactory;
+import org.lime.core.paper.services.BungeeApi;
 import org.lime.core.paper.services.ConnectionStorageService;
 import org.lime.core.paper.services.SkinsCache;
 import org.lime.core.paper.services.buffers.EntityBufferStorage;
@@ -134,6 +136,7 @@ public class BasePaperInstanceModule<Instance extends BasePaperInstance<Instance
 
         bind(CraftServer.class).toInstance((CraftServer) Bukkit.getServer());
         bindCast(Server.class, CraftServer.class);
+        bindMapped(Messenger.class, Server.class, Server::getMessenger);
         bindMappedCast(CraftWorld.class, World.class, CraftServer.class, v -> (CraftWorld) v.getWorlds().getFirst());
         bindMappedCast(CraftScoreboardManager.class, ScoreboardManager.class, CraftServer.class, CraftServer::getScoreboardManager);
         bindMappedCast(CraftScoreboard.class, org.bukkit.scoreboard.Scoreboard.class, CraftScoreboardManager.class, CraftScoreboardManager::getMainScoreboard);
@@ -172,6 +175,7 @@ public class BasePaperInstanceModule<Instance extends BasePaperInstance<Instance
             bindFromCore(SkinsCache.class);
             bindFromCore(ConnectionStorageService.class);
             bindFromCore(DebugService.class);
+            bindFromCore(BungeeApi.class);
         }
     }
 }
