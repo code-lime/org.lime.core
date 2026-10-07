@@ -1,0 +1,131 @@
+static String getName(Project project, boolean suffix) {
+    if (suffix && project.hasProperty('nameSuffix'))
+        return "${project.name}${project.property('nameSuffix')}"
+    else
+        return project.name
+}
+static String getPathName(Project current, boolean suffix) {
+    Project parent = current.parent
+    return parent == null ? getName(current, suffix) : "${getName(parent, suffix)}.${getName(current, suffix)}"
+}
+
+def resultPathName = getName(project, true)
+
+if (project.hasProperty('pathName'))
+    pathName = resultPathName = "${getPathName(project, true)}"
+if (project.hasProperty('pathNameWithoutSuffix'))
+    pathNameWithoutSuffix = "${getPathName(project, false)}"
+
+//<editor-fold desc="Settings: SourceGenerator">
+apply from: buildscript.sourceURI.resolve("./sourcegenerator.gradle")
+//</editor-fold>
+
+//<editor-fold desc="Settings: Java">
+int targetJavaVersion = 23
+if (project.hasProperty('overrideJavaVersion')) {
+    def overrideJavaVersion = project.property('overrideJavaVersion').toString()
+    if (!overrideJavaVersion.isBlank())
+        targetJavaVersion = Integer.parseInt(overrideJavaVersion)
+}
+
+if (project.plugins.hasPlugin('java') || project.plugins.hasPlugin('java-library')) {
+    java {
+        def javaVersion = JavaVersion.toVersion(targetJavaVersion)
+        sourceCompatibility = javaVersion
+        targetCompatibility = javaVersion
+        if (JavaVersion.current() < javaVersion) {
+            toolchain.languageVersion = JavaLanguageVersion.of(targetJavaVersion)
+        }
+        withSourcesJar()
+    }
+}
+
+tasks.withType(JavaCompile).configureEach {
+    if (targetJavaVersion >= 10 || JavaVersion.current().isJava10Compatible()) {
+        options.release = targetJavaVersion
+    }
+}
+
+var archiveName = "${group}.${resultPathName}"
+
+tasks.withType(org.gradle.jvm.tasks.Jar).configureEach {
+    archiveBaseName.set(archiveName)
+}
+//</editor-fold>
+
+//<editor-fold desc="Settings: Clean output folder">
+def deleteOutputTask = tasks.register("deleteOutput") {
+    it.project.tasks
+            .withType(org.gradle.jvm.tasks.Jar)
+            .each { it.project.delete it.destinationDirectory }
+}
+tasks.withType(org.gradle.jvm.tasks.Jar).configureEach {
+    dependsOn deleteOutputTask
+}
+//</editor-fold>
+
+//<editor-fold desc="Configure: ProcessResources">
+static def configureProcessResources(AbstractCopyTask task, String fileName, Map<String, ?> baseProps) {
+    def props = new LinkedHashMap(baseProps)
+
+    task.project.properties.each { key, value ->
+        def name = key.toString()
+        if (name.startsWith("version") && (name.length() <= 7 || name.charAt(7).isUpperCase())) {
+            props[name] = value.toString()
+        }
+    }
+
+    task.inputs.properties(props)
+    task.filteringCharset = 'UTF-8'
+    task.filesMatching(fileName) {
+        expand props
+    }
+}
+ext.configureProcessResources = this.&configureProcessResources
+//</editor-fold>
+//<editor-fold desc="Configure: Templates">
+def configureTemplates(Map<String, ?> baseProps) {
+    def props = new LinkedHashMap(baseProps)
+
+    project.properties.each { key, value ->
+        def name = key.toString()
+        if (name.startsWith("version") && (name.length() <= 7 || name.charAt(7).isUpperCase())) {
+            props[name] = value.toString()
+        }
+    }
+
+    def generateTemplates = tasks.register("generateTemplates", Sync) {
+        from(file('src/main/templates'))
+        into(project.layout.buildDirectory.dir('generated/sources/templates'))
+        expand(props)
+    }
+    sourceSets.main.java.srcDir(generateTemplates.map { it.outputs })
+}
+ext.configureTemplates = this.&configureTemplates
+//</editor-fold>
+//<editor-fold desc="Configure: Jars project combine">
+def projectCombineJars(Project target) {
+    tasks.withType(org.gradle.jvm.tasks.Jar).configureEach { it ->
+        def jars = target.tasks.withType(org.gradle.jvm.tasks.Jar)
+        jars.named {jit -> jit == it.name }.forEach {dependTask ->
+            it.dependsOn dependTask
+            it.from {
+                zipTree(dependTask.archiveFile)
+            }
+        }
+    }
+}
+ext.projectCombineJars = this.&projectCombineJars
+//</editor-fold>
+//<editor-fold desc="Configure: Variables project sync">
+def projectSyncVariables(Project target) {
+    String testValue = "FROM_${target.name.toUpperCase()}"
+    project.properties.each { key, value ->
+        if (value instanceof CharSequence && testValue == "${value}") {
+            def name = key.toString()
+            project.setProperty(name, target.property(name))
+        }
+    }
+}
+ext.projectSyncVariables = this.&projectSyncVariables
+//</editor-fold>
