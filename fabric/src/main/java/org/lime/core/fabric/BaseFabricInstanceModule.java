@@ -54,7 +54,12 @@ public class BaseFabricInstanceModule
 
     @Override
     protected UnsafeMappingsUtility mappings() {
+        //#switch PROPERTIES.versionMinecraft
+        //#caseofregex ^1\.(20\.1|21\.[0-9]+)$
         return FabricUnsafeMappingsUtility.instance();
+        //#default
+        //OF//        return UnsafeMappingsUtility.EMPTY;
+        //#endswitch
     }
     @Override
     protected NativeCommandConsumerFactory nativeCommandFactory() {

@@ -163,7 +163,12 @@ public class EntityBufferStorage
 
     @Override
     protected Set<String> getTags(Entity entity) {
+        //#switch PROPERTIES.versionMinecraft
+        //#caseofregex ^1\.(20\.1|21\.[0-9]+)$
         return entity.getTags();
+        //#default
+        //OF//        return entity.entityTags();
+        //#endswitch
     }
     @Override
     protected int getEntityId(Entity entity) {

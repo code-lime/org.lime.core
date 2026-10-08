@@ -26,6 +26,7 @@ import org.lime.core.common.services.buffers.BaseEntityBufferSetup;
 import org.lime.core.common.services.buffers.BasePacketEntityBufferStorage;
 import org.lime.core.common.services.buffers.InjectBuffer;
 import org.lime.core.common.services.buffers.PacketEntityBatch;
+import org.lime.core.common.services.buffers.PacketEntityInteraction;
 import org.lime.core.common.services.buffers.PacketEntityBufferState;
 import org.lime.core.common.services.buffers.PacketEntityMetadataState;
 import org.lime.core.common.services.buffers.PacketEntityStorage;
@@ -180,9 +181,9 @@ public class PacketEntityBufferStorage
         return new PacketEntityBufferState<>(bufferBackend, bufferEntities, visibility, PacketEntityDataEditor.PropertyAccess::matches);
     }
 
-    private boolean interact(@NotNull ServerPlayer player, int entityId, @NotNull ServerboundInteractPacket packet) {
+    private boolean interact(@NotNull ServerPlayer player, int entityId, @NotNull PacketEntityInteraction interaction) {
         PacketTracker tracker = entityStorage.tracker(entityId);
-        return tracker != null && tracker.interact(player, packet);
+        return tracker != null && tracker.interact(player, interaction);
     }
 
     private final class BufferBackend implements PacketEntityBufferState.Backend<
@@ -244,7 +245,12 @@ public class PacketEntityBufferStorage
 
     @Override
     protected @NotNull Set<String> getTags(@NotNull Entity entity) {
+        //#switch PROPERTIES.versionMinecraft
+        //#caseofregex ^1\.(20\.1|21\.[0-9]+)$
         return entity.getTags();
+        //#default
+        //OF//        return entity.entityTags();
+        //#endswitch
     }
 
     @Override
@@ -416,10 +422,10 @@ public class PacketEntityBufferStorage
             return true;
         }
 
-        private boolean interact(@NotNull ServerPlayer player, @NotNull ServerboundInteractPacket packet) {
+        private boolean interact(@NotNull ServerPlayer player, @NotNull PacketEntityInteraction interaction) {
             if (!source.hasInteractionListeners())
                 return false;
-            source.interact(player, PacketEntityInteractionHook.decode(packet));
+            source.interact(player, interaction);
             return true;
         }
 

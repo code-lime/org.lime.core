@@ -36,8 +36,7 @@ public class BungeeApi
     //OF//        });
     //OF//
     //OF//        static {
-    //OF//            PayloadTypeRegistry.playC2S().register(TYPE, CODEC);
-    //OF//            PayloadTypeRegistry.playS2C().register(TYPE, CODEC);
+    //OF//            registerPayload();
     //OF//        }
     //OF//
     //OF//        @Override
@@ -46,6 +45,18 @@ public class BungeeApi
     //OF//        }
     //OF//    }
     //#endswitch
+
+    private static void registerPayload() {
+        //#switch PROPERTIES.versionMinecraft
+        //#caseof 1.20.1
+        //#caseofregex ^1\.21\.[0-9]+$
+        //OF//        PayloadTypeRegistry.playC2S().register(Payload.TYPE, Payload.CODEC);
+        //OF//        PayloadTypeRegistry.playS2C().register(Payload.TYPE, Payload.CODEC);
+        //#default
+        //OF//        PayloadTypeRegistry.serverboundPlay().register(Payload.TYPE, Payload.CODEC);
+        //OF//        PayloadTypeRegistry.clientboundPlay().register(Payload.TYPE, Payload.CODEC);
+        //#endswitch
+    }
 
     @Inject MinecraftServer server;
 

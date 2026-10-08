@@ -22,12 +22,14 @@ public final class PacketEntityInteractionHook {
         return () -> LISTENER.compareAndSet(listener, null);
     }
 
-    public static boolean interact(@NotNull ServerPlayer player, int entityId, @NotNull ServerboundInteractPacket packet) {
+    public static boolean interact(@NotNull ServerPlayer player, int entityId, @NotNull PacketEntityInteraction interaction) {
         @Nullable Listener listener = LISTENER.get();
-        return listener != null && listener.interact(player, entityId, packet);
+        return listener != null && listener.interact(player, entityId, interaction);
     }
 
     public static @NotNull PacketEntityInteraction decode(@NotNull ServerboundInteractPacket packet) {
+        //#switch PROPERTIES.versionMinecraft
+        //#caseofregex ^1\.(20\.1|21\.[0-9]+)$
         PacketEntityInteraction[] result = new PacketEntityInteraction[1];
         boolean secondary = packet.isUsingSecondaryAction();
         packet.dispatch(new ServerboundInteractPacket.Handler() {
@@ -47,6 +49,11 @@ public final class PacketEntityInteractionHook {
             }
         });
         return result[0];
+        //#default
+        //OF//        var location = packet.location();
+        //OF//        return PacketEntityInteraction.interact(hand(packet.hand()),
+        //OF//                location == null ? null : new PacketEntityInteraction.Position(location.x, location.y, location.z), packet.usingSecondaryAction());
+        //#endswitch
     }
 
     private static @NotNull PacketEntityInteraction.Hand hand(@NotNull InteractionHand hand) {
@@ -57,6 +64,6 @@ public final class PacketEntityInteractionHook {
 
     @FunctionalInterface
     public interface Listener {
-        boolean interact(@NotNull ServerPlayer player, int entityId, @NotNull ServerboundInteractPacket packet);
+        boolean interact(@NotNull ServerPlayer player, int entityId, @NotNull PacketEntityInteraction interaction);
     }
 }
