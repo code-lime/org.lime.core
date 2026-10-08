@@ -6,8 +6,6 @@ plugins {
 
 if (!project.hasProperty('variable'))
     ext.variable = '1.20.1'
-    
-overrideJavaVersion = 17
 
 apply from: '../global.gradle'
 
