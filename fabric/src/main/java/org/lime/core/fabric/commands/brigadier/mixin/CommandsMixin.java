@@ -20,7 +20,8 @@ public abstract class CommandsMixin {
     )
     private
     //#switch PROPERTIES.versionMinecraft
-    //#caseof 1.21.8;1.21.11
+    //#caseofregex ^1\.(20\.1|21\.[0-5])$
+    //#default
     //OF//    static
     //#endswitch
     CommandNode<SharedSuggestionProvider> argumentBuilder(

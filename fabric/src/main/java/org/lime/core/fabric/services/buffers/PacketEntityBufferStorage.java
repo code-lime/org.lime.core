@@ -314,9 +314,9 @@ public class PacketEntityBufferStorage
     private static <T extends Entity> @Nullable T create(@NotNull EntityType<T> entityType, @NotNull ServerLevel level) {
         return entityType.create(level
                 //#switch PROPERTIES.versionMinecraft
-                //#caseofregex 1\.21\.([4-9]|11)
-                //OF//                , EntitySpawnReason.COMMAND
+                //#caseofregex ^1\.(20\.1|21\.[01])$
                 //#default
+                //OF//                , EntitySpawnReason.COMMAND
                 //#endswitch
         );
     }
@@ -324,10 +324,10 @@ public class PacketEntityBufferStorage
     private static void move(@NotNull Entity entity, @NotNull WorldLocation location) {
         var position = location.position();
         //#switch PROPERTIES.versionMinecraft
-        //#caseofregex 1\.21\.(8|11)
-        //OF//        entity.snapTo(position.x, position.y, position.z, location.yaw(), location.pitch());
-        //#default
+        //#caseofregex ^1\.(20\.1|21\.[0-4])$
         entity.moveTo(position.x, position.y, position.z, location.yaw(), location.pitch());
+        //#default
+        //OF//        entity.snapTo(position.x, position.y, position.z, location.yaw(), location.pitch());
         //#endswitch
     }
 
@@ -455,7 +455,11 @@ public class PacketEntityBufferStorage
                     1,
                     type.trackDeltas(),
                     //#switch PROPERTIES.versionMinecraft
-                    //#caseof 1.21.11
+                    //#caseofregex ^1\.(20\.1|21\.[0-4])$
+                    this::broadcast
+                    //#caseofregex ^1\.21\.[5-8]$
+                    //OF//                    this::broadcast, this::broadcast
+                    //#default
                     //OF//                    new ServerEntity.Synchronizer() {
                     //OF//                        @Override
                     //OF//                        public void sendToTrackingPlayers(@NotNull Packet<? super ClientGamePacketListener> packet) {
@@ -472,13 +476,6 @@ public class PacketEntityBufferStorage
                     //OF//                            broadcast(packet, predicate);
                     //OF//                        }
                     //OF//                    }
-                    //#default
-                    this::broadcast
-                    //#endswitch
-                    //#switch PROPERTIES.versionMinecraft
-                    //#caseof 1.21.8
-                    //OF//                    , this::broadcast
-                    //#default
                     //#endswitch
             );
             PacketEntitySendHook.mark(result);

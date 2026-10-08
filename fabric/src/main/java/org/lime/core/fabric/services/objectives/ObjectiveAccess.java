@@ -22,15 +22,44 @@ public record ObjectiveAccess(
                 owner.nativeComponent.convert(Component.text(objectiveName)),
                 ObjectiveCriteria.RenderType.INTEGER
                 //#switch PROPERTIES.versionMinecraft
-                //#caseofregex 1\.21\.*
-                //OF//                , false, null
+                //#caseof 1.20.1
                 //#default
+                //OF//                , false, null
                 //#endswitch
         );
     }
 
     //#switch PROPERTIES.versionMinecraft
-    //#caseofregex 1\.21\.*
+    //#caseof 1.20.1
+    public String scoreKey(UUID player, String key) {
+        return player + "." + key;
+    }
+    public String scoreKey(String key) {
+        return key;
+    }
+    public Score getOrCreateScore(String scoreKey) {
+        return owner.scoreboard.getOrCreatePlayerScore(scoreKey, handle());
+    }
+    public int getValue(Score score) {
+        return score.getScore();
+    }
+    public void addValue(Score score, int value) {
+        score.add(value);
+    }
+    public void setValue(Score score, @Nullable Integer value) {
+        if (value == null) score.reset();
+        else score.setScore(value);
+    }
+    public Collection<Score> scores() {
+        return owner.scoreboard.getPlayerScores(handle());
+    }
+    public ScoreProvider<String> provider(String key) {
+        return new Impl(key, this);
+    }
+    public Stream<ScoreProvider<String>> providers() {
+        return scores().stream().map(Score::getOwner).map(this::provider);
+    }
+    //#default
     //OF//    public ScoreHolder scoreKey(UUID player, String key) {
     //OF//        return ScoreHolder.forNameOnly(player + "." + key);
     //OF//    }
@@ -71,50 +100,21 @@ public record ObjectiveAccess(
     //OF//    public Stream<ScoreProvider<ScoreHolder>> providers() {
     //OF//        return scores().stream().map(PlayerScoreEntry::owner).map(this::scoreKey).map(this::provider);
     //OF//    }
-    //#default
-    public String scoreKey(UUID player, String key) {
-        return player + "." + key;
-    }
-    public String scoreKey(String key) {
-        return key;
-    }
-    public Score getOrCreateScore(String scoreKey) {
-        return owner.scoreboard.getOrCreatePlayerScore(scoreKey, handle());
-    }
-    public int getValue(Score score) {
-        return score.getScore();
-    }
-    public void addValue(Score score, int value) {
-        score.add(value);
-    }
-    public void setValue(Score score, @Nullable Integer value) {
-        if (value == null) score.reset();
-        else score.setScore(value);
-    }
-    public Collection<Score> scores() {
-        return owner.scoreboard.getPlayerScores(handle());
-    }
-    public ScoreProvider<String> provider(String key) {
-        return new Impl(key, this);
-    }
-    public Stream<ScoreProvider<String>> providers() {
-        return scores().stream().map(Score::getOwner).map(this::provider);
-    }
     //#endswitch
 
     //#switch PROPERTIES.versionMinecraft
-    //#caseofregex 1\.21\.*
-    //OF//    private static class Impl
-    //OF//            extends ScoreProvider<ScoreHolder> {
-    //OF//        public Impl(ScoreHolder s, ObjectiveAccess owner) {
-    //OF//            super(s, owner);
-    //OF//        }
-    //#default
+    //#caseof 1.20.1
     private static class Impl
             extends ScoreProvider<String> {
         public Impl(String s, ObjectiveAccess owner) {
             super(s, owner);
         }
+    //#default
+    //OF//    private static class Impl
+    //OF//            extends ScoreProvider<ScoreHolder> {
+    //OF//        public Impl(ScoreHolder s, ObjectiveAccess owner) {
+    //OF//            super(s, owner);
+    //OF//        }
     //#endswitch
         @Override
         public int get() {

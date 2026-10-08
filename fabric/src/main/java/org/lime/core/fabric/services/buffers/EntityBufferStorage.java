@@ -39,9 +39,9 @@ public class EntityBufferStorage
         BuiltInRegistries.ENTITY_TYPE.entrySet().forEach(dat -> {
             var entity = dat.getValue().create(overworld
                     //#switch PROPERTIES.versionMinecraft
-                    //#caseofregex 1\.21\.([4-9]|11)
-                    //OF//                    , EntitySpawnReason.COMMAND
+                    //#caseofregex ^1\.(20\.1|21\.[01])$
                     //#default
+                    //OF//                    , EntitySpawnReason.COMMAND
                     //#endswitch
             );
             if (entity == null)
@@ -130,25 +130,25 @@ public class EntityBufferStorage
         return getEntityType(entityClass, entityKey)
                 .spawn(location.level(server),
                         //#switch PROPERTIES.versionMinecraft
-                        //#caseofregex 1\.21\.*
-                        //#default
+                        //#caseof 1.20.1
                         null,
+                        //#default
                         //#endswitch
                         entity -> {
                     var pos = location.position();
                     //#switch PROPERTIES.versionMinecraft
-                    //#caseofregex 1\.21\.(8|11)
-                    //OF//                    entity.snapTo(pos.x, pos.y, pos.z, location.yaw(), location.pitch());
-                    //#default
+                    //#caseofregex ^1\.(20\.1|21\.[0-4])$
                     entity.moveTo(pos.x, pos.y, pos.z, location.yaw(), location.pitch());
+                    //#default
+                    //OF//                    entity.snapTo(pos.x, pos.y, pos.z, location.yaw(), location.pitch());
                     //#endswitch
                     setup.invoke(entity);
                 }, location.blockPos(),
                         //#switch PROPERTIES.versionMinecraft
-                        //#caseofregex 1\.21\.([4-9]|11)
-                        //OF//                        EntitySpawnReason.COMMAND
-                        //#default
+                        //#caseofregex ^1\.(20\.1|21\.[01])$
                         MobSpawnType.COMMAND
+                        //#default
+                        //OF//                        EntitySpawnReason.COMMAND
                         //#endswitch
                         , false, false);
     }
@@ -182,16 +182,10 @@ public class EntityBufferStorage
         var pos = location.position();
         entity.teleportTo(location.level(server), pos.x, pos.y, pos.z,
                 //#switch PROPERTIES.versionMinecraft
-                //#caseofregex 1\.21\.([4-9]|11)
-                //OF//                Relative.ALL
+                //#caseofregex ^1\.(20\.1|21\.[01])$
+                RelativeMovement.ALL, location.yaw(), location.pitch()
                 //#default
-                RelativeMovement.ALL
-                //#endswitch
-                , location.yaw(), location.pitch()
-                //#switch PROPERTIES.versionMinecraft
-                //#caseofregex 1\.21\.([4-9]|11)
-                //OF//                , true
-                //#default
+                //OF//                Relative.ALL, location.yaw(), location.pitch(), true
                 //#endswitch
                 );
     }

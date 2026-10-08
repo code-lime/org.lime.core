@@ -9,11 +9,7 @@ import com.mojang.serialization.Dynamic;
 import com.mojang.serialization.DynamicOps;
 import com.mojang.serialization.JsonOps;
 import net.minecraft.SharedConstants;
-//#switch PROPERTIES.versionMinecraft
-//#caseofregex 1\.21\.[4-8]
-//#default
 import net.minecraft.resources.RegistryOps;
-//#endswitch
 import net.minecraft.server.MinecraftServer;
 import org.apache.commons.lang3.reflect.TypeUtils;
 import org.jetbrains.annotations.Nullable;
@@ -58,10 +54,10 @@ public class CodecTypeAdapterFactory
                 data = dataFixer.update(reference, new Dynamic<>(JsonOps.INSTANCE, data), version, currentVersion).getValue();
 
             //#switch PROPERTIES.versionMinecraft
-            //#caseofregex 1\.21\.*
-            //OF//            return codec.parse(ops, data).getOrThrow(IllegalArgumentException::new);
-            //#default
+            //#caseof 1.20.1
             return codec.parse(ops, data).getOrThrow(false, IllegalArgumentException::new);
+            //#default
+            //OF//            return codec.parse(ops, data).getOrThrow(IllegalArgumentException::new);
             //#endswitch
         }
     }
@@ -74,17 +70,17 @@ public class CodecTypeAdapterFactory
             MinecraftServer server) {
         dataFixer = server.getFixerUpper();
         //#switch PROPERTIES.versionMinecraft
-        //#caseofregex 1\.21\.*
-        //OF//        ops = server.registryAccess().createSerializationContext(JsonOps.INSTANCE);
-        //#default
+        //#caseof 1.20.1
         ops = RegistryOps.create(JsonOps.INSTANCE, server.registryAccess());
+        //#default
+        //OF//        ops = server.registryAccess().createSerializationContext(JsonOps.INSTANCE);
         //#endswitch
 
         //#switch PROPERTIES.versionMinecraft
-        //#caseofregex 1\.21\.(8|9|10|11)
-        //OF//        currentVersion = SharedConstants.getCurrentVersion().dataVersion().version();
-        //#default
+        //#caseofregex ^1\.(20\.1|21\.[0-5])$
         currentVersion = SharedConstants.getCurrentVersion().getDataVersion().getVersion();
+        //#default
+        //OF//        currentVersion = SharedConstants.getCurrentVersion().dataVersion().version();
         //#endswitch
     }
     @Override

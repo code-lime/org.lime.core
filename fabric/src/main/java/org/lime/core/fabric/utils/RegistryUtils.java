@@ -26,10 +26,10 @@ public final class RegistryUtils {
             ResourceKey<? extends Registry<?>> registryKey = (ResourceKey<? extends Registry<?>>)field.get(null);
             var type = TypeToken.get(elementType);
             //#switch PROPERTIES.versionMinecraft
-            //#caseofregex 1\.21\.([4-9]|11)
-            //OF//            return registryAccess.lookup((ResourceKey)registryKey)
-            //#default
+            //#caseofregex ^1\.(20\.1|21\.[01])$
             return registryAccess.registry((ResourceKey)registryKey)
+            //#default
+            //OF//            return registryAccess.lookup((ResourceKey)registryKey)
             //#endswitch
                     .map(registry -> new NmsRegistry(type, (Registry)registry));
         }

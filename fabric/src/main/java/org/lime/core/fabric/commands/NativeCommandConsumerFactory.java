@@ -12,11 +12,11 @@ import net.kyori.adventure.audience.Audience;
 import net.minecraft.SharedConstants;
 import net.minecraft.server.MinecraftServer;
 //#switch PROPERTIES.versionAdventurePlatform
-//#caseofregex 6\.\d\.\d
+//#caseofregex ^5\.[0-9]+\.[0-9]+$
+import net.kyori.adventure.platform.fabric.FabricServerAudiences;
+//#default
 //OF//import net.kyori.adventure.platform.modcommon.MinecraftAudiences;
 //OF//import net.kyori.adventure.platform.modcommon.MinecraftServerAudiences;
-//#default
-import net.kyori.adventure.platform.fabric.FabricServerAudiences;
 //#endswitch
 import net.kyori.adventure.text.Component;
 import net.minecraft.commands.CommandSourceStack;
@@ -40,18 +40,18 @@ public class NativeCommandConsumerFactory
         implements NativeCommandConsumer.Factory<CommandSourceStack, NativeCommandConsumerFactory.NativeRegister> {
     private final MinecraftServer server;
     //#switch PROPERTIES.versionAdventurePlatform
-    //#caseofregex 6\.\d\.\d
-    //OF//    private final MinecraftAudiences audiences;
-    //OF//    public NativeCommandConsumerFactory(MinecraftServer server) {
-    //OF//        this.server = server;
-    //OF//        audiences = MinecraftServerAudiences.of(server);
-    //OF//    }
-    //#default
+    //#caseofregex ^5\.[0-9]+\.[0-9]+$
     private final FabricServerAudiences audiences;
     public NativeCommandConsumerFactory(MinecraftServer server) {
         this.server = server;
         audiences = FabricServerAudiences.of(server);
     }
+    //#default
+    //OF//    private final MinecraftAudiences audiences;
+    //OF//    public NativeCommandConsumerFactory(MinecraftServer server) {
+    //OF//        this.server = server;
+    //OF//        audiences = MinecraftServerAudiences.of(server);
+    //OF//    }
     //#endswitch
 
     public record NativeRegister(
@@ -92,10 +92,10 @@ public class NativeCommandConsumerFactory
     @Override
     public Message message(Component component) {
         //#switch PROPERTIES.versionAdventurePlatform
-        //#caseofregex 6\.\d\.\d
-        //OF//        return audiences.asNative(component);
-        //#default
+        //#caseofregex ^5\.[0-9]+\.[0-9]+$
         return audiences.toNative(component);
+        //#default
+        //OF//        return audiences.asNative(component);
         //#endswitch
     }
     @Override
@@ -117,10 +117,10 @@ public class NativeCommandConsumerFactory
     public Predicate<CommandSourceStack> operator() {
         return v ->
                 //#switch PROPERTIES.versionMinecraft
-                //#caseof 1.21.11
-                //OF//                Commands.LEVEL_GAMEMASTERS.check(v.permissions());
-                //#default
+                //#caseofregex ^1\.(20\.1|21\.([0-9]|10))$
                 v.hasPermission(Commands.LEVEL_GAMEMASTERS);
+                //#default
+                //OF//                Commands.LEVEL_GAMEMASTERS.check(v.permissions());
                 //#endswitch
     }
 }

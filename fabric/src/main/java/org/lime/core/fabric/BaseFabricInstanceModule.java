@@ -1,12 +1,12 @@
 package org.lime.core.fabric;
 
 //#switch PROPERTIES.versionAdventurePlatform
-//#caseofregex 6\.\d\.\d
-//OF//import net.kyori.adventure.platform.modcommon.MinecraftAudiences;
-//OF//import net.kyori.adventure.platform.modcommon.MinecraftServerAudiences;
-//#default
+//#caseofregex ^5\.[0-9]+\.[0-9]+$
 import net.kyori.adventure.platform.fabric.FabricAudiences;
 import net.kyori.adventure.platform.fabric.FabricServerAudiences;
+//#default
+//OF//import net.kyori.adventure.platform.modcommon.MinecraftAudiences;
+//OF//import net.kyori.adventure.platform.modcommon.MinecraftServerAudiences;
 //#endswitch
 import com.mojang.authlib.minecraft.MinecraftSessionService;
 import com.google.inject.TypeLiteral;
@@ -79,12 +79,12 @@ public class BaseFabricInstanceModule
         bind(MinecraftServer.class).toInstance(instance.server);
 
         //#switch PROPERTIES.versionAdventurePlatform
-        //#caseofregex 6\.\d\.\d
-        //OF//        bindMappedCast(MinecraftServerAudiences.class, MinecraftAudiences.class, MinecraftServer.class, MinecraftServerAudiences::of);
-        //OF//        bindCast(AudienceProvider.class, MinecraftServerAudiences.class);
-        //#default
+        //#caseofregex ^5\.[0-9]+\.[0-9]+$
         bindMappedCast(FabricServerAudiences.class, FabricAudiences.class, MinecraftServer.class, FabricServerAudiences::of);
         bindCast(AudienceProvider.class, FabricServerAudiences.class);
+        //#default
+        //OF//        bindMappedCast(MinecraftServerAudiences.class, MinecraftAudiences.class, MinecraftServer.class, MinecraftServerAudiences::of);
+        //OF//        bindCast(AudienceProvider.class, MinecraftServerAudiences.class);
         //#endswitch
         bindMapped(PlayerList.class, MinecraftServer.class, MinecraftServer::getPlayerList);
         bindMappedCast(ServerLevel.class, Level.class, MinecraftServer.class, MinecraftServer::overworld);
@@ -102,10 +102,10 @@ public class BaseFabricInstanceModule
         bindMapped(StructureTemplateManager.class, MinecraftServer.class, MinecraftServer::getStructureManager);
 
         //#switch PROPERTIES.versionMinecraft
-        //#caseof 1.21.11
-        //OF//        bindMapped(MinecraftSessionService.class, MinecraftServer.class, v -> v.services().sessionService());
-        //#default
+        //#caseofregex ^1\.(20\.1|21\.[0-8])$
         bindMapped(MinecraftSessionService.class, MinecraftServer.class, MinecraftServer::getSessionService);
+        //#default
+        //OF//        bindMapped(MinecraftSessionService.class, MinecraftServer.class, v -> v.services().sessionService());
         //#endswitch
 
         bind(ScheduleTaskService.class).toInstance(instance.scheduleTaskService);

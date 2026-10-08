@@ -29,10 +29,10 @@ public class SkinsCache
     protected Property renameProperty(Property property, String name) {
         return new Property(name,
                 //#switch PROPERTIES.versionMinecraft
-                //#caseofregex 1\.21\.*
-                //OF//                property.value(), property.signature()
-                //#default
+                //#caseof 1.20.1
                 property.getValue(), property.getSignature()
+                //#default
+                //OF//                property.value(), property.signature()
                 //#endswitch
         );
     }
@@ -54,24 +54,24 @@ public class SkinsCache
     @Override
     public Map<MinecraftProfileTexture.Type, MinecraftProfileTexture> skinDataProfile(GameProfile profile) {
         //#switch PROPERTIES.versionMinecraft
-        //#caseofregex 1\.21\.*
+        //#caseof 1.20.1
+        return sessions.getTextures(profile, true);
+        //#default
         //OF//        var textures = sessions.getTextures(profile);
         //OF//        HashMap<MinecraftProfileTexture.Type, MinecraftProfileTexture> result = new HashMap<>();
         //OF//        putIfNotNull(result, MinecraftProfileTexture.Type.SKIN, textures.skin());
         //OF//        putIfNotNull(result, MinecraftProfileTexture.Type.CAPE, textures.cape());
         //OF//        putIfNotNull(result, MinecraftProfileTexture.Type.ELYTRA, textures.elytra());
         //OF//        return result;
-        //#default
-        return sessions.getTextures(profile, true);
         //#endswitch
     }
     @Override
     public void flush(ServerPlayer player) {
         //#switch PROPERTIES.versionMinecraft
-        //#caseofregex 1\.21\.(8|11)
-        //OF//        ServerLevel serverLevel = player.level();
-        //#default
+        //#caseofregex ^1\.(20\.1|21\.[0-5])$
         ServerLevel serverLevel = player.serverLevel();
+        //#default
+        //OF//        ServerLevel serverLevel = player.level();
         //#endswitch
         PlayerList playerList = serverLevel.getServer().getPlayerList();
         ChunkMap chunkMap = serverLevel.getChunkSource().chunkMap;
@@ -101,14 +101,7 @@ public class SkinsCache
 
         if (!player.isDeadOrDying()) {
             //#switch PROPERTIES.versionMinecraft
-            //#caseofregex 1\.21\.*
-            //OF//            player.connection.send(new ClientboundBundlePacket(
-            //OF//                    List.of(
-            //OF//                            new ClientboundRespawnPacket(player.createCommonSpawnInfo(serverLevel), ClientboundRespawnPacket.KEEP_ALL_DATA),
-            //OF//                            new ClientboundGameEventPacket(ClientboundGameEventPacket.LEVEL_CHUNKS_LOAD_START, 0)
-            //OF//                    )
-            //OF//            ));
-            //#default
+            //#caseof 1.20.1
             player.connection.send(new ClientboundRespawnPacket(
                     serverLevel.dimensionTypeId(),
                     serverLevel.dimension(),
@@ -121,6 +114,13 @@ public class SkinsCache
                     player.getLastDeathLocation(),
                     player.getPortalCooldown()
             ));
+            //#default
+            //OF//            player.connection.send(new ClientboundBundlePacket(
+            //OF//                    List.of(
+            //OF//                            new ClientboundRespawnPacket(player.createCommonSpawnInfo(serverLevel), ClientboundRespawnPacket.KEEP_ALL_DATA),
+            //OF//                            new ClientboundGameEventPacket(ClientboundGameEventPacket.LEVEL_CHUNKS_LOAD_START, 0)
+            //OF//                    )
+            //OF//            ));
             //#endswitch
             player.connection.teleport(player.getX(), player.getY(), player.getZ(), player.getYRot(), player.getXRot());
             player.connection.send(new ClientboundSetEntityMotionPacket(player));
@@ -136,11 +136,11 @@ public class SkinsCache
             playerList.sendLevelInfo(player, serverLevel);
             playerList.sendAllPlayerInfo(player);
             //#switch PROPERTIES.versionMinecraft
-            //#caseofregex 1\.21\.*
-            //OF//            playerList.sendActivePlayerEffects(player);
-            //#default
+            //#caseof 1.20.1
             for (var effect : player.getActiveEffects())
                 player.connection.send(new ClientboundUpdateMobEffectPacket(player.getId(), effect));
+            //#default
+            //OF//            playerList.sendActivePlayerEffects(player);
             //#endswitch
         }
     }

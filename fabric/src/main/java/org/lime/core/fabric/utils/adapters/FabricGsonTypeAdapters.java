@@ -122,11 +122,7 @@ public class FabricGsonTypeAdapters
                     public T read(String value) throws IOException {
                         ResourceLocationIdentifierProxy location = ResourceLocationIdentifierProxy.parse(value);
                         return registry
-                                //#if PROPERTIES.versionMinecraft == '1.21.11'
-                                //IF//                                .listElementIds()
-                                //#else
                                 .registryKeySet().stream()
-                                //#endif
                                 .filter(v -> ResourceLocationIdentifierProxy.identifierLocation(v).equals(location))
                                 .map(v -> (T)v)
                                 .findFirst()

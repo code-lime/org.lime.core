@@ -7,10 +7,10 @@ import org.jetbrains.annotations.NotNull;
 
 public record ResourceLocationIdentifierProxy(
         //#switch PROPERTIES.versionMinecraft
-        //#caseof 1.21.11
-        //OF//        Identifier handle
-        //#default
+        //#caseofregex ^1\.(20\.1|21\.([0-9]|10))$
         ResourceLocation handle
+        //#default
+        //OF//        Identifier handle
         //#endswitch
 ) implements Keyed {
     @Override
@@ -21,10 +21,10 @@ public record ResourceLocationIdentifierProxy(
     public static ResourceLocationIdentifierProxy identifierLocation(ResourceKey<?> resourceKey) {
         return new ResourceLocationIdentifierProxy(
                 //#switch PROPERTIES.versionMinecraft
-                //#caseof 1.21.11
-                //OF//                resourceKey.identifier()
-                //#default
+                //#caseofregex ^1\.(20\.1|21\.([0-9]|10))$
                 resourceKey.location()
+                //#default
+                //OF//                resourceKey.identifier()
                 //#endswitch
         );
     }
@@ -32,10 +32,10 @@ public record ResourceLocationIdentifierProxy(
     public static ResourceLocationIdentifierProxy parse(String value) {
         return new ResourceLocationIdentifierProxy(
                 //#switch PROPERTIES.versionMinecraft
-                //#caseof 1.21.11
-                //OF//                Identifier.parse(value)
-                //#default
+                //#caseofregex ^1\.(20\.1|21\.([0-9]|10))$
                 ResourceLocation.tryParse(value)
+                //#default
+                //OF//                Identifier.parse(value)
                 //#endswitch
         );
     }
