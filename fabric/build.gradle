@@ -29,10 +29,11 @@ projectCombineJars(project(':common'))
 //<editor-fold desc="Settings: Mod">
 var modId = "${group}/${pathName}".toLowerCase().replaceAll("[.:/]", "-");
 var modIdWithoutSuffix = "${group}/${pathNameWithoutSuffix}".toLowerCase().replaceAll("[.:/]", "-");
+ext.widener = file("src/main/resources/${modIdWithoutSuffix}.accesswidener")
 
 loom {
     splitEnvironmentSourceSets()
-    accessWidenerPath = file("src/main/resources/${modIdWithoutSuffix}.accesswidener")
+    accessWidenerPath = project.ext.widener
     mods {
         "${modId}" {
             sourceSet sourceSets.main
@@ -57,7 +58,7 @@ processResources {
     }
     configureProcessResources(delegate, "fabric.mod.json", [
             modId: "${modId}",
-            modIdWithoutSuffix: "${modIdWithoutSuffix}",
+            accessWidener: project.ext.widener.name,
             group: "${project.group}",
     ])
 }
