@@ -25,7 +25,7 @@ env:
       "common": ["global"],
       "paper": ["global"],
       "velocity": ["global"],
-      "fabric": ["1.20.1", "1.21.1", "1.21.4", "1.21.8", "1.21.11"]
+      "fabric": ["1.20.1", "1.21.1", "1.21.4", "1.21.8", "1.21.11", "26.2"]
     }
 
 jobs:
@@ -73,7 +73,7 @@ jobs:
 
       - uses: actions/setup-java@v4
         with:
-          java-version: '23'
+          java-version: '25'
           distribution: oracle
 
       - name: Make Gradle Wrapper Executable
@@ -130,7 +130,7 @@ jobs:
 
       - uses: actions/setup-java@v4
         with:
-          java-version: '23'
+          java-version: '25'
           distribution: oracle
 
       - name: Make Gradle Wrapper Executable
@@ -175,7 +175,7 @@ jobs:
 
       - uses: actions/setup-java@v4
         with:
-          java-version: '23'
+          java-version: '25'
           distribution: oracle
 
       - name: Make Gradle Wrapper Executable
@@ -213,6 +213,7 @@ jobs:
             test -f "$script"
             cp "$script" "$RUNNER_TEMP/gradle-scripts/$script"
           done
+          cp fabric/src/main/resources/accesswidener-all.js "$RUNNER_TEMP/gradle-scripts/accesswidener-all.js"
 
       - name: Checkout pages state branch
         id: checkout-state
@@ -247,7 +248,7 @@ jobs:
         run: |
           set -euo pipefail
 
-          scripts=(global.gradle version.gradle remote.gradle sourcegenerator.gradle ghcr.gradle)
+          scripts=(global.gradle version.gradle remote.gradle sourcegenerator.gradle ghcr.gradle accesswidener-all.js)
           sourceDir="$RUNNER_TEMP/gradle-scripts"
           targetDir="output/$VERSION"
 
