@@ -592,7 +592,12 @@ class RemoteFileLinkPreProcessor implements PreProcessor {
             var matcher = LINK_PATTERN.matcher(it)
             if (matcher.matches()) {
                 def name = matcher.group("name")
-                def url = matcher.group("url")
+                def url = matcher.group("url").replaceAll(/\$\{(\w+)\}/) { match, property ->
+                    def properties = engine.engine().get("PROPERTIES")
+                    if (!properties.containsKey(property))
+                        throw new IllegalArgumentException("Unknown link property: " + property)
+                    properties[property].toString()
+                }
 
                 println("LINK $name BY $url. Downloading...")
                 def text = URI.create(url).toURL().text
