@@ -41,8 +41,12 @@ public class SkinsCache
         return serverPlayer.getGameProfile();
     }
     @Override
-    protected GameProfileAccess gameProfileAccess(GameProfile gameProfile) {
+    protected GameProfileAccess<GameProfile> gameProfileAccess(GameProfile gameProfile) {
         return GameProfileAccess.of(gameProfile);
+    }
+    @Override
+    protected void playerGameProfile(ServerPlayer player, GameProfile profile) {
+        player.gameProfile = profile;
     }
     @Override
     protected VariantSkinPart mainHand(ServerPlayer player) {

@@ -1,52 +1,58 @@
 package org.lime.core.common.services.skins.common;
 
-import com.google.common.collect.Multimap;
+import com.google.common.collect.*;
 import com.mojang.authlib.GameProfile;
-import com.mojang.authlib.properties.Property;
-import com.mojang.authlib.properties.PropertyMap;
-import org.lime.core.common.reflection.ReflectionMethod;
-import org.lime.core.common.utils.Lazy;
-import org.lime.core.common.utils.execute.Action1;
-import org.lime.core.common.utils.execute.Func1;
+import com.mojang.authlib.properties.*;
+import org.lime.core.common.reflection.*;
+import org.lime.core.common.utils.execute.*;
 
 import java.util.UUID;
 
-public interface GameProfileAccess {
+public interface GameProfileAccess<T> {
     @SuppressWarnings("unchecked")
     Func1<GameProfile, PropertyMap> PROPERTIES = ReflectionMethod.ofMojangOptional(GameProfile.class, "getProperties")
             .orElseGet(() -> ReflectionMethod.ofMojang(GameProfile.class, "properties"))
             .lambda(Func1.class);
+    @SuppressWarnings("unchecked")
+    Func1<GameProfile, UUID> ID = ReflectionMethod.ofMojangOptional(GameProfile.class, "getId")
+            .orElseGet(() -> ReflectionMethod.ofMojang(GameProfile.class, "id"))
+            .lambda(Func1.class);
+    @SuppressWarnings("unchecked")
+    Func1<GameProfile, String> NAME = ReflectionMethod.ofMojangOptional(GameProfile.class, "getName")
+            .orElseGet(() -> ReflectionMethod.ofMojang(GameProfile.class, "name"))
+            .lambda(Func1.class);
 
     UUID id();
     String name();
-
     Iterable<Property> properties(String key);
-    void modify(Action1<Multimap<String, Property>> properties);
-    <T>T modifyMap(Func1<Multimap<String, Property>, T> properties);
+    T modify(Action1<Multimap<String, Property>> properties);
 
-    static GameProfileAccess of(GameProfile profile) {
-        return new GameProfileAccess() {
-            private final Lazy<PropertyMap> properties = Lazy.of(() -> PROPERTIES.invoke(profile));
-
+    static GameProfileAccess<GameProfile> of(GameProfile profile) {
+        return new GameProfileAccess<>() {
             @Override
             public UUID id() {
-                return profile.getId();
+                return ID.invoke(profile);
             }
             @Override
             public String name() {
-                return profile.getName();
+                return NAME.invoke(profile);
             }
             @Override
             public Iterable<Property> properties(String key) {
-                return this.properties.value().get(key);
+                return PROPERTIES.invoke(profile).get(key);
             }
             @Override
-            public void modify(Action1<Multimap<String, Property>> properties) {
-                properties.invoke(this.properties.value());
-            }
-            @Override
-            public <T> T modifyMap(Func1<Multimap<String, Property>, T> properties) {
-                return properties.invoke(this.properties.value());
+            public GameProfile modify(Action1<Multimap<String, Property>> action) {
+                var properties = ArrayListMultimap.create(PROPERTIES.invoke(profile));
+                action.invoke(properties);
+                var constructor = Reflection.constructorOptional(GameProfile.class, UUID.class, String.class, PropertyMap.class);
+                if (constructor.isPresent()) {
+                    var map = ReflectionConstructor.of(PropertyMap.class, Multimap.class).newInstance(properties);
+                    return ReflectionConstructor.of(constructor.get()).newInstance(id(), name(), map);
+                }
+                var updated = new GameProfile(id(), name());
+                PROPERTIES.invoke(updated).putAll(properties);
+                return updated;
             }
         };
     }

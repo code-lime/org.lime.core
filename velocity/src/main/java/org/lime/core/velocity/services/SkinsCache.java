@@ -22,15 +22,19 @@ public class SkinsCache
 
     @Override
     protected Property renameProperty(Property property, String name) {
-        return new Property("textures", property.getValue(), property.getSignature());
+        return new Property(name, property.getValue(), property.getSignature());
     }
     @Override
     protected PlayerGameProfile playerGameProfile(Player serverPlayer) {
-        return new PlayerGameProfile(serverPlayer);
+        return new PlayerGameProfile(serverPlayer.getGameProfile());
     }
     @Override
-    protected GameProfileAccess gameProfileAccess(PlayerGameProfile playerGameProfile) {
+    protected GameProfileAccess<PlayerGameProfile> gameProfileAccess(PlayerGameProfile playerGameProfile) {
         return playerGameProfile;
+    }
+    @Override
+    protected void playerGameProfile(Player player, PlayerGameProfile profile) {
+        player.setGameProfileProperties(profile.profile().getProperties());
     }
     @Override
     protected VariantSkinPart mainHand(Player player) {

@@ -35,8 +35,16 @@ public class SkinsCache
         return serverPlayer.getGameProfile();
     }
     @Override
-    protected GameProfileAccess gameProfileAccess(GameProfile gameProfile) {
+    protected GameProfileAccess<GameProfile> gameProfileAccess(GameProfile gameProfile) {
         return GameProfileAccess.of(gameProfile);
+    }
+    @Override
+    protected void playerGameProfile(ServerPlayer player, GameProfile profile) {
+        var updated = player.getBukkitEntity().getPlayerProfile();
+        updated.clearProperties();
+        GameProfileAccess.PROPERTIES.invoke(profile).values()
+                .forEach(property -> updated.setProperty(new com.destroystokyo.paper.profile.ProfileProperty(property.name(), property.value(), property.signature())));
+        player.getBukkitEntity().setPlayerProfile(updated);
     }
     @Override
     protected VariantSkinPart mainHand(ServerPlayer player) {

@@ -1,26 +1,19 @@
 package org.lime.core.velocity.services.common;
 
-import com.google.common.collect.Iterables;
-import com.google.common.collect.LinkedHashMultimap;
-import com.google.common.collect.Multimap;
-import com.google.common.collect.Multimaps;
+import com.google.common.collect.*;
 import com.mojang.authlib.properties.Property;
-import com.velocitypowered.api.proxy.Player;
 import com.velocitypowered.api.util.GameProfile;
 import org.lime.core.common.services.skins.common.GameProfileAccess;
 import org.lime.core.common.utils.execute.Action1;
-import org.lime.core.common.utils.execute.Func1;
 
 import java.util.UUID;
 
 public class PlayerGameProfile
-        implements GameProfileAccess {
-    public final Player player;
-    private GameProfile profile;
+        implements GameProfileAccess<PlayerGameProfile> {
+    private final GameProfile profile;
 
-    public PlayerGameProfile(Player player) {
-        this.player = player;
-        this.profile = player.getGameProfile();
+    public PlayerGameProfile(GameProfile profile) {
+        this.profile = profile;
     }
 
     @Override
@@ -57,25 +50,12 @@ public class PlayerGameProfile
     }
 
     @Override
-    public void modify(Action1<Multimap<String, Property>> properties) {
+    public PlayerGameProfile modify(Action1<Multimap<String, Property>> properties) {
         LinkedHashMultimap<String, Property> map = profile
                 .getProperties()
                 .stream()
                 .collect(Multimaps.toMultimap(GameProfile.Property::getName, this::cast, LinkedHashMultimap::create));
         properties.invoke(map);
-        player.setGameProfileProperties(map.values().stream().map(this::cast).toList());
-        profile = player.getGameProfile();
-    }
-
-    @Override
-    public <T> T modifyMap(Func1<Multimap<String, Property>, T> properties) {
-        LinkedHashMultimap<String, Property> map = profile
-                .getProperties()
-                .stream()
-                .collect(Multimaps.toMultimap(GameProfile.Property::getName, this::cast, LinkedHashMultimap::create));
-        var result = properties.invoke(map);
-        player.setGameProfileProperties(map.values().stream().map(this::cast).toList());
-        profile = player.getGameProfile();
-        return result;
+        return new PlayerGameProfile(profile.withProperties(map.values().stream().map(this::cast).toList()));
     }
 }

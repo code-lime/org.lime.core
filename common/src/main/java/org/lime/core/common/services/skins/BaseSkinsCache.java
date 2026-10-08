@@ -115,7 +115,8 @@ public abstract class BaseSkinsCache<ServerPlayer, GameProfile>
 
     protected abstract Property renameProperty(Property property, String name);
     protected abstract GameProfile playerGameProfile(ServerPlayer player);
-    protected abstract GameProfileAccess gameProfileAccess(GameProfile profile);
+    protected abstract GameProfileAccess<GameProfile> gameProfileAccess(GameProfile profile);
+    protected abstract void playerGameProfile(ServerPlayer player, GameProfile profile);
     protected abstract VariantSkinPart mainHand(ServerPlayer player);
 
     public Optional<SkinData> handHeadSkin(ServerPlayer player) {
@@ -149,16 +150,18 @@ public abstract class BaseSkinsCache<ServerPlayer, GameProfile>
         return apply(player, skin, null);
     }
     public boolean apply(ServerPlayer player, @Nullable SkinData skin, @Nullable String cacheKey) {
-        if (!applyProfile(playerGameProfile(player), skin, cacheKey))
+        var profile = applyProfile(playerGameProfile(player), skin, cacheKey);
+        if (profile == null)
             return false;
+        playerGameProfile(player, profile);
         flush(player);
         return true;
     }
 
-    public boolean applyProfile(GameProfile profile, @Nullable SkinData skin) {
+    public @Nullable GameProfile applyProfile(GameProfile profile, @Nullable SkinData skin) {
         return applyProfile(profile, skin, null);
     }
-    public boolean applyProfile(GameProfile profile, @Nullable SkinData skin, @Nullable String cacheKey) {
+    public @Nullable GameProfile applyProfile(GameProfile profile, @Nullable SkinData skin, @Nullable String cacheKey) {
         String key = Optional.ofNullable(cacheKey)
                 .map(v -> OLD_TEXTURES_PREFIX + v + OLD_TEXTURES_SUFFIX)
                 .orElse(OLD_TEXTURES);
@@ -166,7 +169,7 @@ public abstract class BaseSkinsCache<ServerPlayer, GameProfile>
         if (skin == null)
             return rollback(profile, key);
 
-        gameProfileAccess(profile)
+        return gameProfileAccess(profile)
                 .modify(properties -> {
                     Optional.of(properties.get(key))
                             .stream()
@@ -186,8 +189,6 @@ public abstract class BaseSkinsCache<ServerPlayer, GameProfile>
                     properties.removeAll("textures");
                     properties.put("textures", new Property("textures", skin.value(), skin.signature()));
                 });
-
-        return true;
     }
 
     public Map<MinecraftProfileTexture.Type, MinecraftProfileTexture> skinData(ServerPlayer player) {
@@ -223,21 +224,18 @@ public abstract class BaseSkinsCache<ServerPlayer, GameProfile>
                 .orElse(SkinVariant.CLASSIC);
     }
 
-    private boolean rollback(GameProfile profile, String key) {
-        return gameProfileAccess(profile)
-                .modifyMap(properties -> Optional.of(properties.get(key))
-                        .stream()
-                        .flatMap(Collection::stream)
-                        .findFirst()
-                        .map(property -> {
-                            properties.removeAll("textures");
-                            properties.removeAll(key);
-                            if (OLD_TEXTURES.equals(key))
-                                properties.keySet().removeIf(v -> v.startsWith(OLD_TEXTURES_PREFIX) && v.endsWith(OLD_TEXTURES_SUFFIX));
-                            properties.put("textures", renameProperty(property, "textures"));
-                            return true;
-                        })
-                        .orElse(false));
+    private @Nullable GameProfile rollback(GameProfile profile, String key) {
+        var access = gameProfileAccess(profile);
+        var property = Iterables.getFirst(access.properties(key), null);
+        if (property == null)
+            return null;
+        return access.modify(properties -> {
+            properties.removeAll("textures");
+            properties.removeAll(key);
+            if (OLD_TEXTURES.equals(key))
+                properties.keySet().removeIf(v -> v.startsWith(OLD_TEXTURES_PREFIX) && v.endsWith(OLD_TEXTURES_SUFFIX));
+            properties.put("textures", renameProperty(property, "textures"));
+        });
     }
 
     public abstract void flush(ServerPlayer player);
