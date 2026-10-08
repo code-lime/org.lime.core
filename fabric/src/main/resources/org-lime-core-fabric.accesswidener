@@ -1,5 +1,8 @@
 accessWidener   v1  named
 
+accessible field net/minecraft/world/entity/player/Player gameProfile Lcom/mojang/authlib/GameProfile;
+mutable field net/minecraft/world/entity/player/Player gameProfile Lcom/mojang/authlib/GameProfile;
+
 accessible field net/minecraft/server/level/ChunkMap entityMap Lit/unimi/dsi/fastutil/ints/Int2ObjectMap;
 accessible class net/minecraft/server/level/ChunkMap$TrackedEntity
 accessible field net/minecraft/server/level/ChunkMap$TrackedEntity seenBy Ljava/util/Set;
