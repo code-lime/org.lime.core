@@ -1,3 +1,15 @@
+def variable = project.findProperty('variable')
+if (variable != null) {
+    def configFile = file("gradle.${variable}.properties")
+    if (configFile.exists()) {
+        def props = new Properties()
+        configFile.withInputStream { props.load(it) }
+        props.each { key, value ->
+            project.setProperty(key, value)
+        }
+    }
+}
+
 static String getName(Project project, boolean suffix) {
     if (suffix && project.hasProperty('nameSuffix'))
         return "${project.name}${project.property('nameSuffix')}"

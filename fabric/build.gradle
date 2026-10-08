@@ -4,17 +4,9 @@ plugins {
     id 'maven-publish'
 }
 
-def variable = project.hasProperty('variable') ? project.property('variable') : '1.20.1'
-
-def configFile = file("gradle.${variable}.properties")
-if (configFile.exists()) {
-    def props = new Properties()
-    configFile.withInputStream { props.load(it) }
-    props.each { key, value ->
-        project.setProperty(key, value)
-    }
-}
-
+if (!project.hasProperty('variable'))
+    ext.variable = '1.20.1'
+    
 overrideJavaVersion = 17
 
 apply from: '../global.gradle'
