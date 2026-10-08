@@ -96,6 +96,10 @@ jobs:
 
       - name: Build
         run: |
+          ./gradlew :${{ matrix.module }}:generator \
+            -Pvariable=${{ matrix.variant }} \
+            -DincludeModules=${{ matrix.module }} \
+            --build-cache --parallel
           ./gradlew :${{ matrix.module }}:build \
             -Pvariable=${{ matrix.variant }} \
             -DincludeModules=${{ matrix.module }} \
@@ -149,6 +153,10 @@ jobs:
 
       - name: Publish
         run: |
+          ./gradlew :${{ matrix.module }}:generator \
+            -Pvariable=${{ matrix.variant }} \
+            -DincludeModules=${{ matrix.module }} \
+            --build-cache --parallel
           ./gradlew :${{ matrix.module }}:publish \
             -Pvariable=${{ matrix.variant }} \
             -DincludeModules=${{ matrix.module }} \
