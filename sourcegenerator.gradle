@@ -12,6 +12,7 @@ buildscript {
 }
 
 import com.oracle.truffle.js.scriptengine.*
+import groovy.transform.CompileStatic
 import org.graalvm.polyglot.*
 
 import javax.script.ScriptEngine
@@ -603,6 +604,7 @@ class RemoteFileLinkPreProcessor implements PreProcessor {
     }
 }
 
+@CompileStatic
 class CombinedClassLoader extends ClassLoader {
     private final Iterable<ClassLoader> delegates
 
@@ -613,10 +615,9 @@ class CombinedClassLoader extends ClassLoader {
 
     @Override
     protected Class<?> findClass(String name) throws ClassNotFoundException {
-        System.out.println("LOAD $name")
         for (ClassLoader loader : delegates) {
             try {
-                return loader.findClass(name)
+                return loader.loadClass(name)
             } catch (ClassNotFoundException ignored) {}
         }
         throw new ClassNotFoundException(name)
@@ -660,16 +661,18 @@ class SourceGenerator {
     }
 
     private ScriptEngine createEngine(String packageName) {
+        def loader = new CombinedClassLoader(this.class.classLoader, project.plugins.collect{it.class.classLoader})
         ScriptEngine engine = GraalJSScriptEngine.create(
                 Engine.newBuilder()
                         .option("engine.WarnInterpreterOnly", "false")
                         .build(),
                 Context.newBuilder("js")
                         .allowHostAccess(HostAccess.ALL)
-                        .allowHostClassLookup(v -> true))
+                        .allowHostClassLookup(v -> true)
+                        .hostClassLoader(loader))
         engine.put("PACKAGE", new PackageName(packageName.split("\\.")))
         engine.put("PROJECT", project)
-        engine.put("LOADER", new CombinedClassLoader(this.class.classLoader, project.plugins.collect{it.class.classLoader}))
+        engine.put("LOADER", loader)
         engine.put("PROPERTIES", project.getProperties())
         return engine;
     }
