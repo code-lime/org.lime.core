@@ -1,0 +1,24 @@
+def modern = !versionMinecraft.toString().startsWith('1.')
+apply plugin: modern ? 'net.fabricmc.fabric-loom' : 'net.fabricmc.fabric-loom-remap'
+
+if (modern) {
+    def modImplementation = configurations.create('modImplementation') {
+        canBeResolved = false
+        canBeConsumed = false
+    }
+    configurations.implementation.extendsFrom(modImplementation)
+
+    def sourceWidener = ext.widener
+    ext.widener = layout.buildDirectory.file("generated/accesswidener/${sourceWidener.name}").get().asFile
+    ext.widener.parentFile.mkdirs()
+    ext.widener.setText(sourceWidener.getText('UTF-8').replaceFirst(/accessWidener\s+v1\s+named/, 'classTweaker v1 official'), 'UTF-8')
+
+    def preparedWidener = ext.widener
+    processResources {
+        exclude { it.file == sourceWidener }
+        from preparedWidener
+        filesMatching('*.mixins.json') {
+            filter { line -> line.replace('"JAVA_17"', '"JAVA_25"') }
+        }
+    }
+}
