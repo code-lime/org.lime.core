@@ -17,8 +17,7 @@ import org.lime.core.common.utils.Disposable;
 import org.lime.core.common.utils.Unsafe;
 import org.lime.core.common.reflection.ReflectionMethod;
 import org.lime.core.common.utils.ListBuilder;
-import org.lime.core.common.utils.execute.Action1;
-import org.lime.core.common.utils.execute.Action2;
+import org.lime.core.common.utils.execute.*;
 import org.lime.core.common.utils.tuple.Tuple;
 import org.lime.core.common.utils.tuple.Tuple2;
 
@@ -79,8 +78,13 @@ public class PacketManager {
             }
 
             private record PacketIndex(String protocol, String flow, String type) {
+                @SuppressWarnings("unchecked")
+                private static final Func1<net.minecraft.network.protocol.PacketType<?>, Object> packetId = ReflectionMethod
+                        .ofMojang(net.minecraft.network.protocol.PacketType.class, "id")
+                        .lambda(Func1.class);
+
                 public static PacketIndex of(PacketType.Protocol protocol, net.minecraft.network.protocol.PacketType<?> type) {
-                    return new PacketIndex(protocol.getMojangName(), type.flow().id(), type.id().toString());
+                    return new PacketIndex(protocol.getMojangName(), type.flow().id(), packetId.invoke(type).toString());
                 }
             }
 

@@ -1,7 +1,8 @@
 package org.lime.core.paper;
 
 import com.google.inject.TypeLiteral;
-import com.mojang.authlib.minecraft.MinecraftSessionService;
+import com.mojang.authlib.GameProfile;
+import com.mojang.authlib.minecraft.MinecraftProfileTextures;
 import io.papermc.paper.datapack.DatapackManager;
 import io.papermc.paper.datapack.PaperDatapackManager;
 import io.papermc.paper.registry.PaperRegistryAccess;
@@ -39,7 +40,7 @@ import org.bukkit.plugin.messaging.Messenger;
 import org.bukkit.scheduler.BukkitScheduler;
 import org.bukkit.scoreboard.ScoreboardManager;
 import org.bukkit.structure.StructureManager;
-import org.lime.core.common.reflection.ReflectionMethod;
+import org.lime.core.common.reflection.*;
 import org.lime.core.common.services.InstancesUtility;
 import org.lime.core.common.services.UnsafeMappingsUtility;
 import org.lime.core.common.services.ScheduleTaskService;
@@ -50,7 +51,7 @@ import org.lime.core.common.services.memories.BaseConnectionStorageService;
 import org.lime.core.common.services.skins.BaseSkinsCache;
 import org.lime.core.common.utils.Lazy;
 import org.lime.core.common.utils.adapters.CommonGsonTypeAdapters;
-import org.lime.core.common.utils.execute.Func1;
+import org.lime.core.common.utils.execute.*;
 import org.lime.core.paper.commands.NativeCommandConsumerFactory;
 import org.lime.core.paper.services.BungeeApi;
 import org.lime.core.paper.services.ConnectionStorageService;
@@ -101,15 +102,20 @@ public class BasePaperInstanceModule<Instance extends BasePaperInstance<Instance
     }
 
     @SuppressWarnings("unchecked")
-    private static final Lazy<Func1<MinecraftServer, MinecraftSessionService>> sessionServiceAccess = Lazy.of(() -> ReflectionMethod
+    private static final Lazy<Func1<MinecraftServer, Object>> sessionServiceAccess = Lazy.of(() -> ReflectionMethod
             .ofMojangOptional(MinecraftServer.class, "services")
             .flatMap(v -> ReflectionMethod.ofMojangOptional(v.target().getReturnType(), "sessionService")
-                    .<Func1<MinecraftServer, MinecraftSessionService>>map(j -> {
+                    .<Func1<MinecraftServer, Object>>map(j -> {
                         Func1<MinecraftServer, Object> services = v.lambda(Func1.class);
-                        Func1<Object, MinecraftSessionService> sessionService = j.lambda(Func1.class);
+                        Func1<Object, Object> sessionService = j.lambda(Func1.class);
                         return server -> sessionService.invoke(services.invoke(server));
                     }))
             .orElseGet(() -> ReflectionMethod.ofMojang(MinecraftServer.class, "getSessionService").lambda(Func1.class)));
+    @SuppressWarnings("unchecked")
+    private static final Lazy<Func1<MinecraftServer, StructureTemplateManager>> structureManagerAccess = Lazy.of(() -> ReflectionMethod
+            .ofMojangOptional(MinecraftServer.class, "getStructureTemplateManager")
+            .orElseGet(() -> ReflectionMethod.ofMojang(MinecraftServer.class, "getStructureManager"))
+            .lambda(Func1.class));
 
     @Override
     protected void configure() {
@@ -131,8 +137,18 @@ public class BasePaperInstanceModule<Instance extends BasePaperInstance<Instance
         bindMapped(ServerAdvancementManager.class, MinecraftServer.class, MinecraftServer::getAdvancements);
         bindMappedCast(RecipeManager.class, RecipeAccess.class, MinecraftServer.class, MinecraftServer::getRecipeManager);
         bindMapped(ResourceManager.class, MinecraftServer.class, MinecraftServer::getResourceManager);
-        bindMapped(StructureTemplateManager.class, MinecraftServer.class, MinecraftServer::getStructureManager);
-        bindMapped(MinecraftSessionService.class, MinecraftServer.class, sessionServiceAccess.value());
+        bindMapped(StructureTemplateManager.class, MinecraftServer.class, structureManagerAccess.value());
+
+        Class<?> sessionServiceClass = Reflection.findClassOptional("com.mojang.authlib.minecraft.SessionService")
+                .orElseGet(() -> Reflection.findClass("com.mojang.authlib.minecraft.MinecraftSessionService"));
+        Object sessionService = sessionServiceAccess.value().invoke(MinecraftServer.getServer());
+        @SuppressWarnings("unchecked")
+        Func2<Object, GameProfile, MinecraftProfileTextures> getTextures = ReflectionMethod
+                .ofMojang(sessionServiceClass, "getTextures", GameProfile.class)
+                .lambda(Func2.class);
+        bind((Class)sessionServiceClass).toInstance(sessionService);
+        bind(new TypeLiteral<Func1<GameProfile, MinecraftProfileTextures>>() {})
+                .toInstance(profile -> getTextures.invoke(sessionService, profile));
 
         bind(CraftServer.class).toInstance((CraftServer) Bukkit.getServer());
         bindCast(Server.class, CraftServer.class);

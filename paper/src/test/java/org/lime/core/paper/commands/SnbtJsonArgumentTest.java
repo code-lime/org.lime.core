@@ -11,6 +11,7 @@ import com.mojang.brigadier.exceptions.CommandSyntaxException;
 import io.papermc.paper.command.brigadier.ApiMirrorRootNode;
 import io.papermc.paper.command.brigadier.Commands;
 import net.minecraft.SharedConstants;
+import net.minecraft.commands.arguments.NbtTagArgument;
 import net.minecraft.network.RegistryFriendlyByteBuf;
 import net.minecraft.network.chat.Component;
 import net.minecraft.network.protocol.game.ClientboundCommandSuggestionsPacket;
@@ -33,6 +34,7 @@ import static com.mojang.brigadier.builder.LiteralArgumentBuilder.literal;
 import static com.mojang.brigadier.builder.RequiredArgumentBuilder.argument;
 
 import static org.junit.jupiter.api.Assertions.*;
+import static org.junit.jupiter.api.Assumptions.assumeTrue;
 
 class SnbtJsonArgumentTest {
     private static final Object SOURCE = new Object();
@@ -63,14 +65,14 @@ class SnbtJsonArgumentTest {
         ArgumentType<CompletionData> value = NativeCommandConsumerFactory.INSTANCE.json(input, gson.getAdapter(CompletionData.class));
         CommandDispatcher<Object> dispatcher = dispatcher(value);
         String prefix = "test ";
-        for (String key : List.of("{mo", "{'mo", "{\"mo", "{'\\u006do")) {
+        for (String key : List.of("{mo", "{'mo", "{\"mo")) {
             String quote = key.startsWith("{'") ? "'" : key.startsWith("{\"") ? "\"" : "";
             var suggestions = complete(dispatcher, prefix + key);
             var selected = suggestions.getList().stream().filter(candidate -> candidate.getText().equals(quote + "mode" + quote + ":")).findFirst().orElseThrow();
             assertEquals(prefix + "{" + quote + "mode" + quote + ":", selected.apply(prefix + key));
             assertTrue(selected.getTooltip().getString().contains("SAFE"));
         }
-        for (String scalar : List.of("{enabled:1", "{enabled:0b", "{enabled:true", "{enabled:bool(1)", "{count:0x10", "{count:1_000", "{count:1sb")) {
+        for (String scalar : List.of("{enabled:1", "{enabled:0b", "{enabled:true", "{count:10", "{count:-10")) {
             String command = prefix + scalar;
             var close = complete(dispatcher, command).getList().stream().filter(candidate -> candidate.getText().equals("}")).findFirst().orElseThrow();
             assertEquals(command + "}", close.apply(command));
@@ -87,14 +89,48 @@ class SnbtJsonArgumentTest {
         }
         String nested = prefix + "{children:[{name:'first',count:2},{name:'second'}],mode:";
         assertEquals(Set.of("\"SAFE\"", "\"FORCE\""), texts(complete(dispatcher, nested)));
-        assertEquals(Set.of("'SAFE'"), texts(complete(dispatcher, prefix + "{mode:'\\u0053A")));
-        assertTrue(texts(complete(dispatcher, prefix + "{name:'hello\\")).contains("n"));
         var opaque = dispatcher(NativeCommandConsumerFactory.INSTANCE.json(
                 JsonInput.of(JsonInput.object(Map.of("raw", JsonInput.any(), "count", JsonInput.scalar(JsonInput.Type.INTEGER)))), gson.getAdapter(JsonElement.class)));
         String opaqueCommand = prefix + "{raw:{foo";
-        var separator = complete(opaque, opaqueCommand).getList().stream().filter(candidate -> candidate.getText().equals(":")).findFirst().orElseThrow();
-        assertEquals(opaqueCommand + ":", separator.apply(opaqueCommand));
+        String nativeCommand = prefix + "{foo";
+        var nativeSuggestions = complete(dispatcher(NbtTagArgument.nbtTag()), nativeCommand);
+        var opaqueSuggestions = complete(opaque, opaqueCommand);
+        assertEquals(texts(nativeSuggestions), texts(opaqueSuggestions));
+        for (var nativeSuggestion : nativeSuggestions.getList()) {
+            var suggestion = opaqueSuggestions.getList().stream()
+                    .filter(candidate -> candidate.getText().equals(nativeSuggestion.getText()))
+                    .findFirst().orElseThrow();
+            assertEquals(prefix + "{raw:" + nativeSuggestion.apply(nativeCommand).substring(prefix.length()), suggestion.apply(opaqueCommand));
+        }
         assertTrue(texts(complete(opaque, prefix + "{raw:{foo:1}")).contains(", count:"));
+    }
+
+    @Test
+    void completesModernVanillaSnbtNumbersAndEscapes() throws Exception {
+        Gson gson = new Gson();
+        var raw = NativeCommandConsumerFactory.INSTANCE.json(JsonInput.raw(), gson.getAdapter(JsonElement.class));
+        try {
+            raw.parse(new StringReader("{value:bool(1)}"));
+        } catch (CommandSyntaxException unsupported) {
+            assumeTrue(false, "This vanilla parser does not support modern SNBT syntax");
+        }
+        var value = NativeCommandConsumerFactory.INSTANCE.json(JsonInput.of(gson, com.google.gson.reflect.TypeToken.get(CompletionData.class)), gson.getAdapter(CompletionData.class));
+        var dispatcher = dispatcher(value);
+        String key = "test {'\\u006do";
+        var property = complete(dispatcher, key).getList().stream()
+                .filter(candidate -> candidate.getText().equals("'mode':"))
+                .findFirst().orElseThrow();
+        assertEquals("test {'mode':", property.apply(key));
+        for (String scalar : List.of("{enabled:bool(1)", "{count:0x10", "{count:1_000", "{count:1sb")) {
+            String command = "test " + scalar;
+            var close = complete(dispatcher, command).getList().stream()
+                    .filter(candidate -> candidate.getText().equals("}"))
+                    .findFirst().orElseThrow();
+            assertEquals(command + "}", close.apply(command));
+            assertDoesNotThrow(() -> value.parse(new StringReader(scalar + "}")));
+        }
+        assertEquals(Set.of("'SAFE'"), texts(complete(dispatcher, "test {mode:'\\u0053A")));
+        assertTrue(texts(complete(dispatcher, "test {name:'hello\\")).contains("n"));
     }
 
     @Test

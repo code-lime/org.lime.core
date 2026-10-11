@@ -63,7 +63,7 @@ public class CodecTypeAdapterFactory
 
     public CodecTypeAdapterFactory(
             MinecraftServer server) {
-        dataFixer = server.fixerUpper;
+        dataFixer = server.getFixerUpper();
         ops = server.registryAccess().createSerializationContext(com.mojang.serialization.JsonOps.INSTANCE);
         currentVersion = CraftMagicNumbers.INSTANCE.getDataVersion();
     }

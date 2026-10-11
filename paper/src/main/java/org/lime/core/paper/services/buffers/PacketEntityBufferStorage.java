@@ -58,9 +58,7 @@ import org.lime.core.common.services.buffers.PacketEntityTracker;
 import org.lime.core.common.services.buffers.PacketEntityTrackingCache;
 import org.lime.core.common.services.buffers.PacketEntityVisibility;
 import org.lime.core.common.utils.Disposable;
-import org.lime.core.common.utils.execute.Action1;
-import org.lime.core.common.utils.execute.Action6;
-import org.lime.core.common.utils.execute.Func6;
+import org.lime.core.common.utils.execute.*;
 import org.spigotmc.TrackingRange;
 
 import java.lang.reflect.Proxy;
@@ -87,6 +85,12 @@ public class PacketEntityBufferStorage
 
     private static final Optional<Class<?>> serverEntitySynchronizerClass =
             Reflection.findClassOptional("net.minecraft.server.level.ServerEntity$Synchronizer");
+    private static final Class<?> serverEntityUpdateIntervalClass = Reflection
+            .findClassOptional("net.minecraft.world.entity.UpdateInterval")
+            .orElse(int.class);
+    private static final Object serverEntityUpdateInterval = serverEntityUpdateIntervalClass == int.class
+            ? 1
+            : ReflectionMethod.ofMojang(serverEntityUpdateIntervalClass, "periodic", int.class).lambda(Func1.class).invoke(1);
     private static final Action6<
             net.minecraft.world.entity.Entity,
             Double,
@@ -113,7 +117,7 @@ public class PacketEntityBufferStorage
     private static final Func6<
             ServerLevel,
             net.minecraft.world.entity.Entity,
-            Integer,
+            Object,
             Boolean,
             Object,
             Set<ServerPlayerConnection>,
@@ -121,7 +125,7 @@ public class PacketEntityBufferStorage
                     ServerEntity.class,
                     ServerLevel.class,
                     net.minecraft.world.entity.Entity.class,
-                    int.class,
+                    serverEntityUpdateIntervalClass,
                     boolean.class,
                     serverEntitySynchronizerClass.orElse(Consumer.class),
                     Set.class)
@@ -451,7 +455,7 @@ public class PacketEntityBufferStorage
             return serverEntityConstructor.invoke(
                     level(),
                     nmsEntity,
-                    1,
+                    serverEntityUpdateInterval,
                     nmsEntity.getType().trackDeltas(),
                     createServerEntitySynchronizer(),
                     Set.of());

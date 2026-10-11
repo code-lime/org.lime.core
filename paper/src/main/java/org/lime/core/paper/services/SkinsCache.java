@@ -2,10 +2,8 @@ package org.lime.core.paper.services;
 
 import com.google.inject.Inject;
 import com.mojang.authlib.GameProfile;
-import com.mojang.authlib.minecraft.MinecraftProfileTexture;
-import com.mojang.authlib.minecraft.MinecraftSessionService;
+import com.mojang.authlib.minecraft.*;
 import com.mojang.authlib.properties.Property;
-import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerPlayer;
 import org.bukkit.craftbukkit.entity.CraftPlayer;
 import org.bukkit.entity.Player;
@@ -15,6 +13,7 @@ import org.lime.core.common.services.skins.BaseSkinsCache;
 import org.lime.core.common.services.skins.common.GameProfileAccess;
 import org.lime.core.common.services.skins.common.VariantSkinPart;
 import org.lime.core.common.services.skins.common.SkinData;
+import org.lime.core.common.utils.execute.Func1;
 
 import java.util.HashMap;
 import java.util.Map;
@@ -23,8 +22,7 @@ import java.util.Optional;
 @BindService
 public class SkinsCache
         extends BaseSkinsCache<ServerPlayer, GameProfile> {
-    @Inject MinecraftServer server;
-    @Inject MinecraftSessionService sessionService;
+    @Inject Func1<GameProfile, MinecraftProfileTextures> getTextures;
 
     @Override
     protected Property renameProperty(Property property, String name) {
@@ -56,7 +54,7 @@ public class SkinsCache
 
     @Override
     public Map<MinecraftProfileTexture.Type, MinecraftProfileTexture> skinDataProfile(GameProfile profile) {
-        var textures = sessionService.getTextures(profile);
+        var textures = getTextures.invoke(profile);
         HashMap<MinecraftProfileTexture.Type, MinecraftProfileTexture> result = new HashMap<>();
         putIfNotNull(result, MinecraftProfileTexture.Type.SKIN, textures.skin());
         putIfNotNull(result, MinecraftProfileTexture.Type.CAPE, textures.cape());
